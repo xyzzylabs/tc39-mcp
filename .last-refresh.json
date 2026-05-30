@@ -1,0 +1,10 @@
+{
+  "version": "0.1.1",
+  "refreshed_at": "2026-05-30T23:17:51Z",
+  "specs": {
+    "262/main": "6dcb70f914e67908abc548b3285dc0583a194910",
+    "402/main": "2c336bf108651208c8ef4972d0dda6fc9d26dff1"
+  },
+  "test262": "4249661388e5d3f92a85186213da140a6481490f",
+  "proposals": "7510bde4071c3251114d1e7a244187c7c54da214"
+}
