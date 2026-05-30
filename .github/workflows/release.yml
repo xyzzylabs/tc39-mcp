@@ -26,8 +26,13 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
-          registry-url: "https://registry.npmjs.org"
           cache: npm
+          # Do NOT set `registry-url:` here. setup-node would then
+          # generate an `.npmrc` with a `NODE_AUTH_TOKEN`-based auth
+          # line; even an empty NODE_AUTH_TOKEN takes precedence over
+          # Trusted Publishing's OIDC auth path, causing publish to
+          # fail with a misleading 404. npm defaults to
+          # registry.npmjs.org so explicitly setting it isn't needed.
 
       - name: Verify tag matches package.json version
         # The tag pushed (refs/tags/vX.Y.Z) and the version in

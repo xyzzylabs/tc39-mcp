@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/tc39-mcp.svg)](https://www.npmjs.com/package/tc39-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-📖 **Docs site** (same origin as the API): [tc39-mcp.chico.workers.dev](https://tc39-mcp.chico.workers.dev) — [Tools](https://tc39-mcp.chico.workers.dev/tools) · [Snapshots](https://tc39-mcp.chico.workers.dev/snapshots) · [Architecture](https://tc39-mcp.chico.workers.dev/architecture) · [Deployment](https://tc39-mcp.chico.workers.dev/deployment) · [Changelog](https://tc39-mcp.chico.workers.dev/changelog)
+📖 **Docs site** (same origin as the API): [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — [Tools](https://tc39-mcp.chicoxyzzy.workers.dev/tools) · [Snapshots](https://tc39-mcp.chicoxyzzy.workers.dev/snapshots) · [Architecture](https://tc39-mcp.chicoxyzzy.workers.dev/architecture) · [Deployment](https://tc39-mcp.chicoxyzzy.workers.dev/deployment) · [Changelog](https://tc39-mcp.chicoxyzzy.workers.dev/changelog)
 
 Structured MCP server for the TC39 specs (ECMA-262 + ECMA-402) —
 SHA-pinned clauses, AOID-aware search, in+out cross-references,
@@ -44,7 +44,7 @@ For MCP clients that prefer HTTP transport, or for `curl` testing:
   "mcpServers": {
     "tc39": {
       "type": "http",
-      "url": "https://tc39-mcp.chico.workers.dev/mcp"
+      "url": "https://tc39-mcp.chicoxyzzy.workers.dev/mcp"
     }
   }
 }
@@ -53,7 +53,7 @@ For MCP clients that prefer HTTP transport, or for `curl` testing:
 Smoke-test it from anywhere:
 
 ```sh
-curl -s -X POST https://tc39-mcp.chico.workers.dev/mcp \
+curl -s -X POST https://tc39-mcp.chicoxyzzy.workers.dev/mcp \
   -H "content-type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"spec.about","arguments":{}}}' \
   | jq '.result.content[0].text | fromjson | .server'
@@ -246,7 +246,7 @@ without sandboxing concerns.
 
 ## Docs
 
-Hosted at [tc39-mcp.chico.workers.dev](https://tc39-mcp.chico.workers.dev) — searchable, dark-mode-friendly, auto-rebuilt on every refresh so `/snapshots` always shows the live SHAs.
+Hosted at [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — searchable, dark-mode-friendly, auto-rebuilt on every refresh so `/snapshots` always shows the live SHAs.
 
 In-repo (source for the hosted site + GitHub-rendered fallback):
 
