@@ -188,6 +188,54 @@ When tc39/ecma262 cuts the next annual release (e.g. `es2026`):
 
 No tool code changes needed — `EDITION_VALUES` rebinds automatically.
 
+## Maintainer setup: WORKFLOW_PAT secret
+
+For `refresh.yml` to fully auto-cascade (bump → tag → publish to npm
+→ deploy Worker), the repo needs a Personal Access Token stored as
+the secret `WORKFLOW_PAT`.
+
+**Why**: GitHub's default `GITHUB_TOKEN` cannot trigger downstream
+workflows when it pushes commits or tags — an anti-recursion safety.
+A PAT (or GitHub App) is the standard workaround.
+
+**Without it**: refresh still bumps the version, commits, and pushes
+the tag — but `release.yml` and `deploy-worker.yml` won't fire. A
+maintainer would have to manually re-push the tag (delete + push)
+to trigger them. The workflow comment in `refresh.yml` documents
+this fallback explicitly.
+
+**How to create the PAT**:
+
+1. Go to https://github.com/settings/personal-access-tokens/new (this
+   is the fine-grained PAT page — preferred over Classic).
+2. Settings:
+   | Field | Value |
+   |---|---|
+   | Token name | `tc39-mcp refresh chain` |
+   | Resource owner | the org/user that owns this repo (`xyzzylabs`) |
+   | Expiration | 1 year |
+   | Repository access | **Only select repositories** → `tc39-mcp` |
+   | Repository permissions | **Contents: Read and write**, **Workflows: Read and write** |
+3. **Generate token** → copy the value (starts with `github_pat_…`).
+4. Save it to the repo:
+   ```sh
+   gh secret set WORKFLOW_PAT -R xyzzylabs/tc39-mcp
+   # paste the github_pat_… value at the prompt
+   ```
+
+After this, the next refresh tick that finds upstream-moved SHAs will
+bump → tag → publish to npm → deploy Worker, all without human
+intervention. Verify by triggering one manually:
+
+```sh
+gh workflow run refresh.yml -R xyzzylabs/tc39-mcp
+```
+
+Rotate the PAT every year (or sooner if your org policy requires it);
+the workflow tolerates the fallback to `GITHUB_TOKEN` if the secret
+expires, so a missed rotation just disables auto-cascade — it doesn't
+break the refresh itself.
+
 ## Automated maintenance PRs
 
 `.github/dependabot.yml` opens grouped PRs every Monday for:
