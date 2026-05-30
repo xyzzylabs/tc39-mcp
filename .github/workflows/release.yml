@@ -34,6 +34,14 @@ jobs:
           # fail with a misleading 404. npm defaults to
           # registry.npmjs.org so explicitly setting it isn't needed.
 
+      - name: Upgrade npm for Trusted Publishing
+        # Node 22 ships with npm 10.x. Trusted Publishing (OIDC) was
+        # added in npm 11.5.1; without this upgrade `npm publish` has
+        # no auth path and fails with ENEEDAUTH. Pinning to a
+        # known-good minor instead of `@latest` so a future npm
+        # breaking change doesn't surprise us on a refresh tick.
+        run: npm install -g npm@^11.5
+
       - name: Verify tag matches package.json version
         # The tag pushed (refs/tags/vX.Y.Z) and the version in
         # package.json must agree before we publish anything.
