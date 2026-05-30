@@ -56,10 +56,11 @@ internet:
 The repo runs two automated security passes that complement manual
 review:
 
-- **CodeQL** (`.github/workflows/codeql.yml`) — GitHub's first-party
-  static analysis runs on every push, every PR, and weekly against
-  main. Uses the `security-and-quality` query pack (security +
-  correctness + maintainability). Findings appear in the Security tab.
+- **CodeQL** — GitHub's first-party static analysis runs via the
+  repo's **Default Setup** (Settings → Code security → Code
+  scanning). Default queries cover the standard security + quality
+  rules; findings appear in the Security tab. Default Setup is
+  auto-managed (no workflow file to maintain).
 - **Dependabot** (`.github/dependabot.yml`) — weekly grouped PRs for
   npm (root + worker) and GitHub Actions versions. Production
   dependencies and Actions are intentionally kept separate from

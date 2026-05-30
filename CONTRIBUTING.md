@@ -200,12 +200,16 @@ exported tool's schema; let the rest through after a glance.
 
 ## Security scanning
 
-`.github/workflows/codeql.yml` runs GitHub's CodeQL JS/TS analysis on
-every push, every PR, and weekly on a schedule. Results land in the
-**Security** tab. The query pack is `security-and-quality` (security
-+ correctness + maintainability rules). Anything that surfaces there
+CodeQL JS/TS analysis runs via GitHub's **Default Setup** (enabled in
+**Settings → Code security → Code scanning** when the repo went
+public). It runs on every push, every PR, and on a weekly schedule;
+results land in the **Security** tab. Anything that surfaces there
 should either be fixed or explicitly suppressed with an inline
 comment explaining why.
+
+We don't ship a custom `codeql.yml` workflow — Default Setup is
+auto-managed (queries auto-update, triggers are sensible defaults),
+and Advanced Setup (workflow-based) cannot coexist with it.
 
 ## License
 

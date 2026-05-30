@@ -1,7 +1,6 @@
 # tc39-mcp
 
 [![Test](https://github.com/xyzzylabs/tc39-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/xyzzylabs/tc39-mcp/actions/workflows/test.yml)
-[![CodeQL](https://github.com/xyzzylabs/tc39-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/xyzzylabs/tc39-mcp/actions/workflows/codeql.yml)
 [![npm version](https://img.shields.io/npm/v/tc39-mcp.svg)](https://www.npmjs.com/package/tc39-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
