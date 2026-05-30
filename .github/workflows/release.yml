@@ -74,15 +74,18 @@ jobs:
         run: npm run build
 
       - name: Publish to npm
-        # Authenticated via Trusted Publishing (OIDC) — no long-lived
-        # NPM_TOKEN secret. npm CLI auto-detects the GitHub Actions
-        # OIDC environment and mints a short-lived credential because
-        # the package is configured with a trusted publisher pointing
-        # at this workflow. `permissions: id-token: write` above is
-        # what enables the OIDC token request.
-        #
-        # `--provenance` records the build's signed provenance into
-        # the public transparency log.
+        # Token-based auth via NPM_TOKEN. The token must bypass 2FA
+        # (Classic Automation token, or Granular with the
+        # "Bypass two-factor authentication (2FA)" checkbox enabled).
+        # Migration to Trusted Publishing (OIDC) is a v0.1.x follow-up
+        # once the package exists on the registry — its per-package
+        # access settings page exposes the trusted-publisher config.
+        # `--provenance` signs the publish into the transparency log
+        # using GitHub Actions's OIDC (id-token: write below) — that
+        # part works regardless of which auth method `npm publish`
+        # uses for the upload itself.
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --provenance --access public
 
       - name: Post-publish smoke (install from registry + MCP roundtrip)
@@ -109,17 +112,22 @@ jobs:
           done
           node scripts/smoke-stdio.mjs "tc39-mcp@$version"
 
-      # No automated `npm deprecate` step here: Trusted Publishing
-      # gives us OIDC for `npm publish` but not for management ops like
-      # `deprecate`. Keeping a long-lived NPM_TOKEN just for the failure
-      # fallback would defeat the point. If post-publish smoke fails,
-      # CI exits red → maintainer is notified → manual deprecate:
-      #
-      #   npm deprecate tc39-mcp@X.Y.Z "..."
-      #
-      # Acceptable trade-off: smoke failures are rare and the manual
-      # window is short (a few hours of "installs are warned about"
-      # vs zero long-lived secrets).
+      - name: Deprecate on smoke failure
+        # If the registry artifact failed the smoke, mark it deprecated
+        # so `npm install tc39-mcp@version` surfaces a warning. Users
+        # are protected from installing the bad version while we
+        # investigate. `npm unpublish` would be cleaner but is blocked
+        # by npm policy after 72 hours, so deprecation is the
+        # universally-applicable rollback.
+        if: failure() && steps.post_publish_smoke.conclusion == 'failure'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PKG_VERSION: ${{ github.ref_name }}
+        run: |
+          version="${PKG_VERSION#v}"
+          npm deprecate "tc39-mcp@$version" \
+            "Post-publish smoke failed on v$version; install a different version while we investigate. See https://github.com/xyzzylabs/tc39-mcp/actions" \
+            || echo "(deprecate failed; manual action required)"
 
       - name: Create GitHub Release
         # Cuts a Release entry tied to the tag once npm publish + smoke
