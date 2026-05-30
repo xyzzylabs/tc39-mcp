@@ -116,7 +116,9 @@ pushing a `v*` tag. To cut a release:
    - `npm run fetch-spec && npm run fetch-test262 && npm run fetch-proposals`
    - `npm run parse && npm run build-test262-index && npm run build-proposals-index`
    - `npm test && npm run typecheck && npm run build`
-   - `npm publish --provenance` (gated on `NPM_TOKEN` secret).
+   - `npm publish --provenance` (authenticated via Trusted Publishing
+     OIDC — no long-lived NPM_TOKEN secret; the package's npm-side
+     trusted-publisher config points at this workflow).
    - Post-publish smoke: install from registry, run MCP roundtrip
      (`scripts/smoke-stdio.mjs`).
    - `gh release create vX.Y.Z` with notes extracted from CHANGELOG.
@@ -130,18 +132,23 @@ pushing a `v*` tag. To cut a release:
 
 ### Safety nets if smoke fails after publish
 
-The release pipeline has two automatic safety nets so a half-broken
-release doesn't sit live:
+- **npm**: if post-publish smoke fails, the workflow exits red. No
+  automatic deprecation — Trusted Publishing's OIDC scope only covers
+  `npm publish`, not `npm deprecate`, and keeping a long-lived token
+  just for the failure path would defeat the security win. If the
+  failure is real, manually run:
 
-- **npm**: if post-publish smoke fails, `release.yml` runs
-  `npm deprecate tc39-mcp@<version>` with a pointer back to the
-  failing Actions run. Users installing that version see a warning.
-  `npm unpublish` is blocked after 72 h, so deprecation is the
+  ```sh
+  npm deprecate tc39-mcp@X.Y.Z "Post-publish smoke failed; see CI run X"
+  ```
+
+  `npm unpublish` is blocked after 72 h so deprecation is the
   universally-applicable rollback.
+
 - **Worker**: if `deploy-worker.yml`'s post-deploy smoke fails AND
   the deploy itself succeeded (so a prior version exists),
-  `wrangler rollback` reverts the Worker to its previous version.
-  R2 contents are idempotent — they stay at the new SHAs.
+  `wrangler rollback` reverts the Worker to its previous version
+  automatically. R2 contents are idempotent — they stay at the new SHAs.
 
 In both cases the workflow run ends in failure, so you get an email
 + a red mark in the Actions tab. Investigate the failing smoke,
