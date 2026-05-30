@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/tc39-mcp.svg)](https://www.npmjs.com/package/tc39-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-📖 **Docs:** the hosted Cloudflare Worker serves both the JSON-RPC MCP endpoint and the docs site at the same origin. Pages: `/` (overview) · `/tools` · `/snapshots` · `/architecture` · `/deployment`. URL is set per-deployment — see [`docs/deployment.md`](docs/deployment.md) for the path.
+📖 **Docs site** (same origin as the API): [tc39-mcp.chico.workers.dev](https://tc39-mcp.chico.workers.dev) — [Tools](https://tc39-mcp.chico.workers.dev/tools) · [Snapshots](https://tc39-mcp.chico.workers.dev/snapshots) · [Architecture](https://tc39-mcp.chico.workers.dev/architecture) · [Deployment](https://tc39-mcp.chico.workers.dev/deployment) · [Changelog](https://tc39-mcp.chico.workers.dev/changelog)
 
 Structured MCP server for the TC39 specs (ECMA-262 + ECMA-402) —
 SHA-pinned clauses, AOID-aware search, in+out cross-references,
@@ -17,6 +17,55 @@ Internationalization API, `Intl`) to AI agents and tooling. Returns
 **structured clauses** (signature, numbered steps, substeps, notes,
 cross-refs) rather than raw HTML, and pins every response to a
 specific spec SHA so anything cited is reproducible.
+
+## Quick start
+
+### Option 1: stdio via npx (Claude Code, etc.)
+
+Add to your project's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "tc39": { "command": "npx", "args": ["tc39-mcp"] }
+  }
+}
+```
+
+The first run downloads ~50 MB (the parsed snapshots ship in the
+tarball — no separate fetch step needed).
+
+### Option 2: hosted HTTP Worker
+
+For MCP clients that prefer HTTP transport, or for `curl` testing:
+
+```json
+{
+  "mcpServers": {
+    "tc39": {
+      "type": "http",
+      "url": "https://tc39-mcp.chico.workers.dev/mcp"
+    }
+  }
+}
+```
+
+Smoke-test it from anywhere:
+
+```sh
+curl -s -X POST https://tc39-mcp.chico.workers.dev/mcp \
+  -H "content-type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"spec.about","arguments":{}}}' \
+  | jq '.result.content[0].text | fromjson | .server'
+# → {"name": "tc39-mcp", "version": "0.1.0"}
+```
+
+### Option 3: global CLI
+
+```sh
+npm i -g tc39-mcp
+tc39-mcp                     # reads stdio
+```
 
 ## What it's for
 
@@ -127,9 +176,16 @@ no annual release tagging.
 Every tool accepts `spec` and `edition` arguments and resolves aliases
 at load time, so responses are deterministic against a specific spec SHA.
 
-## Use it locally (stdio MCP)
+## Build from source (contributors)
+
+End users don't need this — the published package and the hosted
+Worker are the supported surfaces above. This is for working on the
+server itself.
 
 ```sh
+git clone https://github.com/xyzzylabs/tc39-mcp
+cd tc39-mcp
+
 # 1. install deps
 npm install
 
@@ -150,19 +206,20 @@ npm run build-test262-index
 npm run fetch-proposals
 npm run build-proposals-index
 
-# 6. start the stdio MCP server (point Claude Code at it via .mcp.json)
+# 6. start the stdio MCP server against your source tree
 npm run mcp
 ```
 
-Wire into Claude Code by adding to your project's `.mcp.json`:
+To wire Claude Code at your local source instead of the published bin:
 
 ```json
 {
   "mcpServers": {
     "tc39": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["tc39-mcp"]
+      "command": "npm",
+      "args": ["run", "mcp"],
+      "cwd": "/abs/path/to/tc39-mcp"
     }
   }
 }
@@ -189,12 +246,9 @@ without sandboxing concerns.
 
 ## Docs
 
-**Hosted**: served from the same Cloudflare Worker that exposes
-`/mcp` — visit the root of the hosted URL for the landing page;
-`/tools`, `/snapshots`, `/architecture`, `/deployment`, `/editions`,
-`/changelog` are all routable. Searchable, dark-mode-friendly.
+Hosted at [tc39-mcp.chico.workers.dev](https://tc39-mcp.chico.workers.dev) — searchable, dark-mode-friendly, auto-rebuilt on every refresh so `/snapshots` always shows the live SHAs.
 
-In-repo (source for the hosted site):
+In-repo (source for the hosted site + GitHub-rendered fallback):
 
 - [`docs/architecture.md`](docs/architecture.md) — data pipeline, parser, cache, alias resolution, memory model.
 - [`docs/tools.md`](docs/tools.md) — full reference for every tool: inputs, outputs, ranking rules.
@@ -202,7 +256,7 @@ In-repo (source for the hosted site):
 - [`docs/deployment.md`](docs/deployment.md) — local stdio, npm CLI, hosted Cloudflare Worker, refresh model, observability.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — what kinds of changes land easily, what won't.
 - [`SECURITY.md`](SECURITY.md) — threat model + how to report issues.
-- [`CHANGELOG.md`](CHANGELOG.md) — version history.
+- [`CHANGELOG.md`](CHANGELOG.md) — version history + auto-refresh convention.
 
 ## License
 
