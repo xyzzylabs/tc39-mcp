@@ -1,0 +1,56 @@
+// Server-level instructions surfaced to MCP clients (and through them
+// to LLM agents) during initialization. Designed to answer the questions
+// an agent asks before its first tool call:
+//
+//   - What does this server give me?
+//   - When do I call tool X vs tool Y?
+//   - How do I read errors / empty results?
+//
+// Keep this string focused on *workflows* and *invariants*, not on
+// individual tool details — those live in the per-tool descriptions
+// the agent already sees in tools/list.
+
+export const SERVER_INSTRUCTIONS = `
+tc39-mcp serves read-only structured data from the TC39 specs
+(ECMA-262 + ECMA-402), tc39/test262, and tc39/proposals. Every
+response is deterministic over data pinned to specific upstream
+SHAs.
+
+Common workflow:
+  1. \`spec.about\` — call first when you need to cite the spec or
+     report what you're reading. Returns per-snapshot pin metadata
+     (sha, fetched_at, biblio_commit, clause_count).
+  2. \`spec.search\` (single spec) or \`spec.global_search\` (both
+     specs) — find a clause from a name or symptom. Hits rank
+     aoid-exact > aoid-substring > title > id; follow up with
+     \`clause.get { id }\` to read the full clause.
+  3. \`clause.get { id, spec?, edition? }\` — full structured clause:
+     signature, numbered steps, notes, crossrefs.
+
+Edition semantics. \`latest\` is spec-aware:
+  - On 262, \`latest\` → current stable release (es2025 today).
+  - On 402, \`latest\` → main (402 has no annual release tags).
+  - \`main\` is always the working draft.
+  - 262 supports es2016 … es2025 + main; 402 supports es2025-candidate + main.
+
+Cross-spec discovery is opt-in. By default everything stays within
+one spec. Pass \`include_cross_spec: true\` to \`spec.crossrefs\` to
+surface outgoing references that resolve into the other spec
+(e.g. an ECMA-402 clause calling ECMA-262's \`OrdinaryCreateFromConstructor\`).
+
+Missing data is never an error. Tools return null, empty arrays, or
+a \`hint:\` field. \`source: "none"\` on \`test262.search\` or
+\`proposal.list\` means the offline index hasn't been built — surface
+the hint to the user, it tells them which command to run. Don't
+retry; treat empty as "no match found".
+
+Transport differences:
+  - The stdio server (npx tc39-mcp) exposes all 19 tools.
+  - The hosted Cloudflare Worker exposes 6 core tools (spec.about,
+    clause.get, clause.list, spec.search, proposal.list,
+    proposal.get). The remaining 13 require filesystem or subprocess
+    access and run stdio-only for now.
+
+All data is read-only: no tool modifies anything upstream, no tool
+runs user-supplied code. Safe to call freely.
+`.trim();

@@ -1,0 +1,87 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel older test runs on the same ref when a newer commit lands.
+# Per-ref grouping means PRs cancel each other independently, and
+# rapid pushes to main only keep the latest run. Keyed on `head_ref`
+# for PRs (so re-pushes cancel the previous test) and on `ref` for
+# branch pushes. Saves substantial runner time during active iteration.
+concurrency:
+  group: test-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch TC39 specs
+        run: npm run fetch-spec
+
+      - name: Fetch test262
+        run: npm run fetch-test262
+
+      - name: Fetch tc39/proposals
+        run: npm run fetch-proposals
+
+      - name: Parse specs
+        run: npm run parse
+
+      - name: Build test262 index
+        run: npm run build-test262-index
+
+      - name: Build proposals index
+        run: npm run build-proposals-index
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build dist
+        run: npm run build
+
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm install
+
+      - name: Worker type-check
+        working-directory: worker
+        run: npm run typecheck
+
+      - name: Worker tests
+        working-directory: worker
+        run: npm test
+
+      - name: Smoke-test bin entry (local dist)
+        run: |
+          echo '' | timeout 2 node dist/mcp/server.js >/dev/null 2>&1 || [ $? -eq 124 ]
+
+      - name: npm pack
+        run: npm pack
+
+      - name: E2E smoke (install + MCP roundtrip)
+        # Installs the tarball into a scratch dir, spawns the bin,
+        # speaks MCP, verifies initialize / tools/list / spec.about /
+        # clause.get. Catches packaging breakage that unit tests can't.
+        run: node scripts/smoke-stdio.mjs ./tc39-mcp-*.tgz
+
+      - name: Verify npm pack contents
+        run: npm pack --dry-run

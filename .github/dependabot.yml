@@ -1,0 +1,76 @@
+# Dependabot configuration. Opens weekly PRs to bump npm dependencies
+# (root + worker) and the GitHub Actions used in workflows.
+#
+# Grouped updates keep the PR count manageable: one PR per package
+# manager / scope rather than one PR per dependency. Patch / minor
+# bumps land grouped; major bumps stay separate so they get individual
+# review attention.
+#
+# See https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot-yml-file
+
+version: 2
+
+updates:
+  # Root npm package — the stdio MCP server + parser + docs build.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    groups:
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+    commit-message:
+      prefix: deps
+      include: scope
+    labels:
+      - dependencies
+
+  # Worker package — the Cloudflare Worker runtime. Wrangler bumps
+  # land here so the deploy chain stays current with Cloudflare's
+  # platform changes.
+  - package-ecosystem: npm
+    directory: /worker
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    groups:
+      worker:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: deps(worker)
+      include: scope
+    labels:
+      - dependencies
+      - worker
+
+  # GitHub Actions used across workflows. Keeps `actions/checkout`,
+  # `actions/setup-node`, `actions/cache`, etc. on their latest patch.
+  # Critical for supply-chain hygiene since these run on every CI build.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: ci
+      include: scope
+    labels:
+      - dependencies
+      - ci

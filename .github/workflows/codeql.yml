@@ -1,0 +1,64 @@
+name: CodeQL
+
+# GitHub's first-party static analysis. Catches common
+# JS/TS vulnerability patterns (prototype pollution, regex DoS,
+# unsanitized input, etc.) at PR time and on a weekly schedule for
+# main. Free for public repos.
+#
+# We scan both the root package and worker/ since they're separate
+# TypeScript projects (different tsconfigs, different runtime).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly background scan against main — catches advisories that
+    # land in CodeQL's query packs after our last push.
+    - cron: "0 9 * * 1" # Monday 09:00 UTC
+
+# Cancel older scans on the same ref when a newer commit lands.
+concurrency:
+  group: codeql-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze JS/TS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      # Required by github/codeql-action to upload results to the
+      # Security tab. The `security-events: write` scope is the
+      # documented minimum.
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # `security-and-quality` is one notch above the default
+          # `security-extended`; includes maintainability + correctness
+          # queries on top of pure security. Worth the extra minutes
+          # for a small codebase.
+          queries: security-and-quality
+
+      - name: Build (no special build step — TS is analyzed as source)
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}

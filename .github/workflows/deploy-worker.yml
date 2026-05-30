@@ -1,0 +1,199 @@
+name: Deploy Worker
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    # Manual re-deploy without a new tag (e.g. R2 data refresh).
+    # No inputs accepted.
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: cloudflare
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install repo dependencies
+        run: npm ci
+
+      - name: Fetch upstream + build all artifacts
+        run: |
+          npm run fetch-spec
+          npm run fetch-test262
+          npm run fetch-proposals
+          npm run parse
+          npm run build-test262-index
+          npm run build-proposals-index
+
+      # Build the VitePress docs site and stage it as Worker assets.
+      # The Worker serves /mcp + /health from JS; everything else
+      # falls through to the bundled assets directory configured in
+      # `worker/wrangler.toml` `[assets]`.
+      - name: Build docs site
+        run: npm run docs:build
+
+      - name: Stage docs as Worker assets
+        run: |
+          rm -rf worker/public
+          mkdir -p worker/public
+          cp -r docs/.vitepress/dist/. worker/public/
+
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm install
+
+      - name: Worker type-check
+        working-directory: worker
+        run: npm run typecheck
+
+      - name: Worker tests
+        working-directory: worker
+        run: npm test
+
+      - name: Upload artifacts to R2
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run upload-r2
+
+      - name: Deploy Worker
+        id: deploy_worker
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run deploy
+
+      - name: Verify deployment
+        id: verify_deployment
+        env:
+          DEPLOY_URL: ${{ vars.WORKER_URL }}
+        run: |
+          # Hit the health endpoint + send a real MCP tools/call to
+          # /mcp. If WORKER_URL isn't set as a repo variable, skip
+          # silently. Catches "Worker deployed but R2 contents are
+          # missing/broken."
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "WORKER_URL repo variable not set; skipping post-deploy verification."
+            exit 0
+          fi
+
+          # 1. /health — basic up-check
+          for i in 1 2 3; do
+            if curl -fsS "$DEPLOY_URL/health" >/dev/null; then
+              echo "Health check passed."
+              break
+            fi
+            if [ "$i" = "3" ]; then
+              echo "Health check failed after 3 attempts." >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+          # 2. initialize — verify protocol handshake + instructions field
+          init=$(curl -fsS -X POST "$DEPLOY_URL/mcp" \
+            -H "content-type: application/json" \
+            -d '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"deploy-check","version":"0"}}}')
+          echo "$init" | python3 -c "
+          import json, sys
+          msg = json.load(sys.stdin)
+          if msg.get('error'):
+            print(f'initialize returned error: {msg[\"error\"]}', file=sys.stderr); sys.exit(1)
+          result = msg.get('result', {})
+          if result.get('protocolVersion') != '2024-11-05':
+            print(f'unexpected protocolVersion: {result.get(\"protocolVersion\")}', file=sys.stderr); sys.exit(1)
+          instr = result.get('instructions', '')
+          if not isinstance(instr, str) or len(instr) < 100 or 'tc39-mcp' not in instr:
+            print(f'missing/short instructions field (length={len(instr) if isinstance(instr, str) else \"n/a\"})', file=sys.stderr); sys.exit(1)
+          print(f'initialize OK: protocolVersion={result[\"protocolVersion\"]}, instructions ({len(instr)} chars)')
+          "
+
+          # 3. tools/call spec.about — exercises the full R2 read path
+          response=$(curl -fsS -X POST "$DEPLOY_URL/mcp" \
+            -H "content-type: application/json" \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"spec.about","arguments":{}}}')
+          echo "$response" | python3 -c "
+          import json, sys
+          msg = json.load(sys.stdin)
+          if msg.get('error'):
+            print(f'tools/call returned error: {msg[\"error\"]}', file=sys.stderr)
+            sys.exit(1)
+          text = msg['result']['content'][0]['text']
+          inner = json.loads(text)
+          if inner.get('server', {}).get('name') != 'tc39-mcp':
+            print(f'unexpected server.name: {inner.get(\"server\", {}).get(\"name\")}', file=sys.stderr)
+            sys.exit(1)
+          present = sum(1 for s in inner.get('snapshots', []) if s.get('present'))
+          if present == 0:
+            print('0 snapshots present in R2 — bucket empty?', file=sys.stderr)
+            sys.exit(1)
+          print(f'spec.about OK: {present} snapshots present, server v{inner[\"server\"][\"version\"]}')
+          "
+
+          # 4. Docs site at origin root — verifies the [assets] binding
+          # is wired and that the VitePress build made it into the
+          # Worker bundle. Looks for the page title in the response
+          # rather than a fixed substring so future theme tweaks don't
+          # break the smoke.
+          docs=$(curl -fsS "$DEPLOY_URL/" -H "accept: text/html")
+          echo "$docs" | python3 -c "
+          import sys
+          body = sys.stdin.read()
+          if '<title>' not in body or 'tc39-mcp' not in body:
+            print('docs landing page missing or empty', file=sys.stderr); sys.exit(1)
+          if '/snapshots' not in body:
+            print('docs landing has no link to /snapshots', file=sys.stderr); sys.exit(1)
+          print(f'docs landing OK ({len(body)} bytes HTML)')
+          "
+
+          # 5. Auto-generated snapshots page — proves docs:data ran
+          # against the live build/ artifacts during this deploy.
+          snaps=$(curl -fsS "$DEPLOY_URL/snapshots" -H "accept: text/html")
+          echo "$snaps" | python3 -c "
+          import sys
+          body = sys.stdin.read()
+          if 'SHA-pinned snapshots' not in body and 'Snapshot data not built yet' in body:
+            print('snapshots page rendered placeholder — docs:data ran without build/ artifacts', file=sys.stderr); sys.exit(1)
+          if 'github.com/tc39/ecma262/commit/' not in body:
+            print('snapshots page has no commit links — generator regression?', file=sys.stderr); sys.exit(1)
+          print(f'snapshots page OK ({len(body)} bytes HTML)')
+          "
+
+      - name: Rollback on smoke failure
+        # If the post-deploy smoke failed AND the deploy itself
+        # succeeded (so a previous version exists to rollback TO),
+        # revert the Worker to the prior version. The R2 contents
+        # stay updated — they're idempotent — but the Worker code is
+        # the most likely thing to have shipped broken, and rolling
+        # back is non-destructive (Cloudflare keeps the prior version
+        # available for rollback by default).
+        if: failure() && steps.verify_deployment.conclusion == 'failure' && steps.deploy_worker.conclusion == 'success'
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # `wrangler rollback` without args reverts to the most recent
+          # prior version. Best-effort: if Cloudflare doesn't have a
+          # prior version (e.g., very first deploy), we surface the
+          # original smoke failure rather than a confusing rollback
+          # error.
+          npx wrangler rollback --message "Auto-rollback: post-deploy smoke failed for $GITHUB_REF_NAME" \
+            || echo "(rollback failed or no prior version; the failing deploy stays live — manual action required)"

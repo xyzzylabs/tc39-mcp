@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Concurrency: serialize releases by tag prefix to avoid double-publish.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Required for npm provenance attestation + `gh release create`.
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      - name: Verify tag matches package.json version
+        # The tag pushed (refs/tags/vX.Y.Z) and the version in
+        # package.json must agree before we publish anything.
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(node -p "require('./package.json').version")
+          if [ "$tag" != "$pkg" ]; then
+            echo "Tag $GITHUB_REF_NAME (parsed as $tag) does not match package.json version $pkg"
+            exit 1
+          fi
+          echo "Tag and version agree on $pkg"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch TC39 specs
+        run: npm run fetch-spec
+
+      - name: Fetch test262
+        run: npm run fetch-test262
+
+      - name: Fetch tc39/proposals
+        run: npm run fetch-proposals
+
+      - name: Parse specs
+        run: npm run parse
+
+      - name: Build test262 index
+        run: npm run build-test262-index
+
+      - name: Build proposals index
+        run: npm run build-proposals-index
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build dist
+        run: npm run build
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
+
+      - name: Post-publish smoke (install from registry + MCP roundtrip)
+        id: post_publish_smoke
+        # Registry propagation typically lands in 30-90 s. We poll up
+        # to 5 minutes, then run the same smoke script we use locally.
+        # Catches "publish succeeded but the registry artifact is broken."
+        env:
+          PKG_VERSION: ${{ github.ref_name }}
+        run: |
+          version="${PKG_VERSION#v}"
+          echo "Waiting for tc39-mcp@$version to appear on registry..."
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            published=$(npm view "tc39-mcp@$version" version 2>/dev/null || echo "")
+            if [ "$published" = "$version" ]; then
+              echo "Registry has tc39-mcp@$version"
+              break
+            fi
+            if [ "$i" = "10" ]; then
+              echo "Timed out waiting for registry propagation" >&2
+              exit 1
+            fi
+            sleep 30
+          done
+          node scripts/smoke-stdio.mjs "tc39-mcp@$version"
+
+      - name: Deprecate on smoke failure
+        # If the registry artifact failed the smoke, mark it deprecated
+        # so `npm install tc39-mcp@version` surfaces a warning. Users
+        # are protected from installing the bad version while we
+        # investigate. `npm unpublish` would be cleaner but is blocked
+        # by npm policy after 72 hours, so deprecation is the
+        # universally-applicable rollback.
+        if: failure() && steps.post_publish_smoke.conclusion == 'failure'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PKG_VERSION: ${{ github.ref_name }}
+        run: |
+          version="${PKG_VERSION#v}"
+          npm deprecate "tc39-mcp@$version" \
+            "Post-publish smoke failed on v$version; install a different version while we investigate. See https://github.com/xyzzylabs/tc39-mcp/actions" \
+            || echo "(deprecate failed; manual action required)"
+
+      - name: Create GitHub Release
+        # Cuts a Release entry tied to the tag once npm publish + smoke
+        # succeed. Notes are extracted from CHANGELOG.md for the
+        # released version; if no section exists (refresh.yml-driven
+        # PATCH bumps don't write CHANGELOG entries) we fall back to a
+        # generic auto-refresh note.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PKG_VERSION: ${{ github.ref_name }}
+        run: |
+          version="${PKG_VERSION#v}"
+          # Extract this version's section from CHANGELOG (between this
+          # ## [X.Y.Z] heading and the next ## heading or EOF).
+          notes=$(awk -v ver="$version" '
+            $0 ~ "^## \\["ver"\\]" { found=1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md)
+          if [ -z "$(echo "$notes" | tr -d '[:space:]')" ]; then
+            notes="Automated PATCH refresh — upstream tc39/* moved. Same code, new spec data. See \`spec.about\` for the current SHAs."
+          fi
+          gh release create "$PKG_VERSION" \
+            --title "v$version" \
+            --notes "$notes" \
+            --verify-tag

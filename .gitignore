@@ -1,0 +1,30 @@
+node_modules/
+dist/
+build/
+vendor/
+.DS_Store
+*.log
+
+# Cloudflare Workers / Wrangler artifacts
+.wrangler/
+.wrangler-state/
+.wrangler-dryrun/
+worker/node_modules/
+worker/.wrangler/
+worker/.wrangler-state/
+
+# VitePress docs site build outputs
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+
+# Auto-generated docs pages, produced by `npm run docs:data` (which
+# `docs:dev` and `docs:build` chain into). Snapshots is rendered from
+# `build/spec-*.json` pin headers; changelog is a verbatim copy of the
+# repo-root CHANGELOG.md so VitePress can route it.
+docs/snapshots.md
+docs/changelog.md
+
+# Staging directory the deploy workflow copies the built docs into so
+# wrangler can bundle them as Worker static assets. Gitignored;
+# regenerated on every deploy.
+worker/public/

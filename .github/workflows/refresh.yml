@@ -1,0 +1,150 @@
+name: Refresh
+
+on:
+  schedule:
+    # Every 4 hours — cuts upstream-merge → user-visible latency from
+    # ~24 h to ~4 h. The diff-check step bails out cheap when nothing
+    # upstream has moved, so most runs are no-ops.
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+    # Lets a maintainer trigger a refresh check on demand from the
+    # Actions tab. No inputs.
+
+# One refresh job at a time. If yesterday's hasn't published yet,
+# don't queue another.
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch upstream specs
+        run: npm run fetch-spec
+
+      - name: Fetch test262 + proposals
+        run: |
+          npm run fetch-test262
+          npm run fetch-proposals
+
+      - name: Read upstream SHAs into env
+        # Capture the upstream-main SHAs for both specs + test262 +
+        # proposals. We compare these against what last shipped.
+        run: |
+          {
+            echo "UPSTREAM_262_MAIN=$(git -C vendor/ecma262-main rev-parse HEAD)"
+            echo "UPSTREAM_402_MAIN=$(git -C vendor/ecma402-main rev-parse HEAD)"
+            echo "UPSTREAM_TEST262=$(git -C vendor/test262 rev-parse HEAD)"
+            echo "UPSTREAM_PROPOSALS=$(git -C vendor/proposals rev-parse HEAD)"
+          } >> "$GITHUB_ENV"
+
+      - name: Read last-shipped SHAs from the registry
+        # Pull the metadata of the currently-published latest version
+        # and extract the SHAs it baked in. If the package isn't
+        # published yet, treat everything as "needs refresh".
+        run: |
+          if npm view tc39-mcp version >/dev/null 2>&1; then
+            published_version=$(npm view tc39-mcp version)
+            # The published tarball isn't trivially fetchable from a
+            # workflow, so we compare against a sentinel file in main
+            # that records what the last refresh job published.
+            if [ -f .last-refresh.json ]; then
+              echo "LAST_262_MAIN=$(node -p "require('./.last-refresh.json').specs['262/main'] || 'none'")"  >> "$GITHUB_ENV"
+              echo "LAST_402_MAIN=$(node -p "require('./.last-refresh.json').specs['402/main'] || 'none'")"  >> "$GITHUB_ENV"
+              echo "LAST_TEST262=$(node -p "require('./.last-refresh.json').test262 || 'none'")"             >> "$GITHUB_ENV"
+              echo "LAST_PROPOSALS=$(node -p "require('./.last-refresh.json').proposals || 'none'")"         >> "$GITHUB_ENV"
+              echo "LAST_VERSION=$published_version" >> "$GITHUB_ENV"
+            else
+              {
+                echo "LAST_262_MAIN=none"
+                echo "LAST_402_MAIN=none"
+                echo "LAST_TEST262=none"
+                echo "LAST_PROPOSALS=none"
+                echo "LAST_VERSION=$published_version"
+              } >> "$GITHUB_ENV"
+            fi
+          else
+            {
+              echo "LAST_262_MAIN=none"
+              echo "LAST_402_MAIN=none"
+              echo "LAST_TEST262=none"
+              echo "LAST_PROPOSALS=none"
+              echo "LAST_VERSION=0.0.0"
+            } >> "$GITHUB_ENV"
+          fi
+
+      - name: Decide whether refresh is needed
+        # If any upstream SHA differs from last-shipped, set NEEDS_REFRESH=true.
+        run: |
+          changed=false
+          [ "$UPSTREAM_262_MAIN"  != "$LAST_262_MAIN"  ] && changed=true && echo "262/main moved: $LAST_262_MAIN → $UPSTREAM_262_MAIN"
+          [ "$UPSTREAM_402_MAIN"  != "$LAST_402_MAIN"  ] && changed=true && echo "402/main moved: $LAST_402_MAIN → $UPSTREAM_402_MAIN"
+          [ "$UPSTREAM_TEST262"   != "$LAST_TEST262"   ] && changed=true && echo "test262 moved: $LAST_TEST262 → $UPSTREAM_TEST262"
+          [ "$UPSTREAM_PROPOSALS" != "$LAST_PROPOSALS" ] && changed=true && echo "proposals moved: $LAST_PROPOSALS → $UPSTREAM_PROPOSALS"
+          echo "NEEDS_REFRESH=$changed" >> "$GITHUB_ENV"
+
+      - name: Bump PATCH version
+        if: env.NEEDS_REFRESH == 'true'
+        run: |
+          current=$(node -p "require('./package.json').version")
+          # Parse semver MAJOR.MINOR.PATCH; bump PATCH.
+          IFS='.' read -r maj min pat <<<"$current"
+          new="$maj.$min.$((pat + 1))"
+          npm version "$new" --no-git-tag-version --no-commit-hooks
+          echo "NEW_VERSION=$new" >> "$GITHUB_ENV"
+          echo "Bumped $current → $new"
+
+      - name: Write the .last-refresh.json sentinel
+        if: env.NEEDS_REFRESH == 'true'
+        run: |
+          cat > .last-refresh.json <<EOF
+          {
+            "version": "$NEW_VERSION",
+            "refreshed_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "specs": {
+              "262/main": "$UPSTREAM_262_MAIN",
+              "402/main": "$UPSTREAM_402_MAIN"
+            },
+            "test262": "$UPSTREAM_TEST262",
+            "proposals": "$UPSTREAM_PROPOSALS"
+          }
+          EOF
+
+      - name: Configure git
+        if: env.NEEDS_REFRESH == 'true'
+        run: |
+          git config user.name "tc39-mcp-bot"
+          git config user.email "tc39-mcp-bot@users.noreply.github.com"
+
+      - name: Commit + tag
+        if: env.NEEDS_REFRESH == 'true'
+        env:
+          NEW_VERSION: ${{ env.NEW_VERSION }}
+        run: |
+          git add package.json package-lock.json .last-refresh.json
+          git commit -m "refresh: v$NEW_VERSION"
+          git tag "v$NEW_VERSION"
+          git push origin HEAD:main
+          git push origin "v$NEW_VERSION"
+
+      - name: No-op summary
+        if: env.NEEDS_REFRESH != 'true'
+        run: echo "No upstream changes since last refresh; skipping."

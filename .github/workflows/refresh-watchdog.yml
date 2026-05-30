@@ -1,0 +1,80 @@
+name: Refresh watchdog
+
+# Belt-and-suspenders against the refresh chain breaking silently.
+# refresh.yml is supposed to run every 4 hours; this watchdog runs
+# daily and fails noisily if .last-refresh.json is stale (no
+# successful refresh in 48 hours) AND upstream HAS moved since
+# then. A failed run shows up in the Actions tab + emails the
+# maintainer.
+#
+# We're explicit about the "AND upstream moved" condition because
+# the common case of "upstream didn't move so refresh did nothing"
+# is correct, not a failure.
+
+on:
+  schedule:
+    - cron: "30 7 * * *" # daily, 07:30 UTC — well after the 04:00 + 08:00 refresh slots
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-watchdog
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inspect .last-refresh.json age
+        # If the sentinel file doesn't exist, this is a fresh repo —
+        # the watchdog has nothing to compare to. That's expected on
+        # day 1 and we exit clean.
+        run: |
+          if [ ! -f .last-refresh.json ]; then
+            echo "No .last-refresh.json yet — fresh repo, nothing to watch."
+            echo "STALE=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          last=$(node -p "require('./.last-refresh.json').refreshed_at")
+          last_epoch=$(date -d "$last" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$last" +%s)
+          now_epoch=$(date -u +%s)
+          age_h=$(( (now_epoch - last_epoch) / 3600 ))
+          echo "Last refresh: $last (${age_h} h ago)"
+          if [ "$age_h" -ge 48 ]; then
+            echo "STALE=true" >> "$GITHUB_ENV"
+          else
+            echo "STALE=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Check upstream activity (only if stale)
+        # If stale, check whether upstream has actually moved since
+        # the last refresh. If it has, that's a real problem; if it
+        # hasn't, no-ops are correct and we don't alarm.
+        if: env.STALE == 'true'
+        run: |
+          last_262=$(node -p "require('./.last-refresh.json').specs['262/main']")
+          last_402=$(node -p "require('./.last-refresh.json').specs['402/main']")
+          last_test262=$(node -p "require('./.last-refresh.json').test262")
+          last_proposals=$(node -p "require('./.last-refresh.json').proposals")
+
+          live_262=$(git ls-remote https://github.com/tc39/ecma262 main | awk '{print $1}')
+          live_402=$(git ls-remote https://github.com/tc39/ecma402 main | awk '{print $1}')
+          live_test262=$(git ls-remote https://github.com/tc39/test262 main | awk '{print $1}')
+          live_proposals=$(git ls-remote https://github.com/tc39/proposals main | awk '{print $1}')
+
+          moved=false
+          [ "$live_262" != "$last_262" ] && moved=true && echo "262/main moved: $last_262 → $live_262"
+          [ "$live_402" != "$last_402" ] && moved=true && echo "402/main moved: $last_402 → $live_402"
+          [ "$live_test262" != "$last_test262" ] && moved=true && echo "test262 moved: $last_test262 → $live_test262"
+          [ "$live_proposals" != "$last_proposals" ] && moved=true && echo "proposals moved: $last_proposals → $live_proposals"
+
+          if [ "$moved" = true ]; then
+            echo ""
+            echo "ALERT: .last-refresh.json is >= 48 h old AND upstream has moved." >&2
+            echo "       refresh.yml is failing silently. Investigate the most recent runs." >&2
+            exit 1
+          fi
+          echo "Sentinel is stale but no upstream movement — refresh chain is healthy."
