@@ -116,11 +116,9 @@ pushing a `v*` tag. To cut a release:
    - `npm run fetch-spec && npm run fetch-test262 && npm run fetch-proposals`
    - `npm run parse && npm run build-test262-index && npm run build-proposals-index`
    - `npm test && npm run typecheck && npm run build`
-   - `npm publish --provenance` (gated on `NPM_TOKEN` secret; the
-     token must bypass 2FA — Classic Automation or Granular with
-     "Bypass 2FA" enabled). Migration to Trusted Publishing OIDC is
-     a v0.1.x follow-up — npm's UI for configuring trusted publishers
-     surfaces cleanly once the package exists on the registry.
+   - `npm publish --provenance` (authenticated via Trusted Publishing
+     OIDC — no long-lived NPM_TOKEN secret. The package's npm-side
+     trusted-publisher config points at this workflow file).
    - Post-publish smoke: install from registry, run MCP roundtrip
      (`scripts/smoke-stdio.mjs`).
    - `gh release create vX.Y.Z` with notes extracted from CHANGELOG.
@@ -134,10 +132,16 @@ pushing a `v*` tag. To cut a release:
 
 ### Safety nets if smoke fails after publish
 
-- **npm**: if post-publish smoke fails, `release.yml` runs
-  `npm deprecate tc39-mcp@<version>` with a pointer back to the
-  failing Actions run. Users installing that version see a warning.
-  `npm unpublish` is blocked after 72 h, so deprecation is the
+- **npm**: if post-publish smoke fails, the workflow exits red.
+  Trusted Publishing's OIDC scope covers `npm publish` but not
+  `npm deprecate`, and keeping a long-lived NPM_TOKEN just for the
+  failure path would defeat the win. Manual cleanup is one command:
+
+  ```sh
+  npm deprecate tc39-mcp@X.Y.Z "Post-publish smoke failed; see CI run X"
+  ```
+
+  `npm unpublish` is blocked after 72 h so deprecation is the
   universally-applicable rollback.
 
 - **Worker**: if `deploy-worker.yml`'s post-deploy smoke fails AND
