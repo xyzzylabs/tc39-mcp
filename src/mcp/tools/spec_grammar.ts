@@ -70,23 +70,42 @@ export const specGrammarSchema = {
     .describe("Max productions (or non-terminal groups in list mode) returned."),
 };
 
+/** One row in the list-mode summary of `spec.grammar`: one
+ *  non-terminal name plus how many productions define it and which
+ *  clauses they live in. */
 export interface NonterminalSummary {
+  /** Left-hand side of the production block (e.g. `BindingIdentifier`). */
   nonterminal: string;
+  /** Total number of standalone productions defining this non-terminal. */
   production_count: number;
+  /** Spec clause ids that host those productions, deduplicated. */
   clause_ids: string[];
 }
 
+/** Output of `spec.grammar`. Two discriminated variants:
+ *
+ *  - `by_nonterminal` / `contains` modes return matching productions.
+ *  - `list` mode returns a summary of every known non-terminal. */
 export type SpecGrammarResult =
   | {
+      /** `by_nonterminal` when the `nonterminal` arg was given;
+       *  `contains` when only the `contains` arg was given. */
       mode: "by_nonterminal" | "contains";
+      /** Which TC39 spec the productions came from. */
       spec: Spec;
+      /** Matched productions, capped at `limit`. */
       productions: GrammarProduction[];
+      /** Total productions matching before the `limit` cap. */
       total: number;
     }
   | {
+      /** `list` when neither filter argument was given. */
       mode: "list";
+      /** Which TC39 spec the listing came from. */
       spec: Spec;
+      /** One summary row per non-terminal, capped at `limit`. */
       nonterminals: NonterminalSummary[];
+      /** Total non-terminals before the `limit` cap. */
       total: number;
     };
 

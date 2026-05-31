@@ -126,12 +126,25 @@ export const clauseListSchema = {
     .describe("Max clauses returned. The full spec has ~3000 clauses; the default is a safe slice."),
 };
 
+/** Lightweight metadata row for one clause, returned by `clause.list`.
+ *  Use the `id` to follow up with `clause.get` for the full structured
+ *  clause (signature, steps, notes, cross-refs). */
 export interface ClauseListHit {
+  /** Spec clause id, e.g. `sec-tonumber`. */
   id: string;
+  /** Abstract Operation ID — the spec's identifier for invocable
+   *  operations (e.g. `ToNumber`). `null` for clauses that aren't
+   *  abstract operations (built-ins, methods, prose-only clauses). */
   aoid: string | null;
+  /** `<h1>` text of the clause, including any signature line. */
   title: string;
+  /** Section number, e.g. `7.1.4` or `B.3.1` (Annex B). */
   number: string;
+  /** Clause kind: `op`, `sdo`, `built-in function`, `concrete method`,
+   *  `internal method`, `term`, `clause` (generic), or `unknown`. */
   kind: string;
+  /** Number of `<emu-alg>` blocks under this clause. 0 for prose-only
+   *  clauses; >1 for SDOs which define one algorithm per production. */
   algorithms: number;
 }
 

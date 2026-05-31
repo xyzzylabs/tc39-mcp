@@ -47,26 +47,45 @@ export const specSymbolResolveSchema = {
     .describe("Max candidate clauses returned, ranked by relevance score."),
 };
 
+/** Classification of the notation passed to `spec.symbol_resolve`.
+ *  - `internal-slot`  — `[[Name]]` form (object internal slots).
+ *  - `intrinsic`      — `%Name%` form (well-known intrinsics).
+ *  - `sigil-enum`     — `~name~` form (hint / state enums).
+ *  - `unrecognized`   — none of the above; treated as a literal search. */
 export type SymbolKind =
   | "internal-slot"
   | "intrinsic"
   | "sigil-enum"
   | "unrecognized";
 
+/** One ranked candidate clause for a resolved notation. */
 export interface SymbolHit {
+  /** Spec clause id of the candidate. */
   id: string;
+  /** Abstract Operation ID of the candidate, or `null` if it isn't
+   *  an abstract operation. */
   aoid: string | null;
+  /** `<h1>` text of the candidate clause. */
   title: string;
+  /** Section number, e.g. `6.1.7.4`. */
   number: string;
+  /** Relevance score, with bumps for "definition-y" sections. */
   score: number;
+  /** Number of literal occurrences of the notation inside this clause. */
   match_count: number;
 }
 
+/** Output of `spec.symbol_resolve`: candidate clauses likely to
+ *  define or describe a spec notation like `[[Prototype]]`. */
 export interface SymbolResolveResult {
+  /** The original notation as passed in. */
   notation: string;
+  /** How the notation was classified. `unrecognized` triggers a
+   *  literal search rather than a sigil-aware one. */
   kind: SymbolKind;
-  /** Bare name with sigils stripped. */
+  /** Bare name with sigils stripped (e.g. `Prototype` for `[[Prototype]]`). */
   name: string;
+  /** Candidate clauses, ranked, capped at `limit`. */
   hits: SymbolHit[];
 }
 

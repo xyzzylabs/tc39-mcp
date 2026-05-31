@@ -44,21 +44,39 @@ export const specHistorySchema = {
     .describe("Max commits returned from the vendored spec checkout's git log."),
 };
 
+/** One commit touching the requested clause's `id="..."` token in
+ *  the vendored spec checkout. */
 export interface SpecHistoryCommit {
+  /** Full 40-char commit SHA. */
   sha: string;
+  /** First 8 chars of `sha`, for compact display. */
   short_sha: string;
+  /** ISO-8601 author date. */
   date: string;
+  /** Commit author name. */
   author: string;
+  /** Commit subject line (`git log --format=%s`). */
   subject: string;
 }
 
+/** Output of `spec.history`: commits in the vendored spec checkout
+ *  that touched the opening tag of a given clause id. */
 export interface SpecHistoryResult {
+  /** Clause id that was queried. */
   id: string;
+  /** Which TC39 spec was queried. */
   spec: Spec;
+  /** Concrete edition the `edition` arg resolved to. */
   edition: ConcreteEdition;
+  /** `false` when no vendored checkout exists for this (spec, edition);
+   *  `commits` will be empty and `hint` may explain how to fetch. */
   vendor_present: boolean;
+  /** `true` when the vendored checkout is a shallow clone; the commit
+   *  list may be truncated. `hint` suggests `git fetch --unshallow`. */
   shallow: boolean;
+  /** Commits returned, newest first, capped at `limit`. */
   commits: SpecHistoryCommit[];
+  /** Human-readable note (e.g. setup or shallow-clone hint). */
   hint?: string;
 }
 

@@ -40,24 +40,41 @@ export const test262SearchSchema = {
     .describe("Max ranked hits returned from the test262 index."),
 };
 
+/** One ranked test262 hit. Pass `path` back to `test262.get` to read
+ *  the full file source + structured front-matter. */
 export interface Test262Hit {
+  /** Path within the test262 checkout, relative to the repo root
+   *  (e.g. `test/built-ins/Number/prototype/toString/...`). */
   path: string;
+  /** Permanent URL to the file on GitHub at the indexed SHA. */
   url?: string;
+  /** `esid:` value from the test's front matter (e.g. `sec-tonumber`). */
   esid?: string;
+  /** `description:` value from the test's front matter. */
   description?: string;
+  /** `features:` array from the test's front matter. */
   features?: string[];
+  /** `flags:` array from the test's front matter (e.g. `onlyStrict`). */
   flags?: string[];
 }
 
+/** Output of `test262.search`: ranked hits from the local test262
+ *  index, plus the index SHA for reproducibility. */
 export interface Test262SearchResult {
+  /** Echo of the `query` argument (when present). */
   query?: string;
+  /** Echo of the `esid` argument (when present). */
   esid?: string;
   /** Which backend served the query.
-   *  - "index" → results from build/test262-index.json (always).
+   *  - "index" → results from `build/test262-index.json` (always).
    *  - "none"  → no index built; `hits` empty; `hint` explains setup. */
   source: "index" | "none";
+  /** SHA of the vendored test262 checkout that produced this index.
+   *  Absent when `source: "none"`. */
   index_sha?: string;
+  /** Ranked hits, capped at `limit`. */
   hits: Test262Hit[];
+  /** Human-readable setup hint, set only when `source: "none"`. */
   hint?: string;
 }
 

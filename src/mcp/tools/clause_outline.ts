@@ -48,19 +48,30 @@ export const clauseOutlineSchema = {
     .describe("Optional clause id. If set, return only descendants of this clause."),
 };
 
+/** One node in the section-tree produced by `clause.outline`. Children
+ *  are sub-sections nested under this clause's section number. */
 export interface OutlineNode {
+  /** Spec clause id of this node. */
   id: string;
+  /** Section number (e.g. `7.1`, `7.1.4`, `B.3`). */
   number: string;
+  /** Clause `<h1>` text. */
   title: string;
+  /** Clause kind: `op`, `sdo`, `built-in function`, etc. */
   kind: string;
+  /** Direct sub-sections of this node, sorted by section number. */
   children: OutlineNode[];
 }
 
+/** Output of `clause.outline`: the section tree for one (spec, edition). */
 export interface OutlineResult {
+  /** Which TC39 spec the outline is from: `262` or `402`. */
   spec: Spec;
-  /** Number of nodes in the returned tree. */
+  /** Number of nodes in the returned tree (after `depth` / `under`
+   *  filters are applied). */
   node_count: number;
-  /** Roots: top-level clauses (or `under`'s children if `under` was set). */
+  /** Top-level nodes of the returned tree. If `under` was set, these
+   *  are that anchor's direct children rather than the spec roots. */
   roots: OutlineNode[];
 }
 

@@ -80,11 +80,20 @@ export const proposalListSchema = {
     .describe("Max proposals returned from the filtered set."),
 };
 
+/** Output of `proposal.list`: filtered slice of the TC39 proposals
+ *  index, plus the index SHA so callers can pin reproducibility. */
 export interface ProposalListResult {
+  /** `index` when the proposals index was loaded; `none` when it
+   *  hasn't been built — see `hint` for the build command. */
   source: "index" | "none";
+  /** SHA of the vendored `tc39/proposals` checkout that produced
+   *  this index. Absent when `source: "none"`. */
   proposals_sha?: string;
+  /** Total proposals matching the filters before `limit` truncation. */
   total: number;
+  /** Proposals matching the filters, capped at `limit`. */
   proposals: ProposalEntry[];
+  /** Human-readable setup hint, set only when `source: "none"`. */
   hint?: string;
 }
 
@@ -135,10 +144,17 @@ export const proposalGetSchema = {
     ),
 };
 
+/** Output of `proposal.get`: one proposal looked up by slug or name. */
 export interface ProposalGetResult {
+  /** `index` when the proposals index was loaded; `none` when it
+   *  hasn't been built — see `hint`. */
   source: "index" | "none";
+  /** SHA of the vendored `tc39/proposals` checkout that produced
+   *  this index. Absent when `source: "none"`. */
   proposals_sha?: string;
+  /** The matched proposal, or `null` when nothing matched. */
   proposal: ProposalEntry | null;
+  /** Human-readable setup hint, set only when `source: "none"`. */
   hint?: string;
 }
 

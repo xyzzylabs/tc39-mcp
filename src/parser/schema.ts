@@ -25,21 +25,39 @@ export type ClauseKind =
   | "term"
   | "unknown";
 
+/** Per-clause metadata pulled from `@tc39/ecma262-biblio` plus the
+ *  ecmarkup parse: identifier, abstract-operation id, title, section
+ *  number, and kind. Common to every clause in a parsed spec. */
 export interface ClauseMeta {
+  /** Spec clause id (e.g. `sec-tonumber`). Stable across editions. */
   id: string;
+  /** Abstract Operation ID — the spec's identifier for invocable
+   *  operations (e.g. `ToNumber`). `null` for clauses that aren't
+   *  abstract operations. */
   aoid: string | null;
+  /** `<h1>` text. Includes the signature line for abstract ops. */
   title: string;
+  /** Section number, e.g. `7.1.4` or `B.3.1` (Annex B). */
   number: string;
+  /** How the clause behaves: `op`, `sdo`, `built-in function`,
+   *  `concrete method`, `internal method`, `term`, `clause` (generic),
+   *  or `unknown`. */
   kind: ClauseKind;
 }
 
+/** One numbered step in an `<emu-alg>`, possibly with nested substeps. */
 export interface AlgorithmStep {
   /** Verbatim ecmarkdown text of the step, with markup preserved. */
   text: string;
+  /** Nested numbered substeps (`a.`, `b.`, …) under this step. Empty
+   *  array when the step has no substeps. */
   substeps: AlgorithmStep[];
 }
 
+/** One `<emu-alg>` block. Regular abstract operations have one
+ *  algorithm; SDOs have one per grammar production. */
 export interface Algorithm {
+  /** The numbered steps of the algorithm. */
   steps: AlgorithmStep[];
   /** For SDOs (Syntax-Directed Operations), each algorithm is keyed by a
    *  grammar production. Captured verbatim from the preceding
@@ -64,13 +82,22 @@ export interface Note {
   type?: string;
 }
 
+/** One parsed clause — the structured representation of a single
+ *  `<emu-clause>` element. The headline output of `clause.get`. */
 export interface Clause {
+  /** Identifier, AOID, title, section number, and kind. */
   meta: ClauseMeta;
-  /** Trimmed `<h1>` contents — the signature line for abstract ops. */
+  /** Trimmed `<h1>` contents — the signature line for abstract ops.
+   *  `null` when the clause has no `<h1>` (or for prose-only clauses
+   *  without a signature). */
   signatureRaw: string | null;
+  /** Captured `<emu-alg>` blocks. Empty array when the clause has
+   *  no algorithm. Multiple entries for SDOs. */
   algorithms: Algorithm[];
+  /** Captured `<emu-note>` blocks, in document order. */
   notes: Note[];
-  /** Hrefs from `<emu-xref href="...">` anywhere inside the clause. */
+  /** Hrefs from `<emu-xref href="...">` anywhere inside the clause.
+   *  Used by `spec.crossrefs` to build the forward index. */
   crossrefs: string[];
 }
 

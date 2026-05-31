@@ -57,17 +57,44 @@ export const specTablesSchema = {
     .describe("Max table summaries returned in list mode (ignored when 'id' is set)."),
 };
 
+/** Lightweight `<emu-table>` summary row returned in list mode. */
 export interface TableSummary {
+  /** Verbatim `id="..."` attribute of the `<emu-table>` element. */
   id: string;
+  /** Caption text (from `<emu-caption>` or the `caption` attribute). */
   caption: string;
+  /** `<th>` column headers in document order. Empty if the table has
+   *  no header row. */
   columns: string[];
+  /** Number of body rows in the table. */
   row_count: number;
+  /** The clause id that contains this table, if any. */
   clause_id?: string;
 }
 
+/** Output of `spec.tables`. Two discriminated variants:
+ *
+ *  - `get`  — full structured table (or `null` when not found).
+ *  - `list` — summary rows, optionally filtered. */
 export type SpecTablesResult =
-  | { mode: "get"; spec: Spec; table: SpecTable | null }
-  | { mode: "list"; spec: Spec; total: number; tables: TableSummary[] };
+  | {
+      /** Returned when the `id` arg was set. */
+      mode: "get";
+      /** Which TC39 spec the table came from. */
+      spec: Spec;
+      /** Full table object, or `null` when the id doesn't match. */
+      table: SpecTable | null;
+    }
+  | {
+      /** Returned when the `id` arg was omitted. */
+      mode: "list";
+      /** Which TC39 spec the listing came from. */
+      spec: Spec;
+      /** Total tables matching the `filter` before the `limit` cap. */
+      total: number;
+      /** Table summaries, capped at `limit`. */
+      tables: TableSummary[];
+    };
 
 export function specTables(args: {
   id?: string;

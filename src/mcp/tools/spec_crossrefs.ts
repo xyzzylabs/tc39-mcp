@@ -62,16 +62,31 @@ export const specCrossrefsSchema = {
     .describe("Max hits returned in each direction (incoming and outgoing are limited independently)."),
 };
 
+/** One cross-reference row, either incoming or outgoing. */
 export interface CrossrefHit {
+  /** Spec clause id of the linked clause. */
   id: string;
+  /** Abstract Operation ID of the linked clause, or `null` if it
+   *  isn't an abstract operation. */
   aoid: string | null;
+  /** `<h1>` text of the linked clause. */
   title: string;
+  /** Section number of the linked clause. */
   number: string;
+  /** Which TC39 spec the linked clause lives in. With
+   *  `include_cross_spec`, outgoing hits can be from a different
+   *  spec than the source. */
   spec: Spec;
 }
 
+/** Output of `spec.crossrefs`. `incoming` / `outgoing` are present
+ *  according to the `direction` argument. */
 interface CrossrefsResult {
+  /** Clauses that reference the requested id (back-refs). Present
+   *  when `direction` is `in` or `both`. */
   incoming?: CrossrefHit[];
+  /** Clauses the requested id references. Present when `direction`
+   *  is `out` or `both`. */
   outgoing?: CrossrefHit[];
 }
 

@@ -35,7 +35,11 @@ export const specGlobalSearchSchema = {
     .describe("Total hits across both specs combined."),
 };
 
+/** One ranked search hit, tagged with the spec it came from. Returned
+ *  by `spec.global_search` as an interleaved list across both 262 and
+ *  402, sorted by score. Same shape as `SpecSearchHit` plus `spec`. */
 export interface GlobalSearchHit extends SpecSearchHit {
+  /** Which TC39 spec contains the matching clause: `262` or `402`. */
   spec: Spec;
 }
 

@@ -58,14 +58,24 @@ export type SpecSearchArgs = {
   search_steps?: boolean;
 };
 
+/** One ranked search hit from `spec.search`. Lightweight metadata —
+ *  follow up with `clause.get` for the full structured clause. */
 export interface SpecSearchHit {
+  /** Spec clause id of the matching clause. */
   id: string;
+  /** Abstract Operation ID of the matching clause, or `null` if it
+   *  isn't an abstract operation. */
   aoid: string | null;
+  /** `<h1>` text of the matching clause. */
   title: string;
+  /** Section number, e.g. `7.1.4`. */
   number: string;
+  /** Clause kind: `op`, `sdo`, `built-in function`, etc. */
   kind: string;
-  /** Which field produced the match (highest-ranked one). */
+  /** Which field produced the highest-ranked match.
+   *  Ordering (high → low): `aoid-exact`, `aoid`, `title`, `id`, `steps`. */
   matched_on: "aoid-exact" | "aoid" | "title" | "id" | "steps";
+  /** Relevance score (0–100). Higher = stronger match. */
   score: number;
 }
 
