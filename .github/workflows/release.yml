@@ -133,6 +133,54 @@ jobs:
       # Trade-off: smoke failures are rare and the manual window is
       # short, vs the win of zero long-lived secrets in the repo.
 
+      - name: Install mcp-publisher
+        # Download the prebuilt binary from the MCP Registry's GitHub
+        # releases. Pinned to `latest` per the upstream guide — the
+        # binary is small (~28 MB) and the Registry occasionally bumps
+        # required audience / claim formats, so following latest is
+        # cheaper than chasing version pins.
+        run: |
+          curl -L \
+            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" \
+            | tar xz mcp-publisher
+
+      - name: Sync server.json version to the release tag
+        # Belt-and-suspenders for cron-driven PATCH bumps. refresh.yml
+        # rewrites package.json's version but doesn't know to touch
+        # server.json, so without this step the Registry manifest
+        # would drift behind npm. Manually-cut releases set
+        # server.json explicitly in the release commit (no-op for
+        # them; jq idempotently overwrites the same value).
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          jq --arg v "$version" \
+            '.version = $v | .packages[0].version = $v' \
+            server.json > server.tmp && mv server.tmp server.json
+          echo "server.json after sync:"
+          jq '{version, "packages[0].version": .packages[0].version}' server.json
+
+      - name: Validate server.json against the Registry schema
+        # Cheap pre-publish check: same call mcp-publisher will run
+        # during `publish`, surfaced as its own step so a schema break
+        # fails with a clear error before any state changes server-side.
+        run: ./mcp-publisher validate
+
+      - name: Authenticate to MCP Registry (OIDC)
+        # No secret needed — the workflow's `id-token: write` permission
+        # (already declared for npm Trusted Publishing) covers this.
+        # The OIDC token's `sub` claim carries the repo identity, which
+        # the Registry maps to `io.github.<owner>/*` namespaces.
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to MCP Registry
+        # Lands the manifest within seconds and is immediately
+        # searchable via the v0 API at registry.modelcontextprotocol.io.
+        # Republishing the same version is a hard error — if we ever
+        # need to re-run, bump version first.
+        run: ./mcp-publisher publish
+
       - name: Create GitHub Release
         # Cuts a Release entry tied to the tag once npm publish + smoke
         # succeed. Notes are extracted from CHANGELOG.md for the
