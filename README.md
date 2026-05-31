@@ -13,8 +13,14 @@ Internationalization API, `Intl`) **structurally** from any MCP
 client — clauses, algorithm steps, cross-references, edition diffs,
 git history — instead of grepping `spec.html`. Every response is
 pinned to a specific spec SHA so anything cited stays reproducible.
-The hosted Cloudflare Worker auto-refreshes from upstream every
-~4 hours.
+
+**Offline-first by default.** The stdio transport (`npx tc39-mcp`)
+ships every parsed snapshot in the tarball, so once installed it
+runs entirely offline — no network call per request, no leakage of
+which clause you're reading, deterministic against a snapshot the
+release pinned. The hosted Cloudflare Worker is the HTTP
+alternative when you want a network endpoint; it auto-refreshes
+from upstream every ~4 hours.
 
 ## Install + first call
 
@@ -30,7 +36,9 @@ client via `.mcp.json`:
 ```
 
 The first run downloads ~50 MB (the parsed snapshots ship in the
-tarball — no separate fetch step needed). Then in your client:
+tarball — no separate fetch step needed, and every subsequent call
+is served from local disk with no network round-trip). Then in
+your client:
 
 > use `clause.get` to read `sec-tonumber` and show me the steps
 
@@ -88,6 +96,12 @@ tc39-mcp                     # reads stdio
 
 ## What it's good at
 
+- **Working fully offline.** The stdio transport keeps every
+  request local — once `npx tc39-mcp` has run once, every tool
+  call is served from on-disk snapshots. No network round-trip
+  per call, no leakage of which clause you're querying, no
+  upstream rate limit. The hosted Worker remains the HTTP
+  alternative when you want a shared network endpoint instead.
 - **Finding the clause you want from a hint.** `spec.search` ranks
   AOID-exact matches first; `spec.symbol_resolve` decodes
   `[[Prototype]]` / `%Object.prototype%` / `~enumerate~`.

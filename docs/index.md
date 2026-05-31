@@ -4,7 +4,7 @@ layout: home
 hero:
   name: tc39-mcp
   text: Structured MCP for the TC39 specs
-  tagline: SHA-pinned ECMA-262 + ECMA-402 as structured JSON — AOID-aware search, cross-spec references, edition diffs, and git history, one MCP call away.
+  tagline: SHA-pinned ECMA-262 + ECMA-402 as structured JSON, offline-first via stdio — AOID-aware search, cross-spec references, edition diffs, and git history, one MCP call away.
   actions:
     - theme: brand
       text: Tool reference
@@ -20,9 +20,12 @@ features:
   - icon: 📦
     title: Two specs, every released annual edition
     details: ECMA-262 (es2016 → latest + main) and ECMA-402 (main + most recent candidate). Every clause carries its upstream SHA and fetched_at timestamp — full table on the Snapshots page.
+  - icon: ✈️
+    title: Offline-first by default
+    details: The stdio transport (`npx tc39-mcp`) ships every parsed snapshot in the tarball. Once installed, every tool call is served from local disk — no network round-trip, no leakage of which clause you're reading, works on planes. The hosted Worker is the HTTP alternative.
   - icon: 🔌
     title: Three ways to run it
-    details: Local stdio via `npx tc39-mcp` (the default), a global CLI, or the hosted Cloudflare Worker over HTTP/SSE. Same MCP protocol, three transports.
+    details: Local stdio via `npx tc39-mcp` (the offline default), a global CLI, or the hosted Cloudflare Worker over HTTP. Same MCP protocol, three transports.
   - icon: 🔄
     title: Auto-refreshing
     details: A scheduled CI workflow checks upstream tc39/* mains every 4 hours, bumps PATCH + republishes whenever anything moved. Stay current without lifting a finger.
@@ -31,7 +34,7 @@ features:
     details: Every response is a function of static parsed JSONs. Same inputs → same bytes out, reproducible across server versions.
   - icon: 🏗️
     title: Production-shaped
-    details: LRU-bounded memory, Cloudflare rate limiting (100/60s/IP), structured per-request logging, post-deploy smoke testing, historical SHA addressing via `at:` on the hosted Worker.
+    details: LRU-bounded memory, tiered rate limiting (anonymous 30/60s/IP, sponsors 300/60s/key), structured per-request logging, post-deploy smoke testing, historical SHA addressing via `at:` on the hosted Worker.
 ---
 
 ## Install + run
