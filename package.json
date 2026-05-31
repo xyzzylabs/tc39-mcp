@@ -51,6 +51,9 @@
     "vitepress": "^1.6.4",
     "vitest": "^4.1.7"
   },
+  "overrides": {
+    "esbuild": "^0.25.0"
+  },
   "keywords": [
     "ecmascript",
     "ecma262",
