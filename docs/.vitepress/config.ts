@@ -49,28 +49,28 @@ export default defineConfig({
   ],
 
   themeConfig: {
+    // Top nav: the five doors most readers want. Snapshots and the
+    // changelog stay reachable from the sidebar — they're audit
+    // surfaces, not destinations.
     nav: [
-      { text: "Guide", link: "/" },
+      { text: "Overview", link: "/" },
       { text: "Tools", link: "/tools" },
-      { text: "Snapshots", link: "/snapshots" },
       { text: "Editions", link: "/editions" },
       { text: "Architecture", link: "/architecture" },
-      { text: "Deployment", link: "/deployment" },
+      { text: "Hosting", link: "/deployment" },
     ],
 
     sidebar: [
       {
         text: "Get started",
-        items: [
-          { text: "Overview", link: "/" },
-          { text: "Editions + specs", link: "/editions" },
-          { text: "Live snapshots", link: "/snapshots" },
-        ],
+        items: [{ text: "Overview", link: "/" }],
       },
       {
         text: "Reference",
         items: [
-          { text: "Tool reference (all 19)", link: "/tools" },
+          { text: "Tool reference", link: "/tools" },
+          { text: "Editions + specs", link: "/editions" },
+          { text: "Live snapshots", link: "/snapshots" },
           { text: "Changelog", link: "/changelog" },
         ],
       },
@@ -78,7 +78,7 @@ export default defineConfig({
         text: "Under the hood",
         items: [
           { text: "Architecture", link: "/architecture" },
-          { text: "Deployment", link: "/deployment" },
+          { text: "Hosting (Cloudflare Worker)", link: "/deployment" },
         ],
       },
     ],
@@ -97,8 +97,9 @@ export default defineConfig({
       message: "Released under the MIT License.",
       // The version is injected at build time from package.json so the
       // footer reflects whatever PATCH the refresh workflow last
-      // published.
-      copyright: `tc39-mcp v${pkg.version} · © 2026 xyzzylabs`,
+      // published. VitePress's footer accepts HTML — we link the org
+      // line to the parent site.
+      copyright: `tc39-mcp v${pkg.version} · © 2026 <a href="https://xyzzylabs.ai" target="_blank" rel="noopener">xyzzy_labs</a>`,
     },
 
     search: {
