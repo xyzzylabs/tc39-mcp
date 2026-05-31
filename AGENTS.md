@@ -1,9 +1,9 @@
 # Project rules for AI agents
 
 This file follows the cross-tool [AGENTS.md](https://agents.md/)
-convention for agent-instruction files. `CLAUDE.md` imports this file
-via `@AGENTS.md`, so Claude Code reads the same rules without
-diverging.
+convention. Tool-specific alias files (`CLAUDE.md`, etc.) import
+this file via `@AGENTS.md` so every agent reads the same rules
+with no drift.
 
 `tc39-mcp` is a **general-purpose, public, read-only MCP server** for
 the TC39 specs (ECMA-262 + ECMA-402). It stands alone — it has no
