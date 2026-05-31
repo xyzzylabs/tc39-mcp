@@ -50,7 +50,7 @@ export default defineConfig({
 
   themeConfig: {
     // Top nav: the five doors most readers want. Snapshots and the
-    // changelog stay reachable from the sidebar — they're audit
+    // changelog stay reachable from the sidebar — they're reference
     // surfaces, not destinations.
     nav: [
       { text: "Get started", link: "/getting-started" },

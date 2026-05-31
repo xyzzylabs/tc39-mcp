@@ -33,7 +33,7 @@ Return self-description of this MCP server: package name + version, per-snapshot
 ### What it answers
 
 - **How fresh is this server's data, and what version is it?** — `{}`
-    - _Cheap call — no clause trees loaded. Each snapshot reports its upstream SHA + `fetched_at` so findings can pin reproducibility._
+    - _Cheap call — no clause trees loaded. Each snapshot reports its upstream SHA + `fetched_at` so downstream callers can pin reproducibility._
 
 ### Input
 

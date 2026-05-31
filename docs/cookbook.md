@@ -12,8 +12,8 @@ and what the final result tells you.
 
 ## Recipe 1 — Cross-spec lookup: which ECMA-262 ops does Intl reach into?
 
-When auditing how the Internationalization API interacts with the
-core language, you want every reference from an ECMA-402 clause
+When you want to map how the Internationalization API interacts with
+the core language, you want every reference from an ECMA-402 clause
 that resolves to an ECMA-262 abstract operation.
 
 **Calls:**
@@ -116,7 +116,7 @@ without you specifying every variant.
 **Why it matters:** combined with `spec.diff` (Recipe 2) you can
 spot clauses where the prose changed but no test262 case followed.
 
-## Recipe 5 — SDO + grammar joint audit
+## Recipe 5 — Cross-reference a non-terminal's SDOs and productions
 
 For a syntactic non-terminal, find every Syntax-Directed Operation
 that implements it.
