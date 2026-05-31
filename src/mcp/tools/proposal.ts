@@ -80,6 +80,17 @@ export const proposalListSchema = {
     .describe("Max proposals returned from the filtered set."),
 };
 
+export const proposalListExamples = [
+  {
+    q: "Proposals currently at Stage 3",
+    input: { stage: "3" },
+  },
+  {
+    q: "Active proposals (stages 2 / 2.7 / 3)",
+    input: { stage: "active" },
+  },
+] as const;
+
 /** Output of `proposal.list`: filtered slice of the TC39 proposals
  *  index, plus the index SHA so callers can pin reproducibility. */
 export interface ProposalListResult {
@@ -143,6 +154,13 @@ export const proposalGetSchema = {
       "Match against either the proposal's slug (preferred, exact-match) or its name (case-insensitive). Slug is the canonical id — use what proposal.list returns directly.",
     ),
 };
+
+export const proposalGetExamples = [
+  {
+    q: "Look up the Temporal proposal",
+    input: { name: "temporal" },
+  },
+] as const;
 
 /** Output of `proposal.get`: one proposal looked up by slug or name. */
 export interface ProposalGetResult {

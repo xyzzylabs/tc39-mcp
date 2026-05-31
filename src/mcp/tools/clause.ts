@@ -81,6 +81,17 @@ export type ClauseGetArgs = {
   edition?: Edition;
 };
 
+export const clauseGetExamples = [
+  {
+    q: "What are the steps of ToNumber?",
+    input: { id: "sec-tonumber" },
+  },
+  {
+    q: "What does the ECMA-402 NumberFormat constructor look like?",
+    input: { id: "sec-intl.numberformat", spec: "402" },
+  },
+] as const;
+
 export function clauseGet(args: ClauseGetArgs): Clause | null {
   const parsed = loadSpec(args.spec ?? "262", args.edition ?? "latest");
   return parsed.clauses[args.id] ?? null;
@@ -125,6 +136,17 @@ export const clauseListSchema = {
     .default(200)
     .describe("Max clauses returned. The full spec has ~3000 clauses; the default is a safe slice."),
 };
+
+export const clauseListExamples = [
+  {
+    q: "Every SDO in ECMA-262",
+    input: { kind: "sdo" },
+  },
+  {
+    q: "Built-in functions under §22.2 (RegExp)",
+    input: { kind: "built-in function", section: "22.2" },
+  },
+] as const;
 
 /** Lightweight metadata row for one clause, returned by `clause.list`.
  *  Use the `id` to follow up with `clause.get` for the full structured

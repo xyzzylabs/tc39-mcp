@@ -30,6 +30,13 @@ export const specAboutSchema = {
   // of the running server. Validation passes through any input as-is.
 };
 
+export const specAboutExamples = [
+  {
+    q: "How fresh is this server's data, and what version is it?",
+    input: {},
+  },
+] as const;
+
 export interface SnapshotInfo {
   spec: Spec;
   edition: ConcreteEdition;

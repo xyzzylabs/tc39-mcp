@@ -58,6 +58,17 @@ export type SpecSearchArgs = {
   search_steps?: boolean;
 };
 
+export const specSearchExamples = [
+  {
+    q: "Find the clause that defines Canonicalize",
+    input: { query: "Canonicalize" },
+  },
+  {
+    q: "Where is sloppy-mode unbound `this` resolved?",
+    input: { query: "this", search_steps: true },
+  },
+] as const;
+
 /** One ranked search hit from `spec.search`. Lightweight metadata —
  *  follow up with `clause.get` for the full structured clause. */
 export interface SpecSearchHit {

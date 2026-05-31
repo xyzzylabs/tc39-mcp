@@ -35,6 +35,13 @@ export const specGlobalSearchSchema = {
     .describe("Total hits across both specs combined."),
 };
 
+export const specGlobalSearchExamples = [
+  {
+    q: "Where is Canonicalize defined across both specs?",
+    input: { query: "Canonicalize" },
+  },
+] as const;
+
 /** One ranked search hit, tagged with the spec it came from. Returned
  *  by `spec.global_search` as an interleaved list across both 262 and
  *  402, sorted by score. Same shape as `SpecSearchHit` plus `spec`. */

@@ -48,6 +48,17 @@ export const clauseOutlineSchema = {
     .describe("Optional clause id. If set, return only descendants of this clause."),
 };
 
+export const clauseOutlineExamples = [
+  {
+    q: "Top-level section tree of ECMA-262",
+    input: { depth: 1 },
+  },
+  {
+    q: "Everything under §22.2 (RegExp)",
+    input: { under: "sec-regexp-regular-expression-objects" },
+  },
+] as const;
+
 /** One node in the section-tree produced by `clause.outline`. Children
  *  are sub-sections nested under this clause's section number. */
 export interface OutlineNode {

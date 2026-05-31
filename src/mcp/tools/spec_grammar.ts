@@ -70,6 +70,17 @@ export const specGrammarSchema = {
     .describe("Max productions (or non-terminal groups in list mode) returned."),
 };
 
+export const specGrammarExamples = [
+  {
+    q: "Every standalone production for BindingIdentifier",
+    input: { nonterminal: "BindingIdentifier" },
+  },
+  {
+    q: "Productions mentioning `yield`",
+    input: { contains: "yield" },
+  },
+] as const;
+
 /** One row in the list-mode summary of `spec.grammar`: one
  *  non-terminal name plus how many productions define it and which
  *  clauses they live in. */

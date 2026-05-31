@@ -47,6 +47,21 @@ export const specSymbolResolveSchema = {
     .describe("Max candidate clauses returned, ranked by relevance score."),
 };
 
+export const specSymbolResolveExamples = [
+  {
+    q: "What does `[[Prototype]]` mean?",
+    input: { notation: "[[Prototype]]" },
+  },
+  {
+    q: "Where is `%Object.prototype%` defined?",
+    input: { notation: "%Object.prototype%" },
+  },
+  {
+    q: "What is the `~enumerate~` hint?",
+    input: { notation: "~enumerate~" },
+  },
+] as const;
+
 /** Classification of the notation passed to `spec.symbol_resolve`.
  *  - `internal-slot`  — `[[Name]]` form (object internal slots).
  *  - `intrinsic`      — `%Name%` form (well-known intrinsics).

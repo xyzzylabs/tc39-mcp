@@ -1,9 +1,11 @@
-// Generate `docs/api-reference.md` from source: walk `src/mcp/server.ts`
-// for tool registrations, then resolve each tool's input Zod schema +
-// output TypeScript interface from `src/mcp/tools/*.ts`. The rendered
-// page lists every tool with structured Input + Output tables, where
-// the prose comes from the same .describe() calls and JSDoc comments
-// the LLM-facing surfaces consume.
+// Generate `docs/tools.md` from source: walk `src/mcp/server.ts` for
+// tool registrations, then resolve each tool's input Zod schema +
+// output TypeScript interface + co-located `<name>Examples` array
+// from `src/mcp/tools/*.ts`. The rendered page lists every tool with
+// structured Input + Output tables and a "What it answers" section
+// of realistic example calls, all sourced from the same .describe()
+// calls, JSDoc comments, and Examples arrays the LLM-facing surfaces
+// consume.
 //
 // This file is intentionally regex-free for the schema/interface
 // shapes — those use the TypeScript Compiler API to stay correct
@@ -43,6 +45,13 @@ interface OutputType {
   fields: OutputField[];
 }
 
+interface ToolExample {
+  /** Natural-language question this call answers. */
+  q: string;
+  /** Input arguments as a JSON-able literal. */
+  input: Record<string, unknown>;
+}
+
 interface ToolDoc {
   name: string;
   description: string;
@@ -51,6 +60,8 @@ interface ToolDoc {
   outputTypeText: string;
   /** When the type names a local interface, its field list. */
   outputBody: OutputType | null;
+  /** Co-located `<name>Examples` entries. */
+  examples: ToolExample[];
 }
 
 // ─── const resolution: SPEC_VALUES, EDITION_VALUES, etc. ──────────────
@@ -298,6 +309,48 @@ interface ParsedToolFile {
   /** Map of exported function name → its return type as written (e.g.
    *  `Clause | null`, `ClauseListHit[]`, `Promise<SpecHistoryResult>`). */
   functionReturnTypes: Map<string, string>;
+  /** Co-located `<name>Examples` arrays in this file, keyed by const
+   *  name (e.g. `clauseGetExamples`). */
+  examplesByName: Map<string, ToolExample[]>;
+}
+
+/** Convert a TS object/array literal node to a plain JS value when
+ *  every leaf is a string / number / boolean / array / object literal.
+ *  Returns `undefined` if anything dynamic (a reference, a call, etc.)
+ *  is in the tree. */
+function literalToJs(node: ts.Expression, sf: ts.SourceFile): unknown {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    return node.text;
+  }
+  if (ts.isNumericLiteral(node)) return Number(node.text);
+  if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
+  if (node.kind === ts.SyntaxKind.NullKeyword) return null;
+  if (ts.isArrayLiteralExpression(node)) {
+    const out: unknown[] = [];
+    for (const el of node.elements) {
+      if (ts.isOmittedExpression(el)) return undefined;
+      const v = literalToJs(el, sf);
+      if (v === undefined) return undefined;
+      out.push(v);
+    }
+    return out;
+  }
+  if (ts.isObjectLiteralExpression(node)) {
+    const out: Record<string, unknown> = {};
+    for (const prop of node.properties) {
+      if (!ts.isPropertyAssignment(prop)) return undefined;
+      let key: string;
+      if (ts.isIdentifier(prop.name)) key = prop.name.text;
+      else if (ts.isStringLiteral(prop.name)) key = prop.name.text;
+      else return undefined;
+      const v = literalToJs(prop.initializer, sf);
+      if (v === undefined) return undefined;
+      out[key] = v;
+    }
+    return out;
+  }
+  return undefined;
 }
 
 export function parseToolFile(
@@ -309,6 +362,7 @@ export function parseToolFile(
   const sf = ts.createSourceFile(path, src, ts.ScriptTarget.Latest, true);
   const interfaces: OutputType[] = [];
   const functionReturnTypes = new Map<string, string>();
+  const examplesByName = new Map<string, ToolExample[]>();
   let inputFields: SchemaField[] = [];
 
   const visit = (node: ts.Node) => {
@@ -320,6 +374,50 @@ export function parseToolFile(
     ) {
       if (node.type) {
         functionReturnTypes.set(node.name.text, node.type.getText(sf));
+      }
+    }
+
+    // export const <name>Examples = [ ... ] as const
+    if (
+      ts.isVariableStatement(node) &&
+      node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+    ) {
+      for (const decl of node.declarationList.declarations) {
+        if (
+          !ts.isIdentifier(decl.name) ||
+          !decl.name.text.endsWith("Examples") ||
+          !decl.initializer
+        ) {
+          continue;
+        }
+        let init: ts.Expression = decl.initializer;
+        if (
+          ts.isAsExpression(init) ||
+          ts.isTypeAssertionExpression(init)
+        ) {
+          init = init.expression;
+        }
+        if (!ts.isArrayLiteralExpression(init)) continue;
+        const out: ToolExample[] = [];
+        for (const el of init.elements) {
+          const v = literalToJs(el, sf);
+          if (
+            v &&
+            typeof v === "object" &&
+            !Array.isArray(v) &&
+            typeof (v as Record<string, unknown>).q === "string" &&
+            (v as Record<string, unknown>).input &&
+            typeof (v as Record<string, unknown>).input === "object"
+          ) {
+            out.push({
+              q: (v as { q: string }).q,
+              input: (v as { input: Record<string, unknown> }).input,
+            });
+          }
+        }
+        if (out.length > 0) {
+          examplesByName.set(decl.name.text, out);
+        }
       }
     }
     if (
@@ -386,7 +484,7 @@ export function parseToolFile(
   };
   visit(sf);
 
-  return { inputFields, interfaces, functionReturnTypes };
+  return { inputFields, interfaces, functionReturnTypes, examplesByName };
 }
 
 // ─── glue ──────────────────────────────────────────────────────────────
@@ -495,6 +593,15 @@ function renderTool(doc: ToolDoc): string {
   const desc = escapeAnglesOutsideCode(doc.description.trim());
   let md = `## \`${doc.name}\`\n\n${desc}\n\n`;
 
+  if (doc.examples.length > 0) {
+    md += `### What it answers\n\n`;
+    for (const ex of doc.examples) {
+      const inp = JSON.stringify(ex.input);
+      md += `- **${escapeAnglesOutsideCode(ex.q)}** — \`${mdEscape(inp)}\`\n`;
+    }
+    md += "\n";
+  }
+
   md += `### Input\n\n`;
   if (doc.inputFields.length === 0) {
     md += `_No parameters._\n\n`;
@@ -529,22 +636,57 @@ function renderTool(doc: ToolDoc): string {
   return md;
 }
 
-export function renderApiReference(rootDir: string): string {
+/** Front matter prepended to every generated tools page. Hand-edit if
+ *  the "safe defaults" story changes. */
+const TOOLS_PAGE_INTRO = `# Tool reference
+
+> Auto-generated by \`npm run docs:data\` from \`src/mcp/server.ts\` + \`src/mcp/tools/*.ts\`. Do not edit by hand — change the sources instead.
+
+Every tool's input is validated by a Zod schema. Defaults match the
+"safe boring choice" — \`spec\` defaults to \`"262"\`, \`edition\` defaults
+to \`"latest"\`, limits are generous but bounded, and toggleable
+expensive options (like \`search_steps\` and \`include_cross_spec\`) are
+off by default.
+
+All spec-reading tools accept \`spec\` (\`"262"\` | \`"402"\`) and \`edition\`
+arguments. See [\`editions.md\`](editions.md) for the value set and how
+aliases resolve per spec.
+
+Each tool section below carries:
+
+- **What it answers** — co-located example calls, each tagged with the
+  natural-language question it resolves.
+- **Input** — every field from the Zod schema with its type, default,
+  and inline help text.
+- **Output** — the handler's declared return type, expanded into a
+  field table when it names a locally-defined interface.
+
+`;
+
+/** Universal footer covering error semantics. */
+const TOOLS_PAGE_FOOTER = `## Error envelope
+
+Tools that can fail return either \`{ hits: [] }\` (search-style) or a
+top-level error message under \`isError: true\` (clause-style). No tool
+throws an unhandled exception under normal use — malformed inputs are
+rejected by Zod with a clear validation message; runtime issues (e.g.
+"parsed spec missing for (spec, edition) X") return a structured error
+rather than a stack trace.
+`;
+
+export function renderToolsPage(rootDir: string): string {
   const serverPath = resolve(rootDir, "src", "mcp", "server.ts");
   const toolsDir = resolve(rootDir, "src", "mcp", "tools");
   const editionsPath = resolve(rootDir, "src", "editions.ts");
 
   if (!existsSync(serverPath) || !existsSync(toolsDir)) {
-    return `# API reference\n\n_Source files not found. Run from the repo root._\n`;
+    return `# Tool reference\n\n_Source files not found. Run from the repo root._\n`;
   }
 
   const constArrays = readStringConstArrays(editionsPath);
   const tools = parseServerTools(serverPath);
 
-  let md = `# API reference\n\n`;
-  md += `> Auto-generated by \`npm run docs:data\` from \`src/mcp/server.ts\` + \`src/mcp/tools/*.ts\`. Do not edit by hand — change the sources instead.\n\n`;
-  md += `Every tool is registered with a name, a description, an input Zod schema, and a handler that returns a typed output. This page surfaces all three: the description verbatim, every input field with its type / default / inline help, and every output field with the type and JSDoc from the result interface.\n\n`;
-  md += `For prose-style usage notes, hand-written examples, and the error envelope, see [\`tools.md\`](tools.md).\n\n`;
+  let md = TOOLS_PAGE_INTRO;
 
   for (const t of tools) {
     const file = findToolFileExporting(toolsDir, t.schemaIdent);
@@ -554,19 +696,24 @@ export function renderApiReference(rootDir: string): string {
     }
     const parsed = parseToolFile(file, t.schemaIdent, constArrays);
     const { typeText, bodyInterface } = resolveOutput(t.schemaIdent, parsed);
+    const examplesName = t.schemaIdent.replace(/Schema$/, "Examples");
+    const examples = parsed.examplesByName.get(examplesName) ?? [];
     md += renderTool({
       name: t.name,
       description: t.description,
       inputFields: parsed.inputFields,
       outputTypeText: typeText,
       outputBody: bodyInterface,
+      examples,
     });
   }
+
+  md += TOOLS_PAGE_FOOTER;
   return md;
 }
 
-export function buildApiReference(rootDir: string): void {
-  const md = renderApiReference(rootDir);
-  const dst = join(rootDir, "docs", "api-reference.md");
+export function buildToolsPage(rootDir: string): void {
+  const md = renderToolsPage(rootDir);
+  const dst = join(rootDir, "docs", "tools.md");
   writeFileSync(dst, md, "utf8");
 }

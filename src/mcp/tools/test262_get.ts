@@ -26,6 +26,15 @@ export const test262GetSchema = {
     ),
 };
 
+export const test262GetExamples = [
+  {
+    q: "Read one specific test262 file",
+    input: {
+      path: "test/built-ins/Number/prototype/toString/S15.7.4.2_A1_T01.js",
+    },
+  },
+] as const;
+
 /** Output of `test262.get`: one test262 file's contents plus its
  *  structured front-matter, served from the vendored checkout. */
 export interface Test262GetResult {

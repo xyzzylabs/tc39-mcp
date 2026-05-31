@@ -62,6 +62,22 @@ export const specCrossrefsSchema = {
     .describe("Max hits returned in each direction (incoming and outgoing are limited independently)."),
 };
 
+export const specCrossrefsExamples = [
+  {
+    q: "Which clauses cite ToNumber?",
+    input: { id: "sec-tonumber", direction: "in" },
+  },
+  {
+    q: "Every 262 op that Intl.Collator's compare reaches",
+    input: {
+      id: "sec-intl.collator.prototype.compare",
+      spec: "402",
+      direction: "out",
+      include_cross_spec: true,
+    },
+  },
+] as const;
+
 /** One cross-reference row, either incoming or outgoing. */
 export interface CrossrefHit {
   /** Spec clause id of the linked clause. */

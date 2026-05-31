@@ -43,6 +43,13 @@ interface ClauseSummary {
   note_count: number;
 }
 
+export const specDiffExamples = [
+  {
+    q: "How did ToNumber change from es2024 to the working draft?",
+    input: { id: "sec-tonumber", from: "es2024", to: "main" },
+  },
+] as const;
+
 /** Output of `spec.diff`: clause-level comparison between two
  *  editions of the same TC39 spec. */
 export interface SpecDiffResult {

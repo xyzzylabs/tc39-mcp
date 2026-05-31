@@ -40,6 +40,17 @@ export const test262SearchSchema = {
     .describe("Max ranked hits returned from the test262 index."),
 };
 
+export const test262SearchExamples = [
+  {
+    q: "Tests anchored to sec-tonumber",
+    input: { esid: "sec-tonumber" },
+  },
+  {
+    q: "Tests mentioning `for-await-of`",
+    input: { query: "for-await-of" },
+  },
+] as const;
+
 /** One ranked test262 hit. Pass `path` back to `test262.get` to read
  *  the full file source + structured front-matter. */
 export interface Test262Hit {

@@ -35,6 +35,17 @@ export const specSnapshotsSchema = {
     ),
 };
 
+export const specSnapshotsExamples = [
+  {
+    q: "List every (spec, edition) the server has parsed",
+    input: {},
+  },
+  {
+    q: "Just the ECMA-402 snapshots",
+    input: { spec: "402" },
+  },
+] as const;
+
 export interface SnapshotRow {
   spec: Spec;
   edition: ConcreteEdition;

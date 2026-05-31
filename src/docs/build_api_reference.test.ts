@@ -5,7 +5,7 @@ import {
   parseToolFile,
   findToolFileExporting,
   readStringConstArrays,
-  renderApiReference,
+  renderToolsPage,
 } from "./build_api_reference.js";
 
 const ROOT = resolve(__dirname, "..", "..");
@@ -86,8 +86,8 @@ describe("docs/build_api_reference", () => {
     });
   });
 
-  describe("renderApiReference", () => {
-    const md = renderApiReference(ROOT);
+  describe("renderToolsPage", () => {
+    const md = renderToolsPage(ROOT);
 
     it("renders headers for every registered tool", () => {
       const tools = parseServerTools(join(ROOT, "src", "mcp", "server.ts"));
@@ -112,6 +112,34 @@ describe("docs/build_api_reference", () => {
       for (let i = 0; i < segs.length; i += 2) {
         expect(segs[i]).not.toMatch(/<[a-zA-Z]/);
       }
+    });
+
+    it("includes an Examples section with co-located `<name>Examples` entries", () => {
+      // Spot check: clause.get's first example must appear.
+      expect(md).toMatch(/### What it answers/);
+      expect(md).toMatch(/What are the steps of ToNumber\?/);
+      expect(md).toMatch(/`\{"id":"sec-tonumber"\}`/);
+    });
+
+    it("bookends with the hand-edited intro + error envelope constants", () => {
+      expect(md.startsWith("# Tool reference")).toBe(true);
+      expect(md).toMatch(/safe boring choice/);
+      expect(md.trimEnd().endsWith("rather than a stack trace.")).toBe(true);
+    });
+  });
+
+  describe("parseToolFile examples extraction", () => {
+    it("captures the `<name>Examples` array as ToolExample[]", () => {
+      const path = findToolFileExporting(
+        join(ROOT, "src", "mcp", "tools"),
+        "clauseGetSchema",
+      );
+      const parsed = parseToolFile(path!, "clauseGetSchema");
+      const examples = parsed.examplesByName.get("clauseGetExamples");
+      expect(examples).toBeTruthy();
+      expect(examples!.length).toBeGreaterThanOrEqual(2);
+      expect(examples![0]!.q).toMatch(/ToNumber/);
+      expect(examples![0]!.input).toEqual({ id: "sec-tonumber" });
     });
   });
 });

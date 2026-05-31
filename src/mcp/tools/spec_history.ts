@@ -44,6 +44,13 @@ export const specHistorySchema = {
     .describe("Max commits returned from the vendored spec checkout's git log."),
 };
 
+export const specHistoryExamples = [
+  {
+    q: "Recent edits to ToNumber's clause tag",
+    input: { id: "sec-tonumber" },
+  },
+] as const;
+
 /** One commit touching the requested clause's `id="..."` token in
  *  the vendored spec checkout. */
 export interface SpecHistoryCommit {

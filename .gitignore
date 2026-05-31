@@ -23,7 +23,7 @@ docs/.vitepress/cache/
 # repo-root CHANGELOG.md so VitePress can route it.
 docs/snapshots.md
 docs/changelog.md
-docs/api-reference.md
+docs/tools.md
 
 # Staging directory the deploy workflow copies the built docs into so
 # wrangler can bundle them as Worker static assets. Gitignored;

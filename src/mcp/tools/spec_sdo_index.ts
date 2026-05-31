@@ -54,6 +54,17 @@ export const specSdoIndexSchema = {
     .describe("Cap the number of groups returned. Each group can still hold many entries."),
 };
 
+export const specSdoIndexExamples = [
+  {
+    q: "Which SDOs implement BindingIdentifier?",
+    input: { by: "production", filter: "BindingIdentifier" },
+  },
+  {
+    q: "What productions does Evaluation handle?",
+    input: { by: "sdo", filter: "Evaluation" },
+  },
+] as const;
+
 export interface SdoEntry {
   /** The clause id the algorithm lives under. */
   id: string;

@@ -57,6 +57,17 @@ export const specTablesSchema = {
     .describe("Max table summaries returned in list mode (ignored when 'id' is set)."),
 };
 
+export const specTablesExamples = [
+  {
+    q: "The authoritative well-known intrinsics table",
+    input: { id: "table-well-known-intrinsic-objects" },
+  },
+  {
+    q: "List every captured `<emu-table>` in ECMA-262",
+    input: {},
+  },
+] as const;
+
 /** Lightweight `<emu-table>` summary row returned in list mode. */
 export interface TableSummary {
   /** Verbatim `id="..."` attribute of the `<emu-table>` element. */

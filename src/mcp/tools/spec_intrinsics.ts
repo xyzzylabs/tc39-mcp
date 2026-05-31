@@ -54,6 +54,17 @@ export const specIntrinsicsSchema = {
     .describe("Max well-known intrinsics returned."),
 };
 
+export const specIntrinsicsExamples = [
+  {
+    q: "Every well-known intrinsic in ECMA-262",
+    input: {},
+  },
+  {
+    q: "Well-known intrinsics named like Array",
+    input: { filter: "array" },
+  },
+] as const;
+
 export interface IntrinsicHit {
   /** Bare name, e.g. `Object.prototype` (the surrounding `%…%` is implied). */
   name: string;

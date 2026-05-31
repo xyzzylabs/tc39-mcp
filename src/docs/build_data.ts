@@ -25,7 +25,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildApiReference } from "./build_api_reference.js";
+import { buildToolsPage } from "./build_api_reference.js";
 
 export interface SnapshotRow {
   spec: string;
@@ -191,8 +191,8 @@ export function buildDocsData(rootDir: string): void {
   const rows = readSnapshots(buildDir);
   writeFileSync(join(docsDir, "snapshots.md"), renderSnapshotsPage(rows), "utf8");
   copyChangelog(rootDir, docsDir);
-  // Auto-generated API reference; lives alongside the hand-written tools.md.
-  buildApiReference(rootDir);
+  // Auto-generated tool reference (replaces what used to be hand-written).
+  buildToolsPage(rootDir);
 }
 
 // CLI: run when invoked directly via `tsx`.
