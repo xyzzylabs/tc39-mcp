@@ -16,6 +16,14 @@ on:
     - cron: "30 7 * * *" # daily, 07:30 UTC — well after the 04:00 + 08:00 refresh slots
   workflow_dispatch:
 
+# The watchdog only reads `.last-refresh.json` and queries upstream
+# tc39/* mains via anonymous git ls-remote — no GitHub-side writes
+# of any kind. Explicit `contents: read` keeps the GITHUB_TOKEN at
+# the minimum needed and clears CodeQL's
+# `actions/missing-workflow-permissions` rule.
+permissions:
+  contents: read
+
 concurrency:
   group: refresh-watchdog
   cancel-in-progress: false

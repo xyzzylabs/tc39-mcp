@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+# Minimal-by-default GITHUB_TOKEN scope. The test workflow only reads
+# the checked-out tree — it doesn't open issues, push commits, or
+# publish artifacts. Explicit `contents: read` defuses CodeQL's
+# `actions/missing-workflow-permissions` rule and means anything
+# added later has to opt in to extra scopes deliberately.
+permissions:
+  contents: read
+
 # Cancel older test runs on the same ref when a newer commit lands.
 # Per-ref grouping means PRs cancel each other independently, and
 # rapid pushes to main only keep the latest run. Keyed on `head_ref`

@@ -564,19 +564,36 @@ function resolveOutput(
 
 // ─── markdown rendering ───────────────────────────────────────────────
 
-/** Escape `<` / `>` outside backtick code spans so VitePress's Vue
- *  template compiler doesn't read text like `<emu-alg>` as an
- *  element tag. We walk the string and split it on backticks,
- *  HTML-entity-encoding angle brackets only in the non-code segments;
- *  text inside code spans renders through markdown-it's code-span
- *  handler, which already escapes for HTML. Idempotent on
- *  already-encoded entities (we never produce `&amp;lt;`). */
+/** Escape the three HTML metacharacters (`&`, `<`, `>`) outside
+ *  backtick code spans so VitePress's Vue template compiler doesn't
+ *  read text like `<emu-alg>` as an element tag. We walk the string
+ *  splitting on backticks, HTML-entity-encoding the metacharacters
+ *  only in the non-code segments; text inside code spans renders
+ *  through markdown-it's code-span handler, which already escapes
+ *  for HTML.
+ *
+ *  Order matters: `&` is escaped *first* so a downstream `<` / `>`
+ *  substitution can't double-encode an existing `&amp;` into
+ *  `&amp;amp;`. Idempotency check: if the function runs twice on
+ *  its own output, the second pass re-escapes the literal `&` in
+ *  `&lt;` / `&gt;` to `&amp;` — so callers should not double-apply.
+ *
+ *  Why backslash isn't escaped (CodeQL's `js/incomplete-sanitization`
+ *  may flag this): the output is rendered Markdown for VitePress,
+ *  not a JavaScript string literal. Backslash is not a metacharacter
+ *  in Vue's template parser, in markdown-it's prose rendering, or in
+ *  HTML attribute-free element text. Escaping it would corrupt
+ *  intentional backslashes (e.g. `\|` for literal pipe in table
+ *  cells) added downstream by `mdEscape`. */
 function escapeAnglesOutsideCode(s: string): string {
   const parts = s.split("`");
   for (let i = 0; i < parts.length; i++) {
     // Even-indexed pieces are outside backticks; odd-indexed are inside.
     if (i % 2 === 0) {
-      parts[i] = parts[i]!.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      parts[i] = parts[i]!
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
     }
   }
   return parts.join("`");
