@@ -57,7 +57,7 @@ export default defineConfig({
       { text: "Tools", link: "/tools" },
       { text: "Cookbook", link: "/cookbook" },
       { text: "Editions", link: "/editions" },
-      { text: "Hosting", link: "/deployment" },
+      { text: "Sponsor", link: "/sponsor" },
     ],
 
     sidebar: [
@@ -83,6 +83,12 @@ export default defineConfig({
         items: [
           { text: "Architecture", link: "/architecture" },
           { text: "Hosting (Cloudflare Worker)", link: "/deployment" },
+        ],
+      },
+      {
+        text: "Support the project",
+        items: [
+          { text: "Sponsor tc39-mcp", link: "/sponsor" },
         ],
       },
     ],

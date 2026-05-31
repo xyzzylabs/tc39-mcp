@@ -1,0 +1,7 @@
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+#
+# Org-level GitHub Sponsors. Enable at
+#   https://github.com/sponsors/xyzzylabs
+# before merging — until the GitHub Sponsors profile is approved
+# the "Sponsor" button won't render even with this file present.
+github: xyzzylabs

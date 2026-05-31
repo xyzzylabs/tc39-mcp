@@ -3,8 +3,9 @@
 [![Test](https://github.com/xyzzylabs/tc39-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/xyzzylabs/tc39-mcp/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/tc39-mcp.svg)](https://www.npmjs.com/package/tc39-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Sponsor](https://img.shields.io/badge/Sponsor-xyzzylabs-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/xyzzylabs)
 
-📖 **Docs site** (same origin as the API): [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — [Get started](https://tc39-mcp.chicoxyzzy.workers.dev/getting-started) · [Tools](https://tc39-mcp.chicoxyzzy.workers.dev/tools) · [Cookbook](https://tc39-mcp.chicoxyzzy.workers.dev/cookbook) · [Editions](https://tc39-mcp.chicoxyzzy.workers.dev/editions) · [Architecture](https://tc39-mcp.chicoxyzzy.workers.dev/architecture) · [Hosting](https://tc39-mcp.chicoxyzzy.workers.dev/deployment)
+📖 **Docs site** (same origin as the API): [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — [Get started](https://tc39-mcp.chicoxyzzy.workers.dev/getting-started) · [Tools](https://tc39-mcp.chicoxyzzy.workers.dev/tools) · [Cookbook](https://tc39-mcp.chicoxyzzy.workers.dev/cookbook) · [Editions](https://tc39-mcp.chicoxyzzy.workers.dev/editions) · [Architecture](https://tc39-mcp.chicoxyzzy.workers.dev/architecture) · [Hosting](https://tc39-mcp.chicoxyzzy.workers.dev/deployment) · [Sponsor](https://tc39-mcp.chicoxyzzy.workers.dev/sponsor)
 
 Structured MCP server for the TC39 specs (ECMA-262 + ECMA-402) —
 SHA-pinned clauses, AOID-aware search, in+out cross-references,
