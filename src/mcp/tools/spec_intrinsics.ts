@@ -81,11 +81,20 @@ export interface IntrinsicHit {
   } | null;
 }
 
+/** Output of `spec.well_known_intrinsics`: every well-known
+ *  intrinsic detected in the spec, with the clause that probably
+ *  defines it. */
 export interface IntrinsicsResult {
+  /** Which TC39 spec was scanned. */
   spec: Spec;
-  /** Which resolution path produced these hits. */
+  /** Which resolution path produced these hits. `table` uses the
+   *  authoritative §6.1.7.4 WKI table; `heuristic` falls back to a
+   *  scan of clause titles + step text. */
   source: "table" | "heuristic";
+  /** Human-readable note describing how the hits were produced (e.g.
+   *  table missing, fallback scan ran, etc.). */
   hint: string;
+  /** Matched intrinsics, capped at `limit`. */
   hits: IntrinsicHit[];
 }
 

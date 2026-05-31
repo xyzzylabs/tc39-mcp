@@ -47,9 +47,17 @@ export interface SnapshotRow {
   live: boolean;
 }
 
+/** Output of `spec.snapshots`: every parsed (spec, edition, sha,
+ *  fetched_at) snapshot the server has available, plus the filters
+ *  the call narrowed to. */
 export interface SnapshotsResult {
+  /** Echo of the `spec` argument, if one was supplied. */
   spec_filter?: Spec;
+  /** Echo of the `edition` argument, if one was supplied. */
   edition_filter?: string;
+  /** Matching snapshot rows. On the stdio server this is whatever
+   *  the installed package version baked in; on the Worker this can
+   *  include historical SHA-pinned copies. */
   snapshots: SnapshotRow[];
 }
 

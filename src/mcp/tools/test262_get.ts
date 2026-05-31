@@ -26,7 +26,10 @@ export const test262GetSchema = {
     ),
 };
 
+/** Output of `test262.get`: one test262 file's contents plus its
+ *  structured front-matter, served from the vendored checkout. */
 export interface Test262GetResult {
+  /** Echo of the requested path, relative to the test262 repo root. */
   path: string;
   /** SHA of the vendored test262 checkout that served this file. */
   test262_sha?: string;

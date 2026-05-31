@@ -63,8 +63,14 @@ export interface SdoEntry {
   production: string;
 }
 
+/** Output of `spec.sdo_index`: the SDO ↔ production index either
+ *  grouped by production (the default) or by SDO title. */
 export interface SdoIndexResult {
+  /** Which TC39 spec the index was built from. */
   spec: Spec;
+  /** Which direction the index runs. `production` keys productions
+   *  to the SDOs implementing them; `sdo` keys SDO titles to the
+   *  productions they cover. */
   by: "production" | "sdo";
   /** Total number of (production, sdo) pairs in the source. Useful for
    *  context when `groups` was truncated by `limit`. */
