@@ -12,6 +12,9 @@ vendor/
 worker/node_modules/
 worker/.wrangler/
 worker/.wrangler-state/
+# `wrangler types` regenerates this from worker/wrangler.toml on demand.
+# Keeping it untracked avoids merge churn when bindings change.
+worker/worker-configuration.d.ts
 
 # VitePress docs site build outputs
 docs/.vitepress/dist/
