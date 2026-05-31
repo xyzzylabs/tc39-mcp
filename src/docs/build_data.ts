@@ -25,6 +25,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { buildApiReference } from "./build_api_reference.js";
 
 export interface SnapshotRow {
   spec: string;
@@ -182,7 +183,7 @@ export function copyChangelog(rootDir: string, docsDir: string): boolean {
   return true;
 }
 
-/** Drive the two outputs from one entrypoint. The script's CLI block
+/** Drive the docs outputs from one entrypoint. The script's CLI block
  *  below calls this with `process.cwd()`. */
 export function buildDocsData(rootDir: string): void {
   const buildDir = join(rootDir, "build");
@@ -190,6 +191,8 @@ export function buildDocsData(rootDir: string): void {
   const rows = readSnapshots(buildDir);
   writeFileSync(join(docsDir, "snapshots.md"), renderSnapshotsPage(rows), "utf8");
   copyChangelog(rootDir, docsDir);
+  // Auto-generated API reference; lives alongside the hand-written tools.md.
+  buildApiReference(rootDir);
 }
 
 // CLI: run when invoked directly via `tsx`.
