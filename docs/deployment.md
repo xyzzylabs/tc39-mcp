@@ -115,14 +115,14 @@ for both API and docs.
 └──────┬───────┘         └──────────────────┘
        │
        ▼
-┌──────────────────────┐
-│ R2 bucket            │
-│   spec-262-main.json │
-│   spec-402-main.json │
-│   ...                │
-│   test262-index.json │
-│   proposals-index.json│
-└──────────────────────┘
+┌────────────────────────┐
+│ R2 bucket              │
+│   spec-262-main.json   │
+│   spec-402-main.json   │
+│   ...                  │
+│   test262-index.json   │
+│   proposals-index.json │
+└────────────────────────┘
 ```
 
 ### Endpoints
