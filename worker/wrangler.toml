@@ -34,19 +34,44 @@ preview_bucket_name = "tc39-mcp-specs-preview"
 LOG_LEVEL = "info"
 
 # Built-in per-Worker rate limiter (Cloudflare's `ratelimit` binding).
-# 30 requests per 60 s per client IP — comfortable for any human +
-# agent workflow (an interactive chat session rarely exceeds ~5/min),
-# tight enough that a single scraper running flat-out for a month
-# can't cross the R2 Class B free allowance. Math: 30/min × 1440 min
-# × 30 days × 3 R2 reads/req ≈ 3.9 M Class B reads/month per IP, well
-# under the 10 M free allowance. Tune via the dashboard without
-# re-deploying by overriding [[unsafe.bindings]] in wrangler
+# Anonymous traffic: 30 requests per 60 s per client IP — comfortable
+# for any human + agent workflow (an interactive chat session rarely
+# exceeds ~5/min), tight enough that a single scraper running flat-out
+# for a month can't cross the R2 Class B free allowance. Math: 30/min
+# × 1440 min × 30 days × 3 R2 reads/req ≈ 3.9 M Class B reads/month
+# per IP, well under the 10 M free allowance. Tune via the dashboard
+# without re-deploying by overriding [[unsafe.bindings]] in wrangler
 # environments.
 [[unsafe.bindings]]
 name = "RATE_LIMITER"
 type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 30, period = 60 }
+
+# Higher-cap rate limiter used when a valid sponsor key is presented
+# (see worker/src/auth.ts). 300 requests per 60 s per key — 10× the
+# anonymous tier, bucketed per-key instead of per-IP so the same key
+# can be used from multiple machines without those machines fighting
+# each other. The SPONSORS KV namespace (below) decides which keys
+# qualify.
+[[unsafe.bindings]]
+name = "SPONSOR_RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 300, period = 60 }
+
+# KV namespace storing sponsor metadata. Each entry's key is the
+# sha256 (lowercase hex) of an issued API key; the value is a JSON
+# blob produced by worker/scripts/issue-sponsor-key.ts. Provision the
+# namespace once with:
+#
+#   wrangler kv namespace create sponsors
+#
+# then paste the returned id into the `id` field below.
+[[kv_namespaces]]
+binding = "SPONSORS"
+id = "REPLACE_ME_AFTER_wrangler_kv_namespace_create"
+preview_id = "REPLACE_ME_AFTER_wrangler_kv_namespace_create_preview"
 
 
 # Routes / observability are configured per-deployment; keep the
