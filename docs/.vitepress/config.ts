@@ -9,10 +9,13 @@ import pkg from "../../package.json";
 // deployed parsed JSONs.
 //
 // Source content: the existing markdown files in this directory,
-// plus two auto-generated pages produced by `npm run docs:data`:
+// plus three auto-generated pages produced by `npm run docs:data`:
 //   - `/snapshots` — table of every parsed (spec, edition, SHA,
 //     fetched_at) snapshot, read from `build/spec-*.json`.
 //   - `/changelog` — verbatim copy of the repo-root `CHANGELOG.md`.
+//   - `/api-reference` — every tool's input + output schema rendered
+//     from `src/mcp/server.ts` + `src/mcp/tools/*.ts` via the
+//     TypeScript Compiler API. Complements the hand-written `/tools`.
 
 export default defineConfig({
   title: "tc39-mcp",
@@ -67,6 +70,7 @@ export default defineConfig({
         text: "Reference",
         items: [
           { text: "Tool reference (all 19)", link: "/tools" },
+          { text: "API reference (auto)", link: "/api-reference" },
           { text: "Changelog", link: "/changelog" },
         ],
       },
