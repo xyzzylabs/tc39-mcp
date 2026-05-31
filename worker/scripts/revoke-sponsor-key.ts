@@ -45,7 +45,17 @@ let targetHash = opts.hash;
 
 if (!targetHash && opts.github) {
   console.log(`→ Scanning SPONSORS KV for github_login=${opts.github} …`);
-  const list = wrangler(["kv", "key", "list", "--binding=SPONSORS", "--remote"]);
+  // `--preview false` disambiguates when both id + preview_id are set
+  // on the KV binding (see issue-sponsor-key.ts for the rationale).
+  const list = wrangler([
+    "kv",
+    "key",
+    "list",
+    "--binding=SPONSORS",
+    "--remote",
+    "--preview",
+    "false",
+  ]);
   if (list.status !== 0) {
     console.error("wrangler kv key list failed — check binding + auth.");
     process.exit(list.status);
@@ -65,6 +75,8 @@ if (!targetHash && opts.github) {
       "get",
       "--binding=SPONSORS",
       "--remote",
+      "--preview",
+      "false",
       name,
     ]);
     if (get.status !== 0) continue;
@@ -100,6 +112,8 @@ const del = wrangler([
   "delete",
   "--binding=SPONSORS",
   "--remote",
+  "--preview",
+  "false",
   targetHash!,
 ]);
 if (del.status !== 0) {

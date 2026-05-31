@@ -55,6 +55,12 @@ const metadata = {
 };
 const value = JSON.stringify(metadata);
 
+// `--preview false` is required when both `id` and `preview_id` are
+// set on the KV binding — without it, wrangler refuses the write
+// because it can't tell which namespace to target. We always target
+// the production namespace from this script; preview writes only
+// happen via `wrangler dev --remote`, which the maintainer doesn't
+// use for sponsor issuance.
 const wranglerArgs = [
   "wrangler",
   "kv",
@@ -62,6 +68,8 @@ const wranglerArgs = [
   "put",
   "--binding=SPONSORS",
   "--remote",
+  "--preview",
+  "false",
   hash,
   value,
 ];
