@@ -23,9 +23,25 @@ import {
 
 export const specHistorySchema = {
   id: z.string().describe("Spec clause id."),
-  spec: z.enum(SPEC_VALUES).default("262"),
-  edition: z.enum(EDITION_VALUES).default("latest"),
-  limit: z.number().int().min(1).max(100).default(20),
+  spec: z
+    .enum(SPEC_VALUES)
+    .default("262")
+    .describe(
+      "Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API).",
+    ),
+  edition: z
+    .enum(EDITION_VALUES)
+    .default("latest")
+    .describe(
+      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next.",
+    ),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(20)
+    .describe("Max commits returned from the vendored spec checkout's git log."),
 };
 
 export interface SpecHistoryCommit {

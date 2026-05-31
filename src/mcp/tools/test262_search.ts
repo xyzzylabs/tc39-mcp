@@ -31,7 +31,13 @@ export const test262SearchSchema = {
     .describe(
       "Filter to tests whose front-matter esid: starts with this prefix (case-insensitive). Prefix match catches the common case where test262 uses a more specific esid than the spec section id — e.g. `esid: 'sec-tonumber'` matches both `sec-tonumber` and `sec-tonumber-applied-to-the-string-type`.",
     ),
-  limit: z.number().int().min(1).max(100).default(20),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(20)
+    .describe("Max ranked hits returned from the test262 index."),
 };
 
 export interface Test262Hit {

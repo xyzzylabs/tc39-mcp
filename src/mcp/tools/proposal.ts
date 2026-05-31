@@ -71,7 +71,13 @@ export const proposalListSchema = {
     .describe(
       "Case-insensitive substring filter applied to the proposal name + slug.",
     ),
-  limit: z.number().int().min(1).max(500).default(100),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(500)
+    .default(100)
+    .describe("Max proposals returned from the filtered set."),
 };
 
 export interface ProposalListResult {

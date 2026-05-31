@@ -49,9 +49,25 @@ export const specGrammarSchema = {
     .describe(
       "If true, also include productions captured as SDO algorithm headers. Off by default — most callers want the standalone lexical/syntactic grammar definitions.",
     ),
-  spec: z.enum(SPEC_VALUES).default("262"),
-  edition: z.enum(EDITION_VALUES).default("latest"),
-  limit: z.number().int().min(1).max(500).default(100),
+  spec: z
+    .enum(SPEC_VALUES)
+    .default("262")
+    .describe(
+      "Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API).",
+    ),
+  edition: z
+    .enum(EDITION_VALUES)
+    .default("latest")
+    .describe(
+      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next.",
+    ),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(500)
+    .default(100)
+    .describe("Max productions (or non-terminal groups in list mode) returned."),
 };
 
 export interface NonterminalSummary {

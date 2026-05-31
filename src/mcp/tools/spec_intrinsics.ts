@@ -29,8 +29,18 @@ import {
 } from "../../editions.js";
 
 export const specIntrinsicsSchema = {
-  spec: z.enum(SPEC_VALUES).default("262"),
-  edition: z.enum(EDITION_VALUES).default("latest"),
+  spec: z
+    .enum(SPEC_VALUES)
+    .default("262")
+    .describe(
+      "Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API).",
+    ),
+  edition: z
+    .enum(EDITION_VALUES)
+    .default("latest")
+    .describe(
+      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next.",
+    ),
   filter: z
     .string()
     .optional()
@@ -40,7 +50,8 @@ export const specIntrinsicsSchema = {
     .int()
     .min(1)
     .max(500)
-    .default(100),
+    .default(100)
+    .describe("Max well-known intrinsics returned."),
 };
 
 export interface IntrinsicHit {

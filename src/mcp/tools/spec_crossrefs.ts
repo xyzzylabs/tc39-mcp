@@ -29,8 +29,18 @@ import {
 
 export const specCrossrefsSchema = {
   id: z.string().describe("Spec clause id, e.g. 'sec-tonumber' (262) or 'sec-intl.numberformat' (402)."),
-  spec: z.enum(SPEC_VALUES).default("262"),
-  edition: z.enum(EDITION_VALUES).default("latest"),
+  spec: z
+    .enum(SPEC_VALUES)
+    .default("262")
+    .describe(
+      "Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API).",
+    ),
+  edition: z
+    .enum(EDITION_VALUES)
+    .default("latest")
+    .describe(
+      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next.",
+    ),
   direction: z
     .enum(["in", "out", "both"])
     .default("both")
@@ -43,7 +53,13 @@ export const specCrossrefsSchema = {
     .describe(
       "If true, outgoing references also include AOIDs that resolve to the *other* TC39 spec (262 ↔ 402). Useful for queries like 'every 262 op that calls into Intl'. Off by default because it requires loading both specs.",
     ),
-  limit: z.number().int().min(1).max(500).default(100),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(500)
+    .default(100)
+    .describe("Max hits returned in each direction (incoming and outgoing are limited independently)."),
 };
 
 export interface CrossrefHit {

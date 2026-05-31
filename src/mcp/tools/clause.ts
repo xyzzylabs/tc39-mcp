@@ -89,8 +89,18 @@ export function clauseGet(args: ClauseGetArgs): Clause | null {
 // — list ——————————————————————————————————————————————
 
 export const clauseListSchema = {
-  spec: z.enum(SPEC_VALUES).default("262"),
-  edition: z.enum(EDITION_VALUES).default("latest"),
+  spec: z
+    .enum(SPEC_VALUES)
+    .default("262")
+    .describe(
+      "Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API).",
+    ),
+  edition: z
+    .enum(EDITION_VALUES)
+    .default("latest")
+    .describe(
+      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next.",
+    ),
   kind: z
     .string()
     .optional()
@@ -107,7 +117,13 @@ export const clauseListSchema = {
     .boolean()
     .optional()
     .describe("If true, return only clauses with at least one <emu-alg>."),
-  limit: z.number().int().min(1).max(2500).default(200),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(2500)
+    .default(200)
+    .describe("Max clauses returned. The full spec has ~3000 clauses; the default is a safe slice."),
 };
 
 export interface ClauseListHit {

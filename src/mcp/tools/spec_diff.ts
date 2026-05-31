@@ -20,7 +20,12 @@ import {
 
 export const specDiffSchema = {
   id: z.string().describe("Spec clause id."),
-  spec: z.enum(SPEC_VALUES).default("262"),
+  spec: z
+    .enum(SPEC_VALUES)
+    .default("262")
+    .describe(
+      "Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API).",
+    ),
   from: z
     .enum(EDITION_VALUES)
     .default("latest")
