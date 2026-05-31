@@ -7,20 +7,25 @@
 
 📖 **Docs**: [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — [Get started](https://tc39-mcp.chicoxyzzy.workers.dev/getting-started) · [Tools](https://tc39-mcp.chicoxyzzy.workers.dev/tools) · [Cookbook](https://tc39-mcp.chicoxyzzy.workers.dev/cookbook) · [Editions](https://tc39-mcp.chicoxyzzy.workers.dev/editions) · [Architecture](https://tc39-mcp.chicoxyzzy.workers.dev/architecture) · [Hosting](https://tc39-mcp.chicoxyzzy.workers.dev/deployment) · [Sponsor](https://tc39-mcp.chicoxyzzy.workers.dev/sponsor)
 
-Read [ECMA-262](https://github.com/tc39/ecma262) (the core JavaScript
-language) and [ECMA-402](https://github.com/tc39/ecma402) (the
-Internationalization API, `Intl`) **structurally** from any MCP
-client — clauses, algorithm steps, cross-references, edition diffs,
-git history — instead of grepping `spec.html`. Every response is
-pinned to a specific spec SHA so anything cited stays reproducible.
+**Give MCP-speaking AI agents structural access to the JS spec.**
+Claude Code, Claude Desktop, Cursor, MCP Inspector, and anything
+else that speaks the Model Context Protocol can now call
+`clause.get sec-tonumber` and get back parsed JSON (algorithm
+steps as discrete arrays, cross-references as ids, signatures as
+typed values) instead of being handed a 4 MB `spec.html` to grep
+through. Tools cover [ECMA-262](https://github.com/tc39/ecma262)
+(the core language) and [ECMA-402](https://github.com/tc39/ecma402)
+(the `Intl` API): clauses, algorithm steps, cross-references both
+ways, edition diffs, upstream git history, test262 search,
+proposal lookup. Every response is SHA-pinned to a specific
+upstream commit so anything an agent cites stays reproducible.
 
-**Offline-first by default.** The stdio transport (`npx tc39-mcp`)
+Offline-first by default: the stdio transport (`npx tc39-mcp`)
 ships every parsed snapshot in the tarball, so once installed it
-runs entirely offline — no network call per request, no leakage of
-which clause you're reading, deterministic against a snapshot the
-release pinned. The hosted Cloudflare Worker is the HTTP
-alternative when you want a network endpoint; it auto-refreshes
-from upstream every ~4 hours.
+runs entirely offline — no network call per agent query, no
+leakage of which clause the agent is reading. The hosted
+Cloudflare Worker is the HTTP alternative when you want a shared
+network endpoint; it auto-refreshes from upstream every ~4 hours.
 
 ## Install + first call
 
@@ -96,12 +101,12 @@ tc39-mcp                     # reads stdio
 
 ## What it's good at
 
-- **Working fully offline.** The stdio transport keeps every
-  request local — once `npx tc39-mcp` has run once, every tool
-  call is served from on-disk snapshots. No network round-trip
-  per call, no leakage of which clause you're querying, no
-  upstream rate limit. The hosted Worker remains the HTTP
-  alternative when you want a shared network endpoint instead.
+- **Letting an agent reason about the spec without hallucinating.**
+  Structured JSON answers ground the model on real spec text:
+  step numbering, cross-reference targets, signature shapes,
+  edition deltas, conformance tests. Anything cited resolves to a
+  specific clause id at a specific SHA — easy to verify, easy to
+  reproduce.
 - **Finding the clause you want from a hint.** `spec.search` ranks
   AOID-exact matches first; `spec.symbol_resolve` decodes
   `[[Prototype]]` / `%Object.prototype%` / `~enumerate~`.
@@ -120,6 +125,11 @@ tc39-mcp                     # reads stdio
 - **Mapping proposals to the spec.** `proposal.list` /
   `proposal.get` from a structured index of `tc39/proposals`,
   refreshed on the same 4-hour cadence as the specs.
+- **Running entirely offline (stdio).** Once `npx tc39-mcp` has
+  installed, every tool call is served from on-disk snapshots —
+  no network round-trip per query, no leakage of which clause
+  the agent is reading, no upstream rate limit. The hosted
+  Worker is the HTTP alternative for shared / multi-tenant use.
 
 ## Tools (19 across 5 namespaces)
 

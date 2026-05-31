@@ -4,7 +4,7 @@ layout: home
 hero:
   name: tc39-mcp
   text: Structured MCP for the TC39 specs
-  tagline: SHA-pinned ECMA-262 + ECMA-402 as structured JSON, offline-first via stdio — AOID-aware search, cross-spec references, edition diffs, and git history, one MCP call away.
+  tagline: Structural ECMA-262 + ECMA-402 lookup for any MCP-speaking AI agent — SHA-pinned clauses, AOID-aware search, cross-spec references, edition diffs, git history. Offline-first via stdio; HTTP via the hosted Cloudflare Worker.
   actions:
     - theme: brand
       text: Tool reference
@@ -14,6 +14,9 @@ hero:
       link: https://github.com/xyzzylabs/tc39-mcp
 
 features:
+  - icon: 🤖
+    title: Spec lookup for AI agents
+    details: Any MCP client (Claude Code, Claude Desktop, Cursor, MCP Inspector) gets `clause.get`, `spec.search`, `spec.crossrefs`, and 16 more tools — structural JSON answers grounded on real spec text instead of grep'd HTML. Every citation resolves to a specific clause id at a specific SHA.
   - icon: 🎯
     title: 19 tools across 5 namespaces
     details: clause.get / list / outline · spec.about / snapshots / search / global_search / crossrefs / diff / history / symbol_resolve / tables / grammar / sdo_index / well_known_intrinsics · test262.search / get · proposal.list / get
