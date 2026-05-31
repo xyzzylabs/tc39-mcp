@@ -57,7 +57,7 @@ export const specSdoIndexSchema = {
 export interface SdoEntry {
   /** The clause id the algorithm lives under. */
   id: string;
-  /** The clause's <h1> text. For an SDO, this is the SDO name + signature. */
+  /** The clause's `<h1>` text. For an SDO, this is the SDO name + signature. */
   title: string;
   /** The grammar production this algorithm handles (verbatim). */
   production: string;

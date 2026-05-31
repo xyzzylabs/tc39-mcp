@@ -104,5 +104,14 @@ describe("docs/build_api_reference", () => {
     it("shows a Returns line with the handler return type", () => {
       expect(md).toMatch(/Returns `Clause \| null`/);
     });
+
+    it("escapes < and > outside code spans so VitePress's Vue compiler doesn't choke on `<emu-…>` literals", () => {
+      // Find every `<word` occurrence in the rendered page; split by
+      // backticks first so we only check non-code-span segments.
+      const segs = md.split("`");
+      for (let i = 0; i < segs.length; i += 2) {
+        expect(segs[i]).not.toMatch(/<[a-zA-Z]/);
+      }
+    });
   });
 });

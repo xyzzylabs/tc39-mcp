@@ -456,8 +456,28 @@ function resolveOutput(
 
 // ─── markdown rendering ───────────────────────────────────────────────
 
+/** Escape `<` / `>` outside backtick code spans so VitePress's Vue
+ *  template compiler doesn't read text like `<emu-alg>` as an
+ *  element tag. We walk the string and split it on backticks,
+ *  HTML-entity-encoding angle brackets only in the non-code segments;
+ *  text inside code spans renders through markdown-it's code-span
+ *  handler, which already escapes for HTML. Idempotent on
+ *  already-encoded entities (we never produce `&amp;lt;`). */
+function escapeAnglesOutsideCode(s: string): string {
+  const parts = s.split("`");
+  for (let i = 0; i < parts.length; i++) {
+    // Even-indexed pieces are outside backticks; odd-indexed are inside.
+    if (i % 2 === 0) {
+      parts[i] = parts[i]!.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  }
+  return parts.join("`");
+}
+
 function mdEscape(s: string): string {
-  return s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+  return escapeAnglesOutsideCode(s)
+    .replace(/\|/g, "\\|")
+    .replace(/\n/g, " ");
 }
 
 /** Collapse runs of internal whitespace inside a type string so
@@ -467,7 +487,13 @@ function tidyType(t: string): string {
 }
 
 function renderTool(doc: ToolDoc): string {
-  let md = `## \`${doc.name}\`\n\n${doc.description.trim()}\n\n`;
+  // Defensive: the tool-level description comes straight from
+  // server.tool()'s 2nd argument. If a future change introduces an
+  // unwrapped `<tag>` literal it would break VitePress's Vue
+  // template compiler downstream. Escape outside-code angle brackets
+  // here so the page builds even when a source has slipped through.
+  const desc = escapeAnglesOutsideCode(doc.description.trim());
+  let md = `## \`${doc.name}\`\n\n${desc}\n\n`;
 
   md += `### Input\n\n`;
   if (doc.inputFields.length === 0) {

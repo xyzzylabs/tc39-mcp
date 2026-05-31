@@ -195,7 +195,7 @@ server.tool(
 
 server.tool(
   "spec.sdo_index",
-  "Index Syntax-Directed Operations by the grammar production they handle. SDOs are abstract operations (Evaluation, BoundNames, etc.) with one <emu-alg> per production. Default by='production' returns { [production]: [{ sdo, id, title }] }; by='sdo' returns { [sdo title]: [productions] }. `filter` substring-narrows keys; `spec` selects '262' or '402'.",
+  "Index Syntax-Directed Operations by the grammar production they handle. SDOs are abstract operations (Evaluation, BoundNames, etc.) with one `<emu-alg>` per production. Default by='production' returns { [production]: [{ sdo, id, title }] }; by='sdo' returns { [sdo title]: [productions] }. `filter` substring-narrows keys; `spec` selects '262' or '402'.",
   specSdoIndexSchema,
   async (args) => {
     const r = specSdoIndex(args);

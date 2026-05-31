@@ -116,7 +116,7 @@ export const clauseListSchema = {
   has_algorithm: z
     .boolean()
     .optional()
-    .describe("If true, return only clauses with at least one <emu-alg>."),
+    .describe("If true, return only clauses with at least one `<emu-alg>`."),
   limit: z
     .number()
     .int()
