@@ -28,8 +28,8 @@ To see which SHA a given published version is pinned to:
 
 ## [0.1.0] — 2026-05-30
 
-Initial release. 19 read-only tools across 5 namespaces, two TC39
-specs covered (ECMA-262 + ECMA-402), 13 supported parsed snapshots
+Initial release. 19 tools across 5 namespaces, two TC39 specs
+covered (ECMA-262 + ECMA-402), 13 supported parsed snapshots
 in total (11 for 262 + 2 for 402), plus offline indices for test262
 and tc39/proposals.
 

@@ -15,8 +15,8 @@ tool calls between the model and the server. See
 [modelcontextprotocol.io](https://modelcontextprotocol.io) for the
 upstream spec.
 
-`tc39-mcp` is an MCP server. It exposes 19 read-only tools that
-answer structured questions about ECMA-262 + ECMA-402 — clause text,
+`tc39-mcp` is an MCP server. It exposes 19 tools that answer
+structured questions about ECMA-262 + ECMA-402 — clause text,
 algorithm steps, cross-references, edition diffs, git history,
 test262 search, proposal lookup. It runs locally over stdio or
 hosted as a Cloudflare Worker over HTTP; either way the wire
@@ -86,10 +86,9 @@ locally, or when you want the always-current Worker pin.
 
 :::
 
-Restart your client so it picks up the new config. The server runs
-read-only over the wire — no auth, no writes, no shell, no network
-fetches. See [Architecture](./architecture) for the full security
-story.
+Restart your client so it picks up the new config. Every tool is a
+deterministic function of the pinned spec data — see
+[Architecture](./architecture) for the security model.
 
 ## Step 3: Make your first call
 
@@ -143,5 +142,4 @@ If the server didn't start at all, two things to check:
 - **[Editions + specs](./editions)** — which editions and aliases
   are supported and how `latest` resolves per spec.
 - **[Architecture](./architecture)** — how the server is wired
-  internally and why the constraints (read-only, no execution, no
-  auth) are the design.
+  internally and the design constraints that shape the tool surface.

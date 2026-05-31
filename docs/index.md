@@ -4,7 +4,7 @@ layout: home
 hero:
   name: tc39-mcp
   text: Structured MCP for the TC39 specs
-  tagline: SHA-pinned ECMA-262 + ECMA-402, AOID-aware search, cross-spec references, edition diffs, git history — read-only, deterministic, hosted-safe.
+  tagline: SHA-pinned ECMA-262 + ECMA-402 as structured JSON — AOID-aware search, cross-spec references, edition diffs, and git history, one MCP call away.
   actions:
     - theme: brand
       text: Tool reference
@@ -15,7 +15,7 @@ hero:
 
 features:
   - icon: 🎯
-    title: 19 read-only tools across 5 namespaces
+    title: 19 tools across 5 namespaces
     details: clause.get / list / outline · spec.about / snapshots / search / global_search / crossrefs / diff / history / symbol_resolve / tables / grammar / sdo_index / well_known_intrinsics · test262.search / get · proposal.list / get
   - icon: 📦
     title: Two specs, every released annual edition
@@ -28,7 +28,7 @@ features:
     details: A scheduled CI workflow checks upstream tc39/* mains every 4 hours, bumps PATCH + republishes whenever anything moved. Stay current without lifting a finger.
   - icon: 🧪
     title: Deterministic over pinned data
-    details: No execution, no auth, no writes. Every response is a function of static parsed JSONs. Safe to host publicly without sandboxing concerns.
+    details: Every response is a function of static parsed JSONs. Same inputs → same bytes out, reproducible across server versions.
   - icon: 🏗️
     title: Production-shaped
     details: LRU-bounded memory, Cloudflare rate limiting (100/60s/IP), structured per-request logging, post-deploy smoke testing, historical SHA addressing via `at:` on the hosted Worker.

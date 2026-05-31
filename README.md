@@ -10,13 +10,15 @@ Structured MCP server for the TC39 specs (ECMA-262 + ECMA-402) —
 SHA-pinned clauses, AOID-aware search, in+out cross-references,
 edition diffs, history.
 
-A read-only Model Context Protocol server that exposes
+A Model Context Protocol server that exposes
 [tc39/ecma262](https://github.com/tc39/ecma262) (the core ECMAScript
 language) and [tc39/ecma402](https://github.com/tc39/ecma402) (the
 Internationalization API, `Intl`) to AI agents and tooling. Returns
 **structured clauses** (signature, numbered steps, substeps, notes,
 cross-refs) rather than raw HTML, and pins every response to a
 specific spec SHA so anything cited is reproducible.
+
+See [Scope](#scope) for the full design constraints.
 
 ## Quick start
 
