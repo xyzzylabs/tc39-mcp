@@ -5,62 +5,78 @@ convention. Tool-specific alias files (`CLAUDE.md`, etc.) import
 this file via `@AGENTS.md` so every agent reads the same rules
 with no drift.
 
-`tc39-mcp` is a **general-purpose, public, read-only MCP server** for
-the TC39 specs (ECMA-262 + ECMA-402). It stands alone — it has no
-sibling project, no parent project, no private codebase it's
-extracted from. Treat it that way when you work in this directory.
+## What tc39-mcp is
+
+A general-purpose, public MCP server for the TC39 specs
+(ECMA-262 + ECMA-402). It exposes structured clauses, AOID-aware
+search, in+out cross-references, edition diffs, git history, test262
+search, and proposal lookup over the Model Context Protocol —
+locally over stdio or hosted as a Cloudflare Worker over HTTP. The
+data is SHA-pinned and auto-refreshes every ~4 hours from the
+upstream tc39/* mains.
+
+The server is the product. Tools, dependencies, and documentation
+should read as if written for any reader interested in the TC39
+specs, not for one specific downstream consumer.
 
 ## Hard rules
 
-1. **Never reference, hint at, or link to other projects** that may
-   consume this server. The server is the product; what consumes it is
-   none of its business.
-2. **Never add tools, dependencies, or docs that imply a specific
-   downstream use case.** The criterion for "should this tool exist?"
-   is *"does it expose structured TC39 spec data?"* — not *"is it
-   useful for X downstream workflow?"*.
-3. **Specifically forbidden names** in any file in this repo
-   (source, tests, docs, comments, commit messages):
-   - `pragmatist`
-   - `coq`, `rocq`, `Lean`, `Agda`, `K` framework
-   - `findings`, `audit`, `verifier`, `verify-finding`
-   - `engine differential`, `engines.diff`, `audit-engines`
-   - `playbook`, `eval set`, `eval harness`
-   - any reference to closed-source tooling that uses this server
-4. **The tool surface stays narrow.** Read-only, deterministic, no
+1. **The tool surface stays narrow.** Read-only, deterministic, no
    execution, no auth, no writes. New tools land only if they expose
    structured spec data and meet that contract — see
-   `CONTRIBUTING.md` § "What kinds of changes are welcome".
-5. **No subprocess fallbacks for hosted-incompatible paths.** Anything
-   that can't run behind a Cloudflare Worker (shell-out, network call,
-   filesystem write) doesn't belong in the tool surface. The only
-   subprocess in the whole server is `spec.history`'s `git log`
-   against a vendored checkout; nothing else.
+   [`CONTRIBUTING.md`](CONTRIBUTING.md) § "What kinds of changes are
+   welcome".
 
-## Why this rule exists
+2. **No subprocess fallbacks for hosted-incompatible paths.**
+   Anything that can't run behind a Cloudflare Worker (shell-out,
+   network call, filesystem write) doesn't belong in the tool
+   surface. The only subprocess in the whole server is
+   `spec.history`'s `git log` against a vendored checkout; nothing
+   else.
 
-This server is designed to be useful to **anyone** auditing,
-visualizing, or tooling against the TC39 specs. Tying it to one
-downstream workflow — even mentioning that workflow in comments —
-narrows the perceived audience, invites scope creep, and leaks
-information that has no business being here.
+3. **Comments and docs describe the code, not a downstream
+   workflow.** Anything that would only make sense to someone
+   familiar with a specific consumer of this server gets rewritten
+   to describe the general behavior instead.
 
-If you find yourself writing "this would be useful for X" in a
-comment, delete the X and keep the rest.
+4. **Commit messages, PR descriptions, and issue titles are part of
+   the project's public surface.** Same standard as code comments —
+   describe what changed and why in general terms.
 
-## Allowed references
+## Code conventions
 
-- Upstream TC39 repos: `tc39/ecma262`, `tc39/ecma402`, `tc39/test262`,
-  `tc39/proposal-*` — anything publicly authoritative.
-- Tooling that publicly consumes the MCP protocol: Claude Code, MCP
-  Inspector, other public agent frameworks.
+- TypeScript everywhere. Strict mode. Zod for input schemas. JSDoc
+  on every exported interface field — the `/tools` page is generated
+  from these.
+- Source of truth for tool docs lives next to the schema. The
+  generated `docs/tools.md` page is rebuilt by
+  `src/docs/build_api_reference.ts` on every `npm run docs:data`;
+  don't hand-edit it.
+- Co-locate examples with the schema as `<name>Examples` arrays —
+  the generator picks them up automatically.
+- Tests live next to source as `*.test.ts`. Worker tests under
+  `worker/src/**`. `vitest run` runs both.
+- Generated artifacts (`docs/snapshots.md`, `docs/changelog.md`) are
+  gitignored. `docs/tools.md` is tracked so a fresh clone or
+  GitHub browser sees the full reference without a build step.
+
+## What you can reference
+
+- Upstream TC39 repos: `tc39/ecma262`, `tc39/ecma402`,
+  `tc39/test262`, `tc39/proposal-*` — anything publicly authoritative.
+- Tooling that publicly consumes the MCP protocol: Claude Code,
+  Claude Desktop, MCP Inspector, Cursor, and other public agent
+  frameworks.
 - The hosted Cloudflare Worker deployment of THIS server (when it
   exists).
-- General-purpose ecosystem packages (`@tc39/ecma262-biblio`,
-  `cheerio`, `@modelcontextprotocol/sdk`, etc.).
+- General-purpose ecosystem packages: `@tc39/ecma262-biblio`,
+  `cheerio`, `@modelcontextprotocol/sdk`, etc.
+- Specs adjacent to TC39 that the tools structurally cite, e.g.
+  WHATWG, Unicode, IETF RFCs.
 
 ## When in doubt
 
-Default to silence. Adding *no* mention of a downstream project is
-always safer than adding the wrong mention. If a comment doesn't
-help someone reading the code understand the code, delete it.
+Default to silence. If a comment doesn't help someone reading the
+code understand the code, delete it. If a doc page implies a
+specific use case rather than describing the capability, rewrite it
+to describe the capability.
