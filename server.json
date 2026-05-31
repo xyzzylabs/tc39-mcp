@@ -1,0 +1,24 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.xyzzylabs/tc39-mcp",
+  "description": "Structural TC39 spec lookup (ECMA-262 + ECMA-402) for AI agents — SHA-pinned, offline-first.",
+  "repository": {
+    "url": "https://github.com/xyzzylabs/tc39-mcp",
+    "source": "github"
+  },
+  "version": "0.1.3",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "tc39-mcp",
+      "version": "0.1.3",
+      "transport": { "type": "stdio" }
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://tc39-mcp.chicoxyzzy.workers.dev/mcp"
+    }
+  ]
+}

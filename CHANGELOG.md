@@ -26,6 +26,24 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
+## [0.1.3] — 2026-05-31
+
+Two non-runtime additions on top of 0.1.2:
+
+- **`package.json` carries the `mcpName` field** pointing at
+  `io.github.xyzzylabs/tc39-mcp`. The MCP Registry uses this to
+  verify that the npm package and the registry namespace are
+  controlled by the same party; without it, publishing the
+  server.json to the registry fails the anti-squatting check.
+- **README rebalanced.** 0.1.2 led the README with offline-first;
+  this version leads with the agentic spec-lookup framing
+  (offline becomes a supporting bullet). The README that lands on
+  npmjs.com with this publish is the one currently rendered on
+  the docs site.
+
+No runtime behavior change — the MCP server speaks the same
+protocol against the same parsed snapshots as 0.1.2.
+
 ## [0.1.2] — 2026-05-31
 
 No changes to the published npm package's runtime behavior — the MCP
