@@ -44,10 +44,12 @@ export const test262SearchExamples = [
   {
     q: "Tests anchored to sec-tonumber",
     input: { esid: "sec-tonumber" },
+    note: "`esid` is prefix-matched: this also catches `sec-tonumber-applied-to-the-string-type` and other nested ids without listing them.",
   },
   {
     q: "Tests mentioning `for-await-of`",
     input: { query: "for-await-of" },
+    note: "`query` matches case-insensitively across description + path. Pair it with `esid` to AND-narrow.",
   },
 ] as const;
 

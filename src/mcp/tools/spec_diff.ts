@@ -47,6 +47,7 @@ export const specDiffExamples = [
   {
     q: "How did ToNumber change from es2024 to the working draft?",
     input: { id: "sec-tonumber", from: "es2024", to: "main" },
+    note: "Returns `status` ('identical' / 'modified' / etc.) plus a per-field diff. Pair with `spec.history` (Cookbook recipe 2) for a temporal walk.",
   },
 ] as const;
 

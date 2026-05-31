@@ -33,6 +33,7 @@ Return self-description of this MCP server: package name + version, per-snapshot
 ### What it answers
 
 - **How fresh is this server's data, and what version is it?** — `{}`
+    - _Cheap call — no clause trees loaded. Each snapshot reports its upstream SHA + `fetched_at` so findings can pin reproducibility._
 
 ### Input
 
@@ -173,7 +174,9 @@ Search the parsed spec by clause id / aoid / title (and step text when search_st
 ### What it answers
 
 - **Find the clause that defines Canonicalize** — `{"query":"Canonicalize"}`
+    - _Ranks aoid-exact matches first; useful when you have an op name from an error or a prose mention._
 - **Where is sloppy-mode unbound `this` resolved?** — `{"query":"this","search_steps":true}`
+    - _`search_steps: true` also scans algorithm step text. Slower + noisier than the default but the only way to catch in-step mentions._
 
 ### Input
 
@@ -208,7 +211,9 @@ For a clause id, return its outgoing references (clauses it cites) and/or incomi
 ### What it answers
 
 - **Which clauses cite ToNumber?** — `{"id":"sec-tonumber","direction":"in"}`
+    - _The reverse index is AOID-densified — bare AOID mentions in step text count, not just explicit `<emu-xref>` hrefs._
 - **Every 262 op that Intl.Collator's compare reaches** — `{"id":"sec-intl.collator.prototype.compare","spec":"402","direction":"out","include_cross_spec":true}`
+    - _`include_cross_spec` is off by default because it loads both specs into memory. Turn it on when you want the full call graph across 262/402._
 
 ### Input
 
@@ -232,6 +237,7 @@ Clause-level diff across any two editions of one spec. Defaults: from='latest', 
 ### What it answers
 
 - **How did ToNumber change from es2024 to the working draft?** — `{"id":"sec-tonumber","from":"es2024","to":"main"}`
+    - _Returns `status` ('identical' / 'modified' / etc.) plus a per-field diff. Pair with `spec.history` (Cookbook recipe 2) for a temporal walk._
 
 ### Input
 
@@ -299,8 +305,11 @@ Resolve spec notation like `[[Prototype]]` (internal slot), `%Object.prototype%`
 ### What it answers
 
 - **What does `[[Prototype]]` mean?** — `{"notation":"[[Prototype]]"}`
+    - _Classified as `internal-slot`. Ranking bumps clauses in §6 (type domain) and §10 (ordinary + exotic objects)._
 - **Where is `%Object.prototype%` defined?** — `{"notation":"%Object.prototype%"}`
+    - _Classified as `intrinsic`. Cross-check with `spec.tables({ id: "table-well-known-intrinsic-objects" })` for the authoritative WKI table._
 - **What is the `~enumerate~` hint?** — `{"notation":"~enumerate~"}`
+    - _Classified as `sigil-enum`. Useful for the Hint enums passed to ToPrimitive and friends._
 
 ### Input
 
@@ -468,7 +477,9 @@ Search tc39/test262 for tests matching a free-text query and/or an esid (clause 
 ### What it answers
 
 - **Tests anchored to sec-tonumber** — `{"esid":"sec-tonumber"}`
+    - _`esid` is prefix-matched: this also catches `sec-tonumber-applied-to-the-string-type` and other nested ids without listing them._
 - **Tests mentioning `for-await-of`** — `{"query":"for-await-of"}`
+    - _`query` matches case-insensitively across description + path. Pair it with `esid` to AND-narrow._
 
 ### Input
 

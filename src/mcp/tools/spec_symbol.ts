@@ -51,14 +51,17 @@ export const specSymbolResolveExamples = [
   {
     q: "What does `[[Prototype]]` mean?",
     input: { notation: "[[Prototype]]" },
+    note: "Classified as `internal-slot`. Ranking bumps clauses in §6 (type domain) and §10 (ordinary + exotic objects).",
   },
   {
     q: "Where is `%Object.prototype%` defined?",
     input: { notation: "%Object.prototype%" },
+    note: "Classified as `intrinsic`. Cross-check with `spec.tables({ id: \"table-well-known-intrinsic-objects\" })` for the authoritative WKI table.",
   },
   {
     q: "What is the `~enumerate~` hint?",
     input: { notation: "~enumerate~" },
+    note: "Classified as `sigil-enum`. Useful for the Hint enums passed to ToPrimitive and friends.",
   },
 ] as const;
 

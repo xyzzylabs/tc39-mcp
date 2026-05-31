@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/tc39-mcp.svg)](https://www.npmjs.com/package/tc39-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-📖 **Docs site** (same origin as the API): [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — [Tools](https://tc39-mcp.chicoxyzzy.workers.dev/tools) · [Snapshots](https://tc39-mcp.chicoxyzzy.workers.dev/snapshots) · [Architecture](https://tc39-mcp.chicoxyzzy.workers.dev/architecture) · [Deployment](https://tc39-mcp.chicoxyzzy.workers.dev/deployment) · [Changelog](https://tc39-mcp.chicoxyzzy.workers.dev/changelog)
+📖 **Docs site** (same origin as the API): [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — [Get started](https://tc39-mcp.chicoxyzzy.workers.dev/getting-started) · [Tools](https://tc39-mcp.chicoxyzzy.workers.dev/tools) · [Cookbook](https://tc39-mcp.chicoxyzzy.workers.dev/cookbook) · [Editions](https://tc39-mcp.chicoxyzzy.workers.dev/editions) · [Architecture](https://tc39-mcp.chicoxyzzy.workers.dev/architecture) · [Hosting](https://tc39-mcp.chicoxyzzy.workers.dev/deployment)
 
 Structured MCP server for the TC39 specs (ECMA-262 + ECMA-402) —
 SHA-pinned clauses, AOID-aware search, in+out cross-references,
@@ -75,11 +75,17 @@ tc39-mcp                     # reads stdio
   without scraping or hitting a 4 MB HTML file.
 - **Cross-version analysis** — `spec.diff` between any two editions
   back to ES2016; `spec.history` walks the upstream git log.
+  ([Cookbook recipe 2](docs/cookbook.md#recipe-2-prose-drift-how-did-tonumber-change-over-the-past-year).)
 - **Cross-spec analysis** — `spec.crossrefs { include_cross_spec: true }`
   resolves references that point from ECMA-262 into ECMA-402 (or vice
   versa). Useful for queries like "every 262 op that calls into Intl."
+  ([Cookbook recipe 1](docs/cookbook.md#recipe-1-cross-spec-lookup-which-ecma-262-ops-does-intl-reach-into).)
 - **Tools that need an AOID → clause-id index** — `spec.search`
   ranks aoid-exact matches first.
+
+Brand new to MCP, or to this server? Start with
+[`docs/getting-started.md`](docs/getting-started.md) — five-minute
+install + wiring + first-call walkthrough.
 
 ## Tools (19 across 5 namespaces)
 
@@ -250,9 +256,11 @@ Hosted at [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.
 
 In-repo (source for the hosted site + GitHub-rendered fallback):
 
-- [`docs/architecture.md`](docs/architecture.md) — data pipeline, parser, cache, alias resolution, memory model.
-- [`docs/tools.md`](docs/tools.md) — full reference for every tool: inputs, outputs, ranking rules.
+- [`docs/getting-started.md`](docs/getting-started.md) — install → wire into your MCP client → first call → verify. Five minutes.
+- [`docs/tools.md`](docs/tools.md) — every tool, every input field, every "What it answers" example. Auto-generated from `src/mcp/server.ts` + `src/mcp/tools/*.ts`.
+- [`docs/cookbook.md`](docs/cookbook.md) — multi-tool recipes: cross-spec lookups, prose-drift tracking, SDO/grammar audits, test262 coverage, proposal-to-clause mapping.
 - [`docs/editions.md`](docs/editions.md) — spec + edition model and how to add new releases.
+- [`docs/architecture.md`](docs/architecture.md) — data pipeline, parser, cache, alias resolution, memory model.
 - [`docs/deployment.md`](docs/deployment.md) — local stdio, npm CLI, hosted Cloudflare Worker, refresh model, observability.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — what kinds of changes land easily, what won't.
 - [`SECURITY.md`](SECURITY.md) — threat model + how to report issues.

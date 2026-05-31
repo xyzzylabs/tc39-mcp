@@ -50,6 +50,10 @@ interface ToolExample {
   q: string;
   /** Input arguments as a JSON-able literal. */
   input: Record<string, unknown>;
+  /** Optional extra context — e.g. what's noteworthy about the
+   *  response, a caveat, or a follow-up suggestion. Renders as a
+   *  sub-bullet under the example on the docs page. */
+  note?: string;
 }
 
 interface ToolDoc {
@@ -409,9 +413,15 @@ export function parseToolFile(
             (v as Record<string, unknown>).input &&
             typeof (v as Record<string, unknown>).input === "object"
           ) {
+            const rec = v as {
+              q: string;
+              input: Record<string, unknown>;
+              note?: unknown;
+            };
             out.push({
-              q: (v as { q: string }).q,
-              input: (v as { input: Record<string, unknown> }).input,
+              q: rec.q,
+              input: rec.input,
+              note: typeof rec.note === "string" ? rec.note : undefined,
             });
           }
         }
@@ -598,6 +608,9 @@ function renderTool(doc: ToolDoc): string {
     for (const ex of doc.examples) {
       const inp = JSON.stringify(ex.input);
       md += `- **${escapeAnglesOutsideCode(ex.q)}** — \`${mdEscape(inp)}\`\n`;
+      if (ex.note) {
+        md += `    - _${escapeAnglesOutsideCode(ex.note)}_\n`;
+      }
     }
     md += "\n";
   }

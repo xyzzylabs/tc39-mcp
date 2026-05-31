@@ -66,6 +66,7 @@ export const specCrossrefsExamples = [
   {
     q: "Which clauses cite ToNumber?",
     input: { id: "sec-tonumber", direction: "in" },
+    note: "The reverse index is AOID-densified — bare AOID mentions in step text count, not just explicit `<emu-xref>` hrefs.",
   },
   {
     q: "Every 262 op that Intl.Collator's compare reaches",
@@ -75,6 +76,7 @@ export const specCrossrefsExamples = [
       direction: "out",
       include_cross_spec: true,
     },
+    note: "`include_cross_spec` is off by default because it loads both specs into memory. Turn it on when you want the full call graph across 262/402.",
   },
 ] as const;
 

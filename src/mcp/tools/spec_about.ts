@@ -34,6 +34,7 @@ export const specAboutExamples = [
   {
     q: "How fresh is this server's data, and what version is it?",
     input: {},
+    note: "Cheap call — no clause trees loaded. Each snapshot reports its upstream SHA + `fetched_at` so findings can pin reproducibility.",
   },
 ] as const;
 

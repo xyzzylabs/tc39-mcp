@@ -62,10 +62,12 @@ export const specSearchExamples = [
   {
     q: "Find the clause that defines Canonicalize",
     input: { query: "Canonicalize" },
+    note: "Ranks aoid-exact matches first; useful when you have an op name from an error or a prose mention.",
   },
   {
     q: "Where is sloppy-mode unbound `this` resolved?",
     input: { query: "this", search_steps: true },
+    note: "`search_steps: true` also scans algorithm step text. Slower + noisier than the default but the only way to catch in-step mentions.",
   },
 ] as const;
 
