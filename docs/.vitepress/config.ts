@@ -53,22 +53,26 @@ export default defineConfig({
     // changelog stay reachable from the sidebar — they're audit
     // surfaces, not destinations.
     nav: [
-      { text: "Overview", link: "/" },
+      { text: "Get started", link: "/getting-started" },
       { text: "Tools", link: "/tools" },
+      { text: "Cookbook", link: "/cookbook" },
       { text: "Editions", link: "/editions" },
-      { text: "Architecture", link: "/architecture" },
       { text: "Hosting", link: "/deployment" },
     ],
 
     sidebar: [
       {
         text: "Get started",
-        items: [{ text: "Overview", link: "/" }],
+        items: [
+          { text: "Overview", link: "/" },
+          { text: "Get started in 5 min", link: "/getting-started" },
+        ],
       },
       {
         text: "Reference",
         items: [
           { text: "Tool reference", link: "/tools" },
+          { text: "Cookbook", link: "/cookbook" },
           { text: "Editions + specs", link: "/editions" },
           { text: "Live snapshots", link: "/snapshots" },
           { text: "Changelog", link: "/changelog" },
