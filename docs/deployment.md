@@ -291,6 +291,40 @@ new R2 contents propagate to the next cold-started isolate
 automatically. **No code redeploy is needed for data freshness** —
 new uploads to R2 are picked up by the next isolate restart.
 
+### Two-layer read cache + free-tier hardening
+
+The R2 reads are wrapped in two cache layers so a cold isolate
+doesn't always go to R2:
+
+| Layer | Lifetime | Scope | What it costs |
+|---|---|---|---|
+| Isolate memory (`specCache`) | Up to isolate recycling (minutes) | One Worker isolate | 0 — RAM |
+| Workers Cache API (`caches.default`) | Per `Cache-Control` TTL | One Cloudflare colo | 0 — does not count toward R2 Class B |
+| R2 (`env.SPECS.get`) | Authoritative | Global | Counts toward R2 Class B reads |
+
+`worker/src/r2.ts`'s `readTextWithEdgeCache` populates the Cache API
+on every cold R2 read. Per-SHA snapshots (`spec-<spec>-<edition>-<sha10>.json`)
+are cached `public, max-age=86400, immutable` since the bytes are
+pinned forever; live mains (`*-main.json`, `proposals-index.json`)
+use `max-age=300` so a refresh-triggered redeploy propagates within
+five minutes. `test262-index.json` (13.8 MB) skips the Cache API and
+relies on the isolate cache only.
+
+The wrangler-bound rate limiter is sized to keep the worst-case
+worst-actor under the R2 Class B free allowance (10 M reads/month):
+
+| Setting | Value | Worst-case load per IP |
+|---|---|---|
+| `simple.limit` | 30 | 30 req/min |
+| `simple.period` | 60 s | × 60 × 24 × 30 = 1.3 M req/month |
+| R2 reads per request | up to 3 (with edge cache it's typically 0–1) | ≤ 3.9 M Class B reads/month/IP |
+
+A single sustained attacker can't push the account into paid usage
+on R2; an honest agent's traffic is two orders of magnitude below
+the limit (~5/min is typical). Tune via the dashboard without
+re-deploying by overriding `[[unsafe.bindings]]` in a wrangler
+environment.
+
 ### Atomic-ish deploys (v0.1)
 
 R2 uploads happen in a deliberate order — historical pins + side
@@ -308,7 +342,7 @@ is a v0.2 add.
 |---|---|---|
 | Full re-upload every deploy (~50 MB) | ~60-90 s deploy time; R2 egress cost | Compare local SHA vs R2 ETag; skip unchanged objects |
 | Inconsistency window during upload (2-5 s) | Worker might briefly serve mixed-version data | Upload to versioned keys, swap a manifest atomically last |
-| No Cache-Control headers on tool responses | Cloudflare CDN doesn't cache tool responses | Set `Cache-Control: public, max-age=300` + ETag on cacheable outputs |
+| No Cache-Control headers on tool responses | Cloudflare CDN doesn't cache JSON-RPC POSTs | Switch to GET-cacheable HTTP variants of the read tools in v0.2 |
 | No active purge of stale isolates | Stale isolates serve old R2 reads from in-memory cache for their lifetime | Cloudflare's isolate recycling handles it (minutes); acceptable for v0.1 |
 
 These are optimizations, not correctness gaps. The current design is

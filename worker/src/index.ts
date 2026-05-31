@@ -259,7 +259,18 @@ const corsHeaders = {
 };
 
 export default {
-  async fetch(request: Request, env: R2Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: R2Env,
+    ctx?: ExecutionContext,
+  ): Promise<Response> {
+    // Expose the per-request ExecutionContext to the R2 loaders in
+    // r2.ts so they can `ctx.waitUntil(cache.put(...))` after a cold
+    // R2 read. Mutation is safe — Workers hands fetch() a fresh env
+    // per request; nothing else aliases it. Optional because vitest
+    // call sites construct fetch invocations without an ExecutionContext.
+    if (ctx) env.executionContext = ctx;
+
     const url = new URL(request.url);
 
     // CORS preflight is only relevant to the JSON-RPC endpoint; static

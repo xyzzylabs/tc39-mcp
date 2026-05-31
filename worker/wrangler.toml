@@ -34,16 +34,20 @@ preview_bucket_name = "tc39-mcp-specs-preview"
 LOG_LEVEL = "info"
 
 # Built-in per-Worker rate limiter (Cloudflare's `ratelimit` binding).
-# 100 requests per 60 s per client IP — enough headroom for any
-# reasonable agent workflow, low enough to cut off scrapers + bad
-# actors who'd otherwise rack up R2 egress. Tune via the dashboard
-# without re-deploying by overriding [[unsafe.bindings]] in wrangler
+# 30 requests per 60 s per client IP — comfortable for any human +
+# agent workflow (an interactive chat session rarely exceeds ~5/min),
+# tight enough that a single scraper running flat-out for a month
+# can't cross the R2 Class B free allowance. Math: 30/min × 1440 min
+# × 30 days × 3 R2 reads/req ≈ 3.9 M Class B reads/month per IP, well
+# under the 10 M free allowance. Tune via the dashboard without
+# re-deploying by overriding [[unsafe.bindings]] in wrangler
 # environments.
 [[unsafe.bindings]]
 name = "RATE_LIMITER"
 type = "ratelimit"
 namespace_id = "1001"
-simple = { limit = 100, period = 60 }
+simple = { limit = 30, period = 60 }
+
 
 # Routes / observability are configured per-deployment; keep the
 # committed config minimal so anyone can `wrangler deploy --env=...`

@@ -23,6 +23,86 @@ export interface R2Env {
    *  tests can omit it; the runtime fetch() handler returns a plain
    *  404 when the binding is absent. */
   ASSETS?: { fetch(request: Request): Promise<Response> };
+  /** Per-request ExecutionContext. Set by the fetch handler in
+   *  `index.ts`; used here for `ctx.waitUntil(cache.put(...))` so
+   *  edge-cache writes survive past the response send. Optional so
+   *  unit tests and direct callers can run without it (in which case
+   *  the edge-cache write is skipped and the read still works). */
+  executionContext?: ExecutionContext;
+}
+
+// ─── edge-cache helper ────────────────────────────────────────────
+//
+// Layer two of the R2 read path. After the in-memory isolate cache
+// (specCache, test262Cache, proposalsCache) misses, we check
+// Cloudflare's per-colo Workers Cache. On hit, we skip R2 entirely —
+// reads against the Cache API don't count toward the R2 Class B
+// free allowance. On miss, we read R2, then write the bytes back
+// into the cache for the next isolate that wakes up cold.
+//
+// Why a synthetic URL: the Cache API keys by URL. We don't expose R2
+// objects on a public path, so the cache key needs to be a stable
+// internal one we own. The host is intentionally a non-resolving
+// `.internal` so it can never collide with real Worker routing.
+
+const EDGE_CACHE_BASE = "https://tc39-mcp.internal/r2/";
+
+/** TTL + immutability hint per R2 key. Per-SHA snapshots
+ *  (`spec-<spec>-<edition>-<sha10>.json`, written by upload-r2.ts on
+ *  every refresh) are immutable by construction — once a SHA is
+ *  pinned, the bytes will never change, so cache them aggressively
+ *  with `immutable`. Live `*-main.json` and `*-<edition>.json` files
+ *  can be overwritten by the next refresh, so cap their TTL at
+ *  300 s — short enough that a refresh-triggered redeploy propagates
+ *  within five minutes, long enough to absorb burst traffic. */
+function cacheControlFor(key: string): string {
+  const isImmutable = /-[a-f0-9]{10}\.json$/.test(key);
+  return isImmutable
+    ? "public, max-age=86400, immutable"
+    : "public, max-age=300";
+}
+
+/** Resolve `caches.default` defensively. Vitest runs Worker code in
+ *  Node where the global isn't defined; production runs have it. */
+function edgeCache(): Cache | null {
+  return typeof caches !== "undefined" ? caches.default : null;
+}
+
+/** Read an R2 key as text, layered through the edge cache. Returns
+ *  `null` if the object doesn't exist in R2. */
+async function readTextWithEdgeCache(
+  env: R2Env,
+  key: string,
+): Promise<string | null> {
+  const store = edgeCache();
+  const cacheReq = store
+    ? new Request(`${EDGE_CACHE_BASE}${key}`)
+    : null;
+
+  if (store && cacheReq) {
+    const hit = await store.match(cacheReq);
+    if (hit) return hit.text();
+  }
+
+  const obj = await env.SPECS.get(key);
+  if (!obj) return null;
+  const text = await obj.text();
+
+  if (store && cacheReq && env.executionContext) {
+    env.executionContext.waitUntil(
+      store.put(
+        cacheReq,
+        new Response(text, {
+          headers: {
+            "cache-control": cacheControlFor(key),
+            "content-type": "application/json",
+          },
+        }),
+      ),
+    );
+  }
+
+  return text;
 }
 
 // We re-declare the spec types locally to keep the Worker bundle
@@ -118,15 +198,14 @@ export async function loadParsedSpec(
   const key = specKey(spec, edition, at);
   const cached = specCache.get(key);
   if (cached) return cached;
-  const obj = await env.SPECS.get(key);
-  if (!obj) {
+  const text = await readTextWithEdgeCache(env, key);
+  if (text === null) {
     throw new Error(
       at
         ? `Missing historical snapshot in R2: ${key}. Use \`spec.about\` to see what's available, or omit \`at\` to query the live snapshot.`
         : `Missing parsed spec object in R2: ${key}. Upload via the deploy-worker workflow or scripts/upload-r2.ts.`,
     );
   }
-  const text = await obj.text();
   const parsed = JSON.parse(text) as ParsedSpec;
   specCache.set(key, parsed);
   return parsed;
@@ -150,10 +229,10 @@ export async function loadProposalsIndex(
   env: R2Env,
 ): Promise<ProposalsIndexFile | null> {
   if (proposalsCache) return proposalsCache;
-  const obj = await env.SPECS.get("proposals-index.json");
-  if (!obj) return null;
+  const text = await readTextWithEdgeCache(env, "proposals-index.json");
+  if (text === null) return null;
   try {
-    proposalsCache = JSON.parse(await obj.text()) as ProposalsIndexFile;
+    proposalsCache = JSON.parse(text) as ProposalsIndexFile;
     return proposalsCache;
   } catch {
     return null;
