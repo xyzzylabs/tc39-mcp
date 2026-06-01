@@ -91,6 +91,12 @@ export default defineConfig({
           { text: "Sponsor tc39-mcp", link: "/sponsor" },
         ],
       },
+      {
+        text: "Policies",
+        items: [
+          { text: "Privacy Policy", link: "/privacy" },
+        ],
+      },
     ],
 
     socialLinks: [

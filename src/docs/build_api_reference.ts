@@ -136,35 +136,105 @@ export function readStringConstArrays(
   return out;
 }
 
-// ─── server.ts: find all server.tool(name, desc, schemaIdent, handler) ──
+// ─── server.ts: find all tool registrations ────────────────────────────
+//
+// Two shapes are recognized:
+//
+//   server.tool(name, description, schemaIdent, handler)
+//
+//   server.registerTool(name, {
+//     title?, description, inputSchema: schemaIdent,
+//     annotations?: { readOnlyHint, ... },
+//   }, handler)
+//
+// Both surface the same { name, description, schemaIdent } triple to
+// downstream rendering. The richer `registerTool` form's title +
+// annotations are MCP runtime metadata only — they don't change the
+// generated tools.md page shape.
 
 export function parseServerTools(serverPath: string): ToolReg[] {
   const src = readFileSync(serverPath, "utf8");
   const sf = ts.createSourceFile(serverPath, src, ts.ScriptTarget.Latest, true);
   const out: ToolReg[] = [];
+
+  function extractStringProperty(
+    obj: ts.ObjectLiteralExpression,
+    key: string,
+  ): string | undefined {
+    for (const prop of obj.properties) {
+      if (
+        ts.isPropertyAssignment(prop) &&
+        ts.isIdentifier(prop.name) &&
+        prop.name.text === key &&
+        ts.isStringLiteral(prop.initializer)
+      ) {
+        return prop.initializer.text;
+      }
+    }
+    return undefined;
+  }
+
+  function extractIdentifierProperty(
+    obj: ts.ObjectLiteralExpression,
+    key: string,
+  ): string | undefined {
+    for (const prop of obj.properties) {
+      if (
+        ts.isPropertyAssignment(prop) &&
+        ts.isIdentifier(prop.name) &&
+        prop.name.text === key &&
+        ts.isIdentifier(prop.initializer)
+      ) {
+        return prop.initializer.text;
+      }
+    }
+    return undefined;
+  }
+
   const visit = (node: ts.Node) => {
     if (
       ts.isCallExpression(node) &&
       ts.isPropertyAccessExpression(node.expression) &&
       ts.isIdentifier(node.expression.expression) &&
       node.expression.expression.text === "server" &&
-      ts.isIdentifier(node.expression.name) &&
-      node.expression.name.text === "tool"
+      ts.isIdentifier(node.expression.name)
     ) {
-      const [nameArg, descArg, schemaArg] = node.arguments;
-      if (
-        nameArg &&
-        descArg &&
-        schemaArg &&
-        ts.isStringLiteral(nameArg) &&
-        ts.isStringLiteral(descArg) &&
-        ts.isIdentifier(schemaArg)
-      ) {
-        out.push({
-          name: nameArg.text,
-          description: descArg.text,
-          schemaIdent: schemaArg.text,
-        });
+      const method = node.expression.name.text;
+      if (method === "tool") {
+        // Legacy 4-arg form.
+        const [nameArg, descArg, schemaArg] = node.arguments;
+        if (
+          nameArg &&
+          descArg &&
+          schemaArg &&
+          ts.isStringLiteral(nameArg) &&
+          ts.isStringLiteral(descArg) &&
+          ts.isIdentifier(schemaArg)
+        ) {
+          out.push({
+            name: nameArg.text,
+            description: descArg.text,
+            schemaIdent: schemaArg.text,
+          });
+        }
+      } else if (method === "registerTool") {
+        // Object-config form.
+        const [nameArg, configArg] = node.arguments;
+        if (
+          nameArg &&
+          configArg &&
+          ts.isStringLiteral(nameArg) &&
+          ts.isObjectLiteralExpression(configArg)
+        ) {
+          const description = extractStringProperty(configArg, "description");
+          const schemaIdent = extractIdentifierProperty(
+            configArg,
+            "inputSchema",
+          );
+          if (description !== undefined && schemaIdent !== undefined) {
+            out.push({ name: nameArg.text, description, schemaIdent });
+          }
+        }
       }
     }
     ts.forEachChild(node, visit);

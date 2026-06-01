@@ -247,6 +247,20 @@ In-repo (also browseable on GitHub):
 - [`CHANGELOG.md`](CHANGELOG.md) — version history + auto-refresh
   convention.
 
+## Privacy Policy
+
+tc39-mcp is a read-only spec lookup service. The stdio transport
+(`npx tc39-mcp`) collects nothing — every spec snapshot ships
+in the npm tarball and the server runs entirely offline. The
+hosted Cloudflare Worker collects only standard request metadata
+(IP for rate limiting, timestamps, request headers); it does not
+log request bodies, set cookies, or share data with third parties.
+
+Full policy: [tc39-mcp.chicoxyzzy.workers.dev/privacy](https://tc39-mcp.chicoxyzzy.workers.dev/privacy)
+
+For privacy questions, open an issue with the `privacy` label on
+[GitHub](https://github.com/xyzzylabs/tc39-mcp/issues).
+
 ## License
 
 MIT
