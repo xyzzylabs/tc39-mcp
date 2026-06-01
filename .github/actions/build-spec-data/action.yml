@@ -1,0 +1,68 @@
+name: Build spec data
+description: >
+  Shared CI prefix for any workflow that needs the parsed TC39 spec
+  artifacts on disk. Restores node_modules + vendor/ + build/ from
+  three independently-keyed caches and runs the install / fetch /
+  parse steps only on cache miss. Cache layout:
+
+  - node_modules → keyed on package-lock.json. Skips `npm ci` on hit.
+  - vendor/      → keyed on .last-refresh.json (the sentinel
+                    refresh.yml updates on every upstream-detected
+                    refresh). Skips fetch-spec / fetch-test262 /
+                    fetch-proposals on hit.
+  - build/       → keyed on .last-refresh.json + parser + index-
+                    builder source paths. Skips parse + index-build
+                    on hit.
+
+  Callers must run actions/checkout + actions/setup-node BEFORE
+  invoking this action — the composite needs the tree on disk and
+  needs node + npm available on PATH.
+
+runs:
+  using: composite
+  steps:
+    - name: Cache node_modules
+      id: cache-node-modules
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: nm-v1-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
+
+    - name: Install dependencies
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm ci
+
+    - name: Cache vendor/
+      id: cache-vendor
+      uses: actions/cache@v4
+      with:
+        path: vendor
+        key: vendor-v1-${{ hashFiles('.last-refresh.json') }}
+        restore-keys: |
+          vendor-v1-
+
+    - name: Fetch upstream specs + test262 + proposals
+      if: steps.cache-vendor.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        npm run fetch-spec
+        npm run fetch-test262
+        npm run fetch-proposals
+
+    - name: Cache build/
+      id: cache-build
+      uses: actions/cache@v4
+      with:
+        path: build
+        key: build-v1-${{ hashFiles('.last-refresh.json', 'src/parser/**', 'src/test262/**', 'src/proposals/**') }}
+        restore-keys: |
+          build-v1-
+
+    - name: Parse specs + build indexes
+      if: steps.cache-build.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        npm run parse
+        npm run build-test262-index
+        npm run build-proposals-index

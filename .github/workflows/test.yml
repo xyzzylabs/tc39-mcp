@@ -36,71 +36,11 @@ jobs:
           node-version: "22"
           cache: npm
 
-      # node_modules cache. setup-node above caches ~/.npm (the npm
-      # download cache) but `npm ci` still does the install / unpack /
-      # link work each run. Caching node_modules itself keyed on
-      # package-lock.json skips the install entirely on hit. Lockfile
-      # change → cache key changes → install runs.
-      - name: Cache node_modules
-        id: cache-node-modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: nm-v1-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
-
-      - name: Install dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
-
-      # vendor/ cache. The fetch-spec / fetch-test262 / fetch-proposals
-      # scripts clone large upstream repos (~hundreds of MB total).
-      # `.last-refresh.json` records the SHAs from the most recent
-      # refresh.yml run; using it as the cache key means:
-      #
-      # - When refresh.yml commits a new sentinel, the cache key
-      #   changes → next workflow run on main fetches fresh and
-      #   repopulates.
-      # - All subsequent runs (PRs, re-runs) hit the cache and skip
-      #   the fetch entirely.
-      #
-      # `restore-keys` lets a fresh-repo run with no sentinel still
-      # benefit from a prior best-effort cache. The fetch step's
-      # `if:` gate then determines whether to skip or refetch.
-      - name: Cache vendor/
-        id: cache-vendor
-        uses: actions/cache@v4
-        with:
-          path: vendor
-          key: vendor-v1-${{ hashFiles('.last-refresh.json') }}
-          restore-keys: |
-            vendor-v1-
-
-      - name: Fetch TC39 specs + test262 + proposals
-        if: steps.cache-vendor.outputs.cache-hit != 'true'
-        run: |
-          npm run fetch-spec
-          npm run fetch-test262
-          npm run fetch-proposals
-
-      # build/ cache. Parsed spec JSON + test262 index + proposals
-      # index are deterministic functions of (vendor SHAs, parser
-      # code, index-builder code). Bust the cache when any of those
-      # change.
-      - name: Cache build/
-        id: cache-build
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: build-v1-${{ hashFiles('.last-refresh.json', 'src/parser/**', 'src/test262/**', 'src/proposals/**') }}
-          restore-keys: |
-            build-v1-
-
-      - name: Parse specs + build indexes
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        run: |
-          npm run parse
-          npm run build-test262-index
-          npm run build-proposals-index
+      # Shared install + fetch + parse prefix with three caches
+      # (node_modules, vendor/, build/). See
+      # .github/actions/build-spec-data/action.yml for the cache-key
+      # strategy and per-step gating.
+      - uses: ./.github/actions/build-spec-data
 
       - name: Type-check
         run: npm run typecheck

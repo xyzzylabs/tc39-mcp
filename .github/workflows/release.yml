@@ -56,52 +56,11 @@ jobs:
           fi
           echo "Tag and version agree on $pkg"
 
-      # node_modules cache. Mirrors test.yml — see commentary there.
-      - name: Cache node_modules
-        id: cache-node-modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: nm-v1-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
-
-      - name: Install dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
-
-      # vendor/ cache keyed on .last-refresh.json — if test.yml ran
+      # Shared install + fetch + parse prefix. If test.yml ran
       # earlier on the same main push that refresh.yml created, the
-      # cache is warm and we skip the fetch.
-      - name: Cache vendor/
-        id: cache-vendor
-        uses: actions/cache@v4
-        with:
-          path: vendor
-          key: vendor-v1-${{ hashFiles('.last-refresh.json') }}
-          restore-keys: |
-            vendor-v1-
-
-      - name: Fetch TC39 specs + test262 + proposals
-        if: steps.cache-vendor.outputs.cache-hit != 'true'
-        run: |
-          npm run fetch-spec
-          npm run fetch-test262
-          npm run fetch-proposals
-
-      - name: Cache build/
-        id: cache-build
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: build-v1-${{ hashFiles('.last-refresh.json', 'src/parser/**', 'src/test262/**', 'src/proposals/**') }}
-          restore-keys: |
-            build-v1-
-
-      - name: Parse specs + build indexes
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        run: |
-          npm run parse
-          npm run build-test262-index
-          npm run build-proposals-index
+      # vendor/ + build/ caches are already warm and we skip the
+      # fetch + parse entirely.
+      - uses: ./.github/actions/build-spec-data
 
       - name: Type-check
         run: npm run typecheck
