@@ -36,26 +36,71 @@ jobs:
           node-version: "22"
           cache: npm
 
+      # node_modules cache. setup-node above caches ~/.npm (the npm
+      # download cache) but `npm ci` still does the install / unpack /
+      # link work each run. Caching node_modules itself keyed on
+      # package-lock.json skips the install entirely on hit. Lockfile
+      # change → cache key changes → install runs.
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: nm-v1-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
+
       - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Fetch TC39 specs
-        run: npm run fetch-spec
+      # vendor/ cache. The fetch-spec / fetch-test262 / fetch-proposals
+      # scripts clone large upstream repos (~hundreds of MB total).
+      # `.last-refresh.json` records the SHAs from the most recent
+      # refresh.yml run; using it as the cache key means:
+      #
+      # - When refresh.yml commits a new sentinel, the cache key
+      #   changes → next workflow run on main fetches fresh and
+      #   repopulates.
+      # - All subsequent runs (PRs, re-runs) hit the cache and skip
+      #   the fetch entirely.
+      #
+      # `restore-keys` lets a fresh-repo run with no sentinel still
+      # benefit from a prior best-effort cache. The fetch step's
+      # `if:` gate then determines whether to skip or refetch.
+      - name: Cache vendor/
+        id: cache-vendor
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: vendor-v1-${{ hashFiles('.last-refresh.json') }}
+          restore-keys: |
+            vendor-v1-
 
-      - name: Fetch test262
-        run: npm run fetch-test262
+      - name: Fetch TC39 specs + test262 + proposals
+        if: steps.cache-vendor.outputs.cache-hit != 'true'
+        run: |
+          npm run fetch-spec
+          npm run fetch-test262
+          npm run fetch-proposals
 
-      - name: Fetch tc39/proposals
-        run: npm run fetch-proposals
+      # build/ cache. Parsed spec JSON + test262 index + proposals
+      # index are deterministic functions of (vendor SHAs, parser
+      # code, index-builder code). Bust the cache when any of those
+      # change.
+      - name: Cache build/
+        id: cache-build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: build-v1-${{ hashFiles('.last-refresh.json', 'src/parser/**', 'src/test262/**', 'src/proposals/**') }}
+          restore-keys: |
+            build-v1-
 
-      - name: Parse specs
-        run: npm run parse
-
-      - name: Build test262 index
-        run: npm run build-test262-index
-
-      - name: Build proposals index
-        run: npm run build-proposals-index
+      - name: Parse specs + build indexes
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: |
+          npm run parse
+          npm run build-test262-index
+          npm run build-proposals-index
 
       - name: Type-check
         run: npm run typecheck
@@ -66,7 +111,18 @@ jobs:
       - name: Build dist
         run: npm run build
 
+      # Worker has its own node_modules under worker/. Cache it
+      # separately so a root-only lockfile change doesn't invalidate
+      # the worker install (and vice versa).
+      - name: Cache worker/node_modules
+        id: cache-worker-node-modules
+        uses: actions/cache@v4
+        with:
+          path: worker/node_modules
+          key: worker-nm-v1-${{ runner.os }}-node22-${{ hashFiles('worker/package-lock.json') }}
+
       - name: Install worker dependencies
+        if: steps.cache-worker-node-modules.outputs.cache-hit != 'true'
         working-directory: worker
         run: npm install
 
@@ -82,6 +138,9 @@ jobs:
         run: |
           echo '' | timeout 2 node dist/mcp/server.js >/dev/null 2>&1 || [ $? -eq 124 ]
 
+      # npm pack also writes the tarball — `--dry-run` afterward
+      # would just re-do the work without producing anything new, so
+      # we drop it.
       - name: npm pack
         run: npm pack
 
@@ -90,6 +149,3 @@ jobs:
         # speaks MCP, verifies initialize / tools/list / spec.about /
         # clause.get. Catches packaging breakage that unit tests can't.
         run: node scripts/smoke-stdio.mjs ./tc39-mcp-*.tgz
-
-      - name: Verify npm pack contents
-        run: npm pack --dry-run

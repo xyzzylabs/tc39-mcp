@@ -28,14 +28,50 @@ jobs:
           node-version: "22"
           cache: npm
 
+      # node_modules + vendor/ + build/ caches — see test.yml for
+      # the full commentary. Same scheme keyed on package-lock.json
+      # for installs and .last-refresh.json for spec data, so the
+      # caches warmed by test.yml on the refresh commit get reused
+      # here when this workflow runs on the tag push.
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: nm-v1-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
+
       - name: Install repo dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Fetch upstream + build all artifacts
+      - name: Cache vendor/
+        id: cache-vendor
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: vendor-v1-${{ hashFiles('.last-refresh.json') }}
+          restore-keys: |
+            vendor-v1-
+
+      - name: Fetch upstream (if cache miss)
+        if: steps.cache-vendor.outputs.cache-hit != 'true'
         run: |
           npm run fetch-spec
           npm run fetch-test262
           npm run fetch-proposals
+
+      - name: Cache build/
+        id: cache-build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: build-v1-${{ hashFiles('.last-refresh.json', 'src/parser/**', 'src/test262/**', 'src/proposals/**') }}
+          restore-keys: |
+            build-v1-
+
+      - name: Build artifacts (if cache miss)
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: |
           npm run parse
           npm run build-test262-index
           npm run build-proposals-index
