@@ -45,6 +45,15 @@ if (!opts.github) {
 }
 
 const apiKey = `tcms_${randomBytes(32).toString("base64url")}`;
+// SHA-256 of a 32-byte cryptographic-random secret is the correct
+// primitive here. Slow hashes (bcrypt / scrypt / argon2) exist to
+// compensate for the low entropy of user-chosen passwords — against
+// a 2^256 random token, brute force is infeasible regardless of
+// hash cost. Same shape as GitHub `ghp_*` PATs and Stripe live
+// keys. The lookup side (worker/src/auth.ts → `sha256hex`) hashes
+// every incoming Bearer the same way; switching to a slow hash here
+// would force the same slowdown on every authenticated request to
+// the public Worker for zero security benefit.
 const hash = createHash("sha256").update(apiKey).digest("hex");
 
 const metadata = {
