@@ -24,26 +24,49 @@ jobs:
       contents: write
 
     steps:
+      - name: Mint GitHub App installation token
+        id: app-token
+        # Preferred path: short-lived (~60 min) installation token from
+        # a GitHub App with `contents: write` on this repo. Beats the
+        # long-lived WORKFLOW_PAT below because App tokens expire on
+        # their own, the identity is a bot (auditable in commit history),
+        # and the scope is exactly what the refresh chain needs.
+        #
+        # `BOT_APP_ID` and `BOT_APP_PRIVATE_KEY` are deliberately
+        # generic — same names work across every repo in the org, so
+        # the same App can grow into other automation (auto-merge, stale
+        # closers, template sync) without renaming or re-keying. Store
+        # them at the org level (`gh variable set BOT_APP_ID --org X`
+        # and `gh secret set BOT_APP_PRIVATE_KEY --org X`) so new repos
+        # pick them up by name without per-repo setup.
+        #
+        # Activates only when `vars.BOT_APP_ID` is set. Without it, the
+        # step is skipped and the checkout below falls back to
+        # WORKFLOW_PAT, then GITHUB_TOKEN. See CONTRIBUTING.md →
+        # "Maintainer setup: refresh.yml authentication".
+        if: vars.BOT_APP_ID != ''
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          # Use WORKFLOW_PAT (a Personal Access Token with repo
-          # write + workflow write scopes) so commits + tags pushed
-          # by this workflow CAN trigger downstream workflows
-          # (release.yml + deploy-worker.yml on tag push). The
-          # default GITHUB_TOKEN cannot — that's a GitHub
+          # Auth precedence: GitHub App installation token (preferred,
+          # short-lived) → WORKFLOW_PAT (legacy fallback) → GITHUB_TOKEN
+          # (last resort; can't trigger downstream workflows).
+          #
+          # The default GITHUB_TOKEN cannot trigger release.yml or
+          # deploy-worker.yml on tag push — that's GitHub's
           # anti-recursion safety: GITHUB_TOKEN-driven pushes never
-          # fire other workflows.
+          # fire other workflows. The App token and the PAT both can.
           #
-          # If WORKFLOW_PAT isn't configured, falls back to
-          # GITHUB_TOKEN: the bump + tag + push still happens (the
-          # repo state is correct), it just won't auto-cascade into
-          # publish/deploy. A maintainer then has to re-push the tag
-          # manually to trigger them.
-          #
-          # See CONTRIBUTING.md → "Maintainer setup" for how to
-          # create the PAT.
-          token: ${{ secrets.WORKFLOW_PAT || secrets.GITHUB_TOKEN }}
+          # If only GITHUB_TOKEN is available, the bump + tag + push
+          # still happens (the repo state is correct), it just won't
+          # auto-cascade into publish/deploy. A maintainer then has to
+          # re-push the tag manually to trigger them.
+          token: ${{ steps.app-token.outputs.token || secrets.WORKFLOW_PAT || secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v6
         with:
