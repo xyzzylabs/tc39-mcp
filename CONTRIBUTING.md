@@ -250,6 +250,29 @@ test workflow gates them, and the PR template's contract checklist
 still applies. Reject anything that would require a MAJOR bump of an
 exported tool's schema; let the rest through after a glance.
 
+### GitHub Actions pinning policy
+
+Every Action currently in use is first-party (`actions/checkout`,
+`actions/setup-node`, `actions/cache`, `actions/create-github-app-token`).
+Major-version tag pins (`@v6`, `@v5`, …) are fine for these, and
+Dependabot keeps them current.
+
+When adding any **third-party** Action — anything outside the
+`actions/*` namespace — pin to a commit SHA with the version as a
+trailing comment, so Dependabot can still bump it but a major-tag
+takeover can't:
+
+```yaml
+- uses: some-org/some-action@<40-char-sha>  # vX.Y.Z
+```
+
+This protects against the supply-chain shape that landed
+`tj-actions/changed-files` in early 2025, where a popular
+third-party Action's major tag was retargeted at malicious code.
+First-party `actions/*` have a fundamentally different blast
+radius — compromise would require compromising GitHub itself — so
+the tag pin is acceptable there.
+
 ## Security scanning
 
 CodeQL JS/TS analysis runs via GitHub's **Default Setup** (enabled in

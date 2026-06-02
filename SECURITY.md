@@ -26,7 +26,7 @@ That shapes the threat model:
 | Path traversal in the parser or in `loadSpec` arguments | Could leak files outside the `build/` directory. |
 | Prototype-pollution sinks in the JSON parser or schema layer | Could be triggered by malformed `spec-*.json` if vendored from a compromised source. |
 | Crashes / DoS on malformed clause ids, oversized search queries | The server should reject or bound, not crash. |
-| Command-injection in `spec.history` (shells out to `git`) | The `id` argument is interpolated into a git argument; needs to be defensively quoted. This is the **only** subprocess surface in the server. |
+| Regressions in `spec.history`'s subprocess input bounds | The `id` argument is interpolated into a `git log -S` pickaxe pattern. It is bounded by a Zod schema (`min(1).max(200).regex(/^[a-zA-Z0-9._%-]+$/)`) before reaching the subprocess; any change that loosens that bound is in scope. This is the **only** subprocess surface in the server. |
 | Outdated dependencies with known CVEs | npm advisories that aren't dev-only. |
 
 | Out of scope | Why |
@@ -93,6 +93,84 @@ internet:
 - Ship `build/test262-index.json` baked into the deployment. The tool
   is index-only — no subprocess, no network — so you don't need `gh`
   or a GitHub token in the container.
+
+## Incident response
+
+If the worst happens, the recovery paths are short. This section is a
+quick reference rather than a runbook; the linked files are the source
+of truth.
+
+### A malicious release lands on npm
+
+A bad publish is the highest-impact failure mode (consumers `npm
+install` it on their machines). The recovery:
+
+1. **Deprecate the broken version on npm** — this surfaces a warning
+   to anyone installing it. `npm unpublish` is only available within
+   72 hours of publish, so deprecation is the universal path:
+
+   ```sh
+   npm deprecate tc39-mcp@<bad-version> "Compromised release; install <next-version> instead. Details: <link>"
+   ```
+
+   The release workflow runs publish under Trusted Publishing (OIDC),
+   so there is no long-lived `NPM_TOKEN` to rotate. Logging into npm
+   manually as the package owner is enough to run `deprecate`.
+2. **Cut a fixed PATCH release** with the actual fix and let
+   `release.yml` publish it.
+3. **Update this SECURITY.md** with a short "Past incidents" note (if
+   user-visible) so future installers can verify the timeline.
+
+### The hosted Worker is misbehaving
+
+`deploy-worker.yml` includes auto-rollback: if the post-deploy smoke
+test fails, the workflow runs `wrangler rollback` to the previous
+deployment automatically. For a manual rollback at any other time:
+
+```sh
+cd worker
+wrangler rollback --message "<reason>"
+```
+
+R2 contents are content-addressed and additive (per-SHA snapshots are
+immutable, current `*-main.json` files are overwritten on refresh), so
+rolling the Worker code back doesn't strand or corrupt R2 state.
+
+### A vulnerability report comes in
+
+Reporters open a [private security advisory](https://github.com/xyzzylabs/tc39-mcp/security/advisories/new).
+The expected timeline (already stated above): acknowledge within
+7 days, ship a fix within 30 days for confirmed issues.
+
+For triage, in order:
+
+1. Reproduce locally against the reported version. If the issue is
+   in `vendor/` content (a tc39/* upstream bug), redirect to the
+   right upstream issue tracker and close the advisory as out of
+   scope.
+2. If in scope, prepare the fix in a private fork off the advisory
+   (GitHub's advisory UI offers this directly).
+3. Cut a PATCH release. Use `release.yml` as normal — Trusted
+   Publishing means the credential surface is the same as any other
+   release.
+4. Publish the advisory with the CVE-style summary and the version
+   range. GitHub then notifies anyone with the affected version in
+   their dependency tree.
+
+### A leaked credential
+
+Each long-lived credential the project keeps has a single rotation path:
+
+- **`WORKFLOW_PAT`** / **`BOT_APP_PRIVATE_KEY`** (if used) — regenerate
+  in GitHub settings, update the repo secret.
+  See [CONTRIBUTING.md](CONTRIBUTING.md) → "Maintainer setup".
+- **`CLOUDFLARE_API_TOKEN`** — regenerate in the Cloudflare dashboard
+  (Account → API Tokens), update the repo secret.
+- **`NPM_TOKEN`** — not used; npm publish runs under OIDC.
+
+If the leak might already be exploited, also: rotate first, then audit
+the recent push history (`git log` on `main`, `gh run list`) for
+unexpected commits or deploys.
 
 ## Automated audits
 
