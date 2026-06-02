@@ -21,8 +21,23 @@ import {
   type Spec,
 } from "../../editions.js";
 
+// Real ECMA-262 / ECMA-402 clause ids are ASCII: letters, digits,
+// '.', '_', '%', and '-'. The longest observed in the vendored spec
+// is 88 chars; the 200-char cap leaves margin without admitting
+// pathological pickaxe patterns that would make `git log -S` scan
+// expensive needles on every commit in the subprocess below.
+const CLAUSE_ID_PATTERN = /^[a-zA-Z0-9._%-]+$/;
+
 export const specHistorySchema = {
-  id: z.string().describe("Spec clause id."),
+  id: z
+    .string()
+    .min(1)
+    .max(200)
+    .regex(
+      CLAUSE_ID_PATTERN,
+      "Spec clause ids use ASCII letters, digits, '.', '_', '%', '-'",
+    )
+    .describe("Spec clause id."),
   spec: z
     .enum(SPEC_VALUES)
     .default("262")

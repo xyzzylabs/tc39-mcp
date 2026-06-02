@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
+import { z } from "zod";
 import { specDiff } from "./spec_diff.js";
-import { specHistory } from "./spec_history.js";
+import { specHistory, specHistorySchema } from "./spec_history.js";
 import { clauseList } from "./clause.js";
+
+const specHistoryInput = z.object(specHistorySchema);
 
 describe("specDiff — latest → main default", () => {
   it("reports `identical` or `modified` for a stable clause between latest and main", () => {
@@ -211,6 +214,55 @@ describe("specDiff — added / removed status", () => {
       expect(r.to_summary).toBeUndefined();
     } catch {
       /* parsed JSON missing */
+    }
+  });
+});
+
+describe("specHistorySchema — id validation", () => {
+  it("accepts ordinary clause ids", () => {
+    for (const id of [
+      "sec-tonumber",
+      "sec-ecmascript-language-functions-and-classes",
+      "prod-IdentifierName",
+      "table-1",
+      "figure-1",
+    ]) {
+      const r = specHistoryInput.safeParse({ id });
+      expect(r.success, `expected ${id} to validate`).toBe(true);
+    }
+  });
+
+  it("accepts ids containing '%' (well-known intrinsics)", () => {
+    for (const id of [
+      "sec-%throwtypeerror%",
+      "sec-symbol.prototype-%symbol.toprimitive%",
+      "sec-get-regexp-%symbol.species%",
+    ]) {
+      const r = specHistoryInput.safeParse({ id });
+      expect(r.success, `expected ${id} to validate`).toBe(true);
+    }
+  });
+
+  it("rejects empty id", () => {
+    const r = specHistoryInput.safeParse({ id: "" });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects ids longer than 200 chars (pickaxe-DoS guard)", () => {
+    const r = specHistoryInput.safeParse({ id: "sec-" + "a".repeat(300) });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects ids with whitespace or shell metacharacters", () => {
+    for (const id of [
+      "sec-tonumber foo",
+      "sec-tonumber\nfoo",
+      "sec-tonumber; rm -rf /",
+      "sec-tonumber`whoami`",
+      "../escape",
+    ]) {
+      const r = specHistoryInput.safeParse({ id });
+      expect(r.success, `expected ${JSON.stringify(id)} to reject`).toBe(false);
     }
   });
 });
