@@ -1,6 +1,6 @@
 {
   "name": "tc39-mcp",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "mcpName": "io.github.xyzzylabs/tc39-mcp",
   "private": false,
   "description": "Structured MCP server for the TC39 specs (ECMA-262 + ECMA-402) — SHA-pinned clauses, AOID-aware search, in+out cross-references, edition diffs, history.",

@@ -1,8 +1,8 @@
 {
-  "version": "0.1.8",
-  "refreshed_at": "2026-06-02T19:46:58Z",
+  "version": "0.1.9",
+  "refreshed_at": "2026-06-02T22:25:19Z",
   "specs": {
-    "262/main": "faeca0c6d89871170f652d6239cbcf2a8b687c14",
+    "262/main": "c0a2b1aac2b8e3c7bedb67df4620cde27cf6501d",
     "402/main": "19913f13f47e779a3543ad3940410df575c3727b"
   },
   "test262": "4249661388e5d3f92a85186213da140a6481490f",
