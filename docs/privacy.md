@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated:** December 1, 2026
+**Last updated:** June 2, 2026
 
 tc39-mcp is a read-only lookup service for the TC39 specs (ECMA-262
 and ECMA-402). This policy describes what data the server handles,
