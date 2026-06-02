@@ -37,7 +37,7 @@ features:
     details: Every response is a function of static parsed JSONs. Same inputs → same bytes out, reproducible across server versions.
   - icon: 🏗️
     title: Production-shaped
-    details: LRU-bounded memory, tiered rate limiting (anonymous 30/60s/IP, sponsors 300/60s/key), structured per-request logging, post-deploy smoke testing, historical SHA addressing via `at:` on the hosted Worker.
+    details: LRU-bounded memory, IP-bucketed rate limiting (30/60s/IP), structured per-request logging, post-deploy smoke testing, historical SHA addressing via `at:` on the hosted Worker.
 ---
 
 ## Install + run

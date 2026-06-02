@@ -20,7 +20,6 @@ import {
   specSearch,
 } from "./tools.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
-import { authenticate } from "./auth.js";
 import type { R2Env } from "./r2.js";
 import rootPkg from "../../package.json";
 
@@ -225,12 +224,6 @@ interface LogEntry {
   status: "ok" | "error" | "rate-limited" | "parse-error";
   duration_ms: number;
   client_ip?: string;
-  /** `free` (anonymous) or `sponsor` (valid Authorization: Bearer
-   *  tcms_… presented and matched in the SPONSORS KV). */
-  plan?: "free" | "sponsor";
-  /** SHA-256 of the presented sponsor key. Lets the maintainer pin
-   *  noisy traffic to a specific key without knowing the raw key. */
-  api_key_hash?: string;
   error?: { code?: number; message?: string };
 }
 
@@ -341,19 +334,10 @@ export default {
     const clientIp = request.headers.get("CF-Connecting-IP") ?? "unknown";
     const t0 = Date.now();
 
-    // Resolve the request's plan from the Authorization header.
-    // Anonymous traffic is the safe default — see worker/src/auth.ts
-    // for the falls-open semantics on every failure mode.
-    const auth = await authenticate(request, env, clientIp);
-
-    // Pick which rate-limiter binding to call. Anonymous traffic
-    // bucketed per-IP at 30/60s; sponsor traffic bucketed per-key at
-    // the SPONSOR_RATE_LIMITER's higher cap (300/60s in
-    // wrangler.toml).
-    const limiter =
-      auth.plan === "sponsor" ? env.SPONSOR_RATE_LIMITER : env.RATE_LIMITER;
-    if (limiter) {
-      const { success } = await limiter.limit({ key: auth.rateLimitKey });
+    // IP-bucketed rate limit: 30 req / 60 s per client IP. See
+    // wrangler.toml's `[[unsafe.bindings]]` block for the cap.
+    if (env.RATE_LIMITER) {
+      const { success } = await env.RATE_LIMITER.limit({ key: clientIp });
       if (!success) {
         emitLog({
           ts: new Date().toISOString(),
@@ -361,8 +345,6 @@ export default {
           status: "rate-limited",
           duration_ms: Date.now() - t0,
           client_ip: clientIp,
-          plan: auth.plan,
-          ...(auth.apiKeyHash ? { api_key_hash: auth.apiKeyHash } : {}),
         });
         return new Response(
           JSON.stringify({

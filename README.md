@@ -3,9 +3,8 @@
 [![Test](https://github.com/xyzzylabs/tc39-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/xyzzylabs/tc39-mcp/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/tc39-mcp.svg)](https://www.npmjs.com/package/tc39-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Sponsor](https://img.shields.io/badge/Sponsor-xyzzylabs-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/xyzzylabs)
 
-📖 **Docs**: [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — [Get started](https://tc39-mcp.chicoxyzzy.workers.dev/getting-started) · [Tools](https://tc39-mcp.chicoxyzzy.workers.dev/tools) · [Cookbook](https://tc39-mcp.chicoxyzzy.workers.dev/cookbook) · [Editions](https://tc39-mcp.chicoxyzzy.workers.dev/editions) · [Architecture](https://tc39-mcp.chicoxyzzy.workers.dev/architecture) · [Hosting](https://tc39-mcp.chicoxyzzy.workers.dev/deployment) · [Sponsor](https://tc39-mcp.chicoxyzzy.workers.dev/sponsor)
+📖 **Docs**: [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — [Get started](https://tc39-mcp.chicoxyzzy.workers.dev/getting-started) · [Tools](https://tc39-mcp.chicoxyzzy.workers.dev/tools) · [Cookbook](https://tc39-mcp.chicoxyzzy.workers.dev/cookbook) · [Editions](https://tc39-mcp.chicoxyzzy.workers.dev/editions) · [Architecture](https://tc39-mcp.chicoxyzzy.workers.dev/architecture) · [Hosting](https://tc39-mcp.chicoxyzzy.workers.dev/deployment)
 
 **Give MCP-speaking AI agents structural access to the JS spec.**
 Claude Code, Claude Desktop, Cursor, MCP Inspector, and anything
@@ -88,9 +87,7 @@ Five-minute walkthrough: [`docs/getting-started.md`](docs/getting-started.md).
 }
 ```
 
-Anonymous traffic is rate-limited to 30 req/min per IP.
-[Sponsors](#sponsorship) get 300 req/min per key by adding an
-`Authorization: Bearer tcms_…` header.
+Traffic is rate-limited to 30 req/min per IP.
 
 ### Global CLI
 
@@ -166,22 +163,6 @@ Every spec-reading tool accepts `spec` (`"262"` or `"402"`, default
 
 Full table + how to add new releases: [`docs/editions.md`](docs/editions.md).
 
-## Sponsorship
-
-The free anonymous tier of the hosted Worker stays free —
-30 req/min per IP, no signup, no key. **Sponsorship is optional**
-and goes toward keeping the hosted Worker running comfortably as
-usage grows.
-
-Sponsors at any tier ≥ $5/mo get an API key (`tcms_…`) that gives
-them **300 req/min bucketed per-key** instead of per-IP, so the
-same key can drive an interactive chat, a CI pipeline, and a
-batch agent without those processes competing for budget.
-
-To sponsor: <https://github.com/sponsors/xyzzylabs>. The maintainer
-DMs you the key via GitHub Sponsors. Full tier setup +
-client-side wiring instructions: [`docs/sponsor.md`](docs/sponsor.md).
-
 ## Build from source (contributors)
 
 End users don't need this — the npm package and the hosted Worker
@@ -236,10 +217,7 @@ In-repo (also browseable on GitHub):
 - [`docs/architecture.md`](docs/architecture.md) — data pipeline,
   parser, cache, memory model.
 - [`docs/deployment.md`](docs/deployment.md) — local stdio, npm
-  CLI, hosted Cloudflare Worker, refresh model, observability,
-  sponsor lifecycle.
-- [`docs/sponsor.md`](docs/sponsor.md) — sponsorship tiers, key
-  setup, security model.
+  CLI, hosted Cloudflare Worker, refresh model, observability.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — what kinds of changes
   land easily, what won't.
 - [`SECURITY.md`](SECURITY.md) — threat model + responsible
