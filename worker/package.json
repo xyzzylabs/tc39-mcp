@@ -7,8 +7,6 @@
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "upload-r2": "tsx scripts/upload-r2.ts",
-    "issue-sponsor-key": "tsx scripts/issue-sponsor-key.ts",
-    "revoke-sponsor-key": "tsx scripts/revoke-sponsor-key.ts",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run"
   },

@@ -27,9 +27,6 @@ internet-reachable Cloudflare Worker receives:**
 - Request timestamp.
 - Request method, path, and headers as forwarded by the
   Cloudflare edge.
-- Optional `Authorization: Bearer <key>` header when the caller is
-  a sponsor — the server stores the SHA-256 of the key in
-  Cloudflare KV so it can validate without keeping the plaintext.
 
 The Worker does **not** log request bodies, MCP tool arguments, or
 response payloads. It does **not** set cookies. It does **not**
@@ -66,9 +63,6 @@ content is itself public.
 - Hosted Worker:
   - Rate-limit counters expire on their natural Cloudflare bucket
     schedule (within 60 seconds for free-tier counters).
-  - Sponsor-key hashes are retained in KV for as long as the
-    sponsor's subscription is active and are removed when the
-    sponsor cancels or revokes the key.
   - Standard Cloudflare access logs follow Cloudflare's retention
     policy.
 
@@ -77,9 +71,6 @@ content is itself public.
 - All traffic to the hosted Worker is served over HTTPS.
 - No user code is executed by the server; every tool returns a
   pre-parsed view of static spec data.
-- Sponsor keys are stored only as SHA-256 hashes server-side. The
-  plaintext key never leaves the sponsor's environment after
-  issuance.
 
 If you discover a security issue, please report it via
 [SECURITY.md](https://github.com/xyzzylabs/tc39-mcp/blob/main/SECURITY.md)

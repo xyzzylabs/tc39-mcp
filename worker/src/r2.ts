@@ -12,22 +12,12 @@
 
 export interface R2Env {
   SPECS: R2Bucket;
-  /** Cloudflare's built-in per-Worker rate limiter for the anonymous
-   *  (free) tier. See wrangler.toml's `[[unsafe.bindings]]` block.
+  /** Cloudflare's built-in per-Worker rate limiter — IP-bucketed at
+   *  30 req/60 s. See wrangler.toml's `[[unsafe.bindings]]` block.
    *  Optional so unit tests can construct an env without it. */
   RATE_LIMITER?: {
     limit(args: { key: string }): Promise<{ success: boolean }>;
   };
-  /** Higher-cap rate limiter binding used when a valid sponsor key
-   *  was presented (see `auth.ts`). Optional for the same reason as
-   *  RATE_LIMITER. */
-  SPONSOR_RATE_LIMITER?: {
-    limit(args: { key: string }): Promise<{ success: boolean }>;
-  };
-  /** KV namespace storing sponsor metadata, keyed by sha256 of the
-   *  API key. Bound from wrangler.toml; optional in tests and local
-   *  `wrangler dev` runs. */
-  SPONSORS?: KVNamespace;
   /** Static assets binding (Workers Assets). Serves the VitePress
    *  docs site for any GET that isn't `/mcp` / `/health`. Optional so
    *  tests can omit it; the runtime fetch() handler returns a plain

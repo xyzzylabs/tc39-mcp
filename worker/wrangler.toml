@@ -34,49 +34,19 @@ preview_bucket_name = "tc39-mcp-specs-preview"
 LOG_LEVEL = "info"
 
 # Built-in per-Worker rate limiter (Cloudflare's `ratelimit` binding).
-# Anonymous traffic: 30 requests per 60 s per client IP — comfortable
-# for any human + agent workflow (an interactive chat session rarely
-# exceeds ~5/min), tight enough that a single scraper running flat-out
-# for a month can't cross the R2 Class B free allowance. Math: 30/min
-# × 1440 min × 30 days × 3 R2 reads/req ≈ 3.9 M Class B reads/month
-# per IP, well under the 10 M free allowance. Tune via the dashboard
-# without re-deploying by overriding [[unsafe.bindings]] in wrangler
+# 30 requests per 60 s per client IP — comfortable for any human +
+# agent workflow (an interactive chat session rarely exceeds ~5/min),
+# tight enough that a single scraper running flat-out for a month
+# can't cross the R2 Class B free allowance. Math: 30/min × 1440 min
+# × 30 days × 3 R2 reads/req ≈ 3.9 M Class B reads/month per IP, well
+# under the 10 M free allowance. Tune via the dashboard without
+# re-deploying by overriding [[unsafe.bindings]] in wrangler
 # environments.
 [[unsafe.bindings]]
 name = "RATE_LIMITER"
 type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 30, period = 60 }
-
-# Higher-cap rate limiter used when a valid sponsor key is presented
-# (see worker/src/auth.ts). 300 requests per 60 s per key — 10× the
-# anonymous tier, bucketed per-key instead of per-IP so the same key
-# can be used from multiple machines without those machines fighting
-# each other. The SPONSORS KV namespace (below) decides which keys
-# qualify.
-[[unsafe.bindings]]
-name = "SPONSOR_RATE_LIMITER"
-type = "ratelimit"
-namespace_id = "1002"
-simple = { limit = 300, period = 60 }
-
-# KV namespace storing sponsor metadata. Each entry's key is the
-# sha256 (lowercase hex) of an issued API key; the value is a JSON
-# blob produced by worker/scripts/issue-sponsor-key.ts.
-#
-# `id` is used in production. `preview_id` is used by
-# `wrangler dev --remote` so local sponsor-flow tests don't write to
-# the production namespace. If you don't intend to run sponsor flows
-# locally, having `preview_id` point at the same id is harmless.
-#
-# Provision both once:
-#   wrangler kv namespace create sponsors
-#   wrangler kv namespace create sponsors --preview
-[[kv_namespaces]]
-binding = "SPONSORS"
-id = "fc4abae0523a4fd28a95f5c807dca92b"
-preview_id = "fc4abae0523a4fd28a95f5c807dca92b"
-
 
 # Routes / observability are configured per-deployment; keep the
 # committed config minimal so anyone can `wrangler deploy --env=...`
