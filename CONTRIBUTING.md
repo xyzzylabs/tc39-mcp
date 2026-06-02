@@ -263,6 +263,37 @@ We don't ship a custom `codeql.yml` workflow — Default Setup is
 auto-managed (queries auto-update, triggers are sensible defaults),
 and Advanced Setup (workflow-based) cannot coexist with it.
 
+## Branch protection on main
+
+The repo's `main` branch ruleset is checked in at
+[`.github/rulesets/main.json`](.github/rulesets/main.json) so the
+intended policy lives next to the code:
+
+- Pull request required before merge (0 approvals — solo-maintainer
+  repo, but the PR shape forces a CI run on the merge candidate).
+- Required status check: the `test` job from `.github/workflows/test.yml`.
+- Deletion and non-fast-forward pushes blocked.
+- Repository admins can bypass — preserves the direct-push release
+  flow described above (`release: vX.Y.Z` commit + tag, both pushed
+  to `main`) without breaking the cascade into `release.yml`.
+
+The JSON is the source of truth, but GitHub stores the active ruleset
+server-side. To apply or sync changes:
+
+```sh
+# First time (creates the ruleset):
+gh api -X POST repos/xyzzylabs/tc39-mcp/rulesets \
+  --input .github/rulesets/main.json
+
+# Subsequent updates (replace existing — needs the ruleset id from
+# `gh api repos/xyzzylabs/tc39-mcp/rulesets`):
+gh api -X PUT repos/xyzzylabs/tc39-mcp/rulesets/<id> \
+  --input .github/rulesets/main.json
+```
+
+If the ruleset and the checked-in JSON drift, the JSON is what
+review should reference; resync via the commands above.
+
 ## License
 
 By contributing, you agree your contributions are licensed under the
