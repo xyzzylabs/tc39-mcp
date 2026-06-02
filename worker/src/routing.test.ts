@@ -86,6 +86,22 @@ describe("routing", () => {
       );
     });
 
+    it("OPTIONS /mcp omits Access-Control-Allow-Credentials", async () => {
+      // Wildcard Allow-Origin combined with Allow-Credentials would be
+      // a spec violation (browsers reject the combination) AND would
+      // let a malicious page replay credentialed cross-origin requests
+      // against this Worker. The current design is deliberately
+      // public + uncredentialed; this test locks the property in so a
+      // future change can't silently add credentials support and turn
+      // the wildcard into a real bug.
+      const env = { SPECS: createFakeR2() };
+      const r = await worker.fetch(
+        new Request("https://example.com/mcp", { method: "OPTIONS" }),
+        env,
+      );
+      expect(r.headers.get("access-control-allow-credentials")).toBeNull();
+    });
+
     it("GET /mcp is rejected with 405", async () => {
       const env = { SPECS: createFakeR2() };
       const r = await worker.fetch(
