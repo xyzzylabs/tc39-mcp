@@ -26,6 +26,59 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
+## [0.1.6] — 2026-06-02
+
+Two user-visible changes on top of 0.1.5:
+
+- **`spec.history` validates its `id` argument before the
+  subprocess.** The clause id is now bounded by a Zod schema
+  (length 1–200; ASCII letters, digits, `.`, `_`, `%`, `-`)
+  before being interpolated into the `git log -S` pickaxe
+  pattern. Closes a DoS path against the only subprocess
+  surface in the server; real spec clause ids (including
+  well-known intrinsics like `sec-%throwtypeerror%`) are
+  unaffected. Malformed ids surface as Zod validation errors
+  at the tool boundary instead of reaching `git`.
+- **Hosted Worker: sponsor tier removed.** The optional
+  `Authorization: Bearer tcms_…` higher-rate-limit path is
+  gone. Every caller is now on the IP-bucketed free tier at
+  30 req / 60 s per client IP. The hosted endpoint stays
+  publicly free; self-hosters who want a higher cap can raise
+  it in their own `wrangler.toml`.
+
+The MCP protocol surface and the parsed-spec contract are
+identical to 0.1.5.
+
+### Documentation
+
+- **SECURITY.md** — new "Tool outputs are upstream content"
+  section flagging prompt-injection risk via spec text /
+  test262 source / commit messages, and a new "Incident
+  response" section covering bad-release deprecation, Worker
+  rollback, vulnerability triage, and credential rotation.
+- **README** — sponsor badge, the Sponsorship section, and
+  the `/sponsor` doc link removed (the sponsor tier they
+  referred to no longer exists).
+- **CONTRIBUTING.md** — added a GitHub Actions pinning
+  policy: first-party `actions/*` may use major-version tags;
+  third-party Actions must be pinned to commit SHA with the
+  version as a trailing comment.
+
+### Internal
+
+- `npm audit signatures` runs in CI now against both the
+  root and worker lockfiles.
+- New worker CI test pinning the no-credentials CORS
+  property so a future change can't accidentally enable
+  credentialed cross-origin requests under wildcard
+  `Allow-Origin`.
+- `refresh.yml` can mint a GitHub App installation token
+  (preferred) when `vars.BOT_APP_ID` is set; falls back to
+  `WORKFLOW_PAT` or `GITHUB_TOKEN`. No behavior change until
+  the App is configured.
+- Branch-protection ruleset config checked in at
+  `.github/rulesets/main.json`.
+
 ## [0.1.5] — 2026-06-02
 
 No runtime behavior change — the MCP server speaks the same
