@@ -188,25 +188,94 @@ When tc39/ecma262 cuts the next annual release (e.g. `es2026`):
 
 No tool code changes needed — `EDITION_VALUES` rebinds automatically.
 
-## Maintainer setup: WORKFLOW_PAT secret
+## Maintainer setup: refresh.yml authentication
 
 For `refresh.yml` to fully auto-cascade (bump → tag → publish to npm
-→ deploy Worker), the repo needs a Personal Access Token stored as
-the secret `WORKFLOW_PAT`.
+→ deploy Worker), it needs a credential that *can* trigger downstream
+workflows. GitHub's default `GITHUB_TOKEN` cannot — that's an
+anti-recursion safety: `GITHUB_TOKEN`-driven pushes never fire other
+workflows. The workflow checks three credentials in this order:
 
-**Why**: GitHub's default `GITHUB_TOKEN` cannot trigger downstream
-workflows when it pushes commits or tags — an anti-recursion safety.
-A PAT (or GitHub App) is the standard workaround.
+1. **GitHub App installation token** (preferred). Short-lived
+   (~60 min), scoped to whichever repos the App is installed on,
+   bot identity. The `actions/create-github-app-token@v2` step at
+   the top of the workflow mints one when `vars.BOT_APP_ID` is set.
+2. **`WORKFLOW_PAT`** — a fine-grained Personal Access Token
+   stored as a repo secret. Long-lived, tied to a specific user.
+   Works fine; weaker security profile than the App.
+3. **`GITHUB_TOKEN`** — last-resort fallback. Refresh still bumps
+   the version, commits, and pushes the tag, but `release.yml`
+   and `deploy-worker.yml` won't fire automatically. A maintainer
+   then has to manually re-push the tag (delete + push) to
+   trigger them.
 
-**Without it**: refresh still bumps the version, commits, and pushes
-the tag — but `release.yml` and `deploy-worker.yml` won't fire. A
-maintainer would have to manually re-push the tag (delete + push)
-to trigger them. The workflow comment in `refresh.yml` documents
-this fallback explicitly.
+### Preferred: GitHub App
 
-**How to create the PAT**:
+The App's variable + secret are intentionally generic
+(`BOT_APP_ID` / `BOT_APP_PRIVATE_KEY`) and stored at the
+**org level**, not per-repo. Same App, same credentials, used by
+any repo in the org — so future automation (auto-merge of
+Dependabot PRs, stale closers, template sync, etc.) plugs into the
+same App without renaming or re-keying. Add permissions to the
+App as new use-cases appear; existing installations re-confirm on
+the next org-admin click.
 
-1. Go to https://github.com/settings/personal-access-tokens/new (this
+1. Create the App at the **organization** level so it survives
+   creator changes:
+   <https://github.com/organizations/xyzzylabs/settings/apps/new>.
+   - **GitHub App name**: e.g. `xyzzylabs-ops-bot` — generic so
+     future automation can share it.
+   - **Homepage URL**: the org URL (or this repo) is fine.
+   - **Webhook**: uncheck "Active" (no webhook needed; this
+     removes the need for a webhook secret too).
+   - **Repository permissions**: **Contents: Read and write** to
+     start. Nothing else for refresh.yml. Add other scopes
+     (`Pull requests: write`, `Issues: write`, …) later as new
+     automation lands.
+   - **Where can this GitHub App be installed?**: "Only on this
+     account".
+2. After creation, note the **App ID** (numeric, visible on the
+   App's settings page).
+3. **Generate a private key** (button on the same page) —
+   downloads a `.pem` file.
+4. **Install the App** on `xyzzylabs/tc39-mcp` only for now (other
+   repos can be added later from the App's "Install App" page —
+   no re-keying needed).
+5. Wire credentials **at the org level** so every repo with the
+   App installed picks them up by name:
+   ```sh
+   # Variable holding the App ID — readable by any repo.
+   gh variable set BOT_APP_ID \
+     --org xyzzylabs \
+     --visibility all \
+     --body <numeric-app-id>
+   # Secret holding the private key — also org-scoped.
+   gh secret set BOT_APP_PRIVATE_KEY \
+     --org xyzzylabs \
+     --visibility all < downloaded-key.pem
+   ```
+   (Swap `--visibility all` for `--visibility selected --repos tc39-mcp`
+   if you want to restrict which repos can read them.)
+6. Verify by triggering one refresh manually:
+   ```sh
+   gh workflow run refresh.yml -R xyzzylabs/tc39-mcp
+   ```
+   The "Mint GitHub App installation token" step should succeed;
+   the subsequent checkout uses that token; if the run bumps a
+   version, the pushed tag fires `release.yml`.
+
+The bot's commit author will appear as `<app-name>[bot]` in
+history. The private key is the long-lived credential here — keep
+it in org secrets, rotate when the App's UI prompts (typically
+yearly), and treat a leak the same as a leaked PAT. Periodically
+prune the App's permissions to least privilege; adding a permission
+requires re-confirmation, but removing one happens silently.
+
+### Fallback: WORKFLOW_PAT
+
+If you don't want the App setup, the legacy PAT path still works:
+
+1. Go to <https://github.com/settings/personal-access-tokens/new> (this
    is the fine-grained PAT page — preferred over Classic).
 2. Settings:
    | Field | Value |
