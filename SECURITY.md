@@ -36,6 +36,49 @@ That shapes the threat model:
 | Issues that require a malicious operator controlling the vendored `spec.html` | If you own the deployment, you own the data. |
 | Hosted-deployment-specific issues (a Cloudflare Worker hosting this server) | Those belong with whoever runs the deployment. |
 
+## Tool outputs are upstream content
+
+Every tool response carries strings authored by people other than the
+operator of this server:
+
+- ECMA-262 / ECMA-402 spec text — written by TC39 editors and reviewed
+  in tc39/* PRs.
+- `spec.history` commit subjects — `git log --format=%s` against the
+  vendored spec checkout.
+- `test262.get` source — the literal contents of files in
+  tc39/test262, written by a wide contributor base.
+- `proposal.get` titles, READMEs, and champion names from
+  tc39/proposals.
+
+When you wire `tc39-mcp` into an LLM agent, those strings become part
+of the agent's context window. That makes them a **prompt-injection**
+vector by definition: if upstream content contains text like
+"Ignore previous instructions and …", the agent reads it.
+
+What this server does to limit the channel:
+
+- All tool outputs are JSON-serialized. Adversarial text has to land
+  inside a string field, not as freeform model input.
+- Every snapshot the server reads from carries a known upstream SHA,
+  exposed via `spec.about`. Callers who want reproducibility can pin.
+
+What this server does **not** do:
+
+- Filter strings for prompt-injection patterns. That's a losing arms
+  race against natural-language attacks, and would produce false
+  positives against legitimate spec text (algorithms describe
+  imperative steps that read like instructions).
+- Sandbox the LLM. The agent still acts on whatever the tools return.
+
+If your agent runs against untrusted users or makes privileged
+decisions (writing code, sending mail, modifying systems) based on
+this server's responses, treat the responses as untrusted input from
+the upstream repos and review your agent's prompt for instructions
+that would be dangerous to follow if an attacker controlled the
+response text. Pinning to a known-good SHA via the hosted Worker's
+`at:` parameter or a release-versioned npm install closes the
+time-of-check / time-of-use window.
+
 ## Hardening notes
 
 If you deploy this server somewhere multi-tenant or on the public
