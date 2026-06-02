@@ -26,6 +26,23 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
+## [0.1.5] — 2026-06-02
+
+No runtime behavior change — the MCP server speaks the same
+protocol against the same parsed snapshots as 0.1.4. Routine
+dependency and CI maintenance since the previous tag:
+
+- **`@typescript/native-preview` (tsgo) bumped** in both the root
+  and `worker/` packages to the latest dev build. tsgo is the
+  type-checker used by `npm run typecheck` and the build, so
+  keeping it current tracks the active TypeScript Go effort.
+- **Worker dev-dependency group refreshed** (Wrangler + related
+  tooling) as a grouped Dependabot bump.
+- **Root dev-dependency group refreshed** as a grouped Dependabot
+  bump.
+- **`actions/cache` bumped 4 → 5** in the GitHub Actions
+  workflows.
+
 ## [0.1.3] — 2026-05-31
 
 Two non-runtime additions on top of 0.1.2:
