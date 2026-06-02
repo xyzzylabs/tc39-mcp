@@ -258,6 +258,72 @@ const corsHeaders = {
   "access-control-expose-headers": "x-request-id",
 };
 
+// Allowlist for R2 artifacts the public /r2/ proxy will serve. Keeps
+// the bucket itself non-browsable: arbitrary keys are 404'd, only the
+// published snapshot + index shapes are reachable.
+//
+//   spec-<spec>-<edition>.json           live snapshot
+//   spec-<spec>-<edition>-<sha10>.json   historical pin
+//   test262-index.json
+//   proposals-index.json
+function isAllowedR2Key(key: string): boolean {
+  if (key.includes("/") || key.includes("\\") || key.includes("..")) {
+    return false;
+  }
+  if (key === "test262-index.json" || key === "proposals-index.json") {
+    return true;
+  }
+  return /^spec-(262|402)-[a-z0-9-]+(-[a-f0-9]{10})?\.json$/.test(key);
+}
+
+/** Cache-Control header to attach to a /r2/<key> response. Historical
+ *  per-SHA pins are immutable by construction; live `*-main.json` and
+ *  `*-<edition>.json` can be overwritten by the next refresh, so cap
+ *  their freshness window short. Mirrors the policy worker/src/r2.ts
+ *  uses for the worker-internal edge cache. */
+function r2CacheControl(key: string): string {
+  return /-[a-f0-9]{10}\.json$/.test(key)
+    ? "public, max-age=86400, immutable"
+    : "public, max-age=300";
+}
+
+/** Handler for GET/HEAD /r2/<key>. Fetches the key from the bound R2
+ *  bucket, applies the allowlist, returns the bytes with cache-control
+ *  + CORS so stdio clients can read directly. */
+async function serveR2Object(
+  request: Request,
+  url: URL,
+  env: R2Env,
+): Promise<Response> {
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return new Response("Use GET or HEAD for /r2/", {
+      status: 405,
+      headers: corsHeaders,
+    });
+  }
+  const key = decodeURIComponent(url.pathname.slice("/r2/".length));
+  if (!isAllowedR2Key(key)) {
+    return new Response("Not allowed", { status: 404, headers: corsHeaders });
+  }
+  if (!env.SPECS) {
+    return new Response("R2 binding not available", {
+      status: 503,
+      headers: corsHeaders,
+    });
+  }
+  const obj = await env.SPECS.get(key);
+  if (!obj) {
+    return new Response("Not found", { status: 404, headers: corsHeaders });
+  }
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    "cache-control": r2CacheControl(key),
+    ...corsHeaders,
+  };
+  if (obj.etag) headers.etag = `"${obj.etag}"`;
+  return new Response(request.method === "HEAD" ? null : obj.body, { headers });
+}
+
 export default {
   async fetch(
     request: Request,
@@ -289,6 +355,15 @@ export default {
       return new Response(request.method === "HEAD" ? null : "ok", {
         headers: corsHeaders,
       });
+    }
+
+    // GET /r2/<key> — serves a parsed snapshot artifact from R2 to
+    // remote readers. The stdio package's fetch-on-first-use path
+    // (v0.2.0+) reads from this endpoint instead of bundling every
+    // snapshot in its tarball. Allowlisted to the artifact-naming
+    // scheme so the bucket itself is not browsable.
+    if (url.pathname.startsWith("/r2/")) {
+      return serveR2Object(request, url, env);
     }
 
     // Anything that's not the MCP endpoint falls through to the

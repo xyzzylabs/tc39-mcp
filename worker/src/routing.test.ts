@@ -237,4 +237,129 @@ describe("routing", () => {
       expect(r.headers.get("content-type")).toContain("text/html");
     });
   });
+
+  describe("/r2/<key>", () => {
+    it("GET serves an allowlisted artifact from R2 with cache-control + CORS", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json"),
+        env,
+      );
+      expect(r.status).toBe(200);
+      expect(r.headers.get("content-type")).toContain("application/json");
+      expect(r.headers.get("cache-control")).toBe("public, max-age=300");
+      expect(r.headers.get("access-control-allow-origin")).toBe("*");
+      expect(await r.text()).toBe('{"pin":{"sha":"abc"}}');
+    });
+
+    it("GET serves a per-SHA historical pin with immutable cache-control", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main-abc1234567.json": '{"pin":{"sha":"abc1234567"}}' },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main-abc1234567.json"),
+        env,
+      );
+      expect(r.status).toBe(200);
+      expect(r.headers.get("cache-control")).toBe(
+        "public, max-age=86400, immutable",
+      );
+    });
+
+    it("HEAD returns headers without body", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "test262-index.json": "{}" },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/test262-index.json", { method: "HEAD" }),
+        env,
+      );
+      expect(r.status).toBe(200);
+      expect(r.headers.get("content-type")).toContain("application/json");
+      expect(await r.text()).toBe("");
+    });
+
+    it("rejects path traversal in the key", async () => {
+      const env = { SPECS: createFakeR2({ contents: { "spec-262-main.json": "{}" } }) };
+      for (const path of [
+        "/r2/..%2Fspec-262-main.json",
+        "/r2/foo%2Fbar.json",
+        "/r2/spec-262-main.json%5Cextra",
+      ]) {
+        const r = await worker.fetch(new Request(`https://example.com${path}`), env);
+        expect(r.status, path).toBe(404);
+      }
+    });
+
+    it("rejects keys outside the allowlist", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: {
+            "secret.json": '{"hidden":true}',
+            "spec-262-main.json": "{}",
+            "spec-263-main.json": "{}",
+          },
+        }),
+      };
+      // Arbitrary key, non-262/402 spec id, and a wrong-shape variant all 404.
+      for (const path of [
+        "/r2/secret.json",
+        "/r2/spec-263-main.json",
+        "/r2/spec-262-main.txt",
+      ]) {
+        const r = await worker.fetch(new Request(`https://example.com${path}`), env);
+        expect(r.status, path).toBe(404);
+      }
+    });
+
+    it("rejects unsupported methods with 405", async () => {
+      const env = { SPECS: createFakeR2({ contents: { "spec-262-main.json": "{}" } }) };
+      for (const method of ["POST", "PUT", "DELETE", "PATCH"]) {
+        const r = await worker.fetch(
+          new Request("https://example.com/r2/spec-262-main.json", { method }),
+          env,
+        );
+        expect(r.status, method).toBe(405);
+      }
+    });
+
+    it("returns 404 for a missing-from-R2 allowlisted key", async () => {
+      const env = { SPECS: createFakeR2() };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json"),
+        env,
+      );
+      expect(r.status).toBe(404);
+    });
+
+    it("returns 503 when the R2 binding is absent", async () => {
+      const env = {} as { SPECS: never };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json"),
+        env,
+      );
+      expect(r.status).toBe(503);
+    });
+
+    it("does not delegate /r2/ to ASSETS even when bound", async () => {
+      const assets = createFakeAssets();
+      const env = {
+        SPECS: createFakeR2({ contents: { "spec-262-main.json": "{}" } }),
+        ASSETS: assets,
+      };
+      await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json"),
+        env,
+      );
+      expect(assets.__calls).toEqual([]);
+    });
+  });
 });

@@ -31,11 +31,21 @@ export function createFakeR2(opts: FakeR2Options = {}): R2Bucket {
       getCounts.set(key, (getCounts.get(key) ?? 0) + 1);
       const value = store.get(key);
       if (value === undefined) return null;
-      // Minimal R2ObjectBody surface: just `.text()`. The Worker
-      // code never calls `.json()`, `.arrayBuffer()`, or stream APIs.
+      // Minimal R2ObjectBody surface: `.text()` plus a `body`
+      // ReadableStream. The /r2/ proxy returns `obj.body` directly so
+      // production responses stream; tests need the stream too.
+      const bytes = new TextEncoder().encode(value);
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(bytes);
+          controller.close();
+        },
+      });
       return {
         key,
         size: value.length,
+        etag: `etag-${key}`,
+        body,
         async text() {
           return value;
         },
