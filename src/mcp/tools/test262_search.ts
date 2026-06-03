@@ -1,12 +1,12 @@
 // MCP tool: test262.search — search the tc39/test262 conformance suite
 // for tests matching a free-text query and/or a specific esid.
 //
-// One backend: a local index (`build/test262-index.json`) built once
-// by `npm run build-test262-index` from a vendored checkout. No auth,
-// no network, no subprocess — the tool runs identically locally and
-// behind a hosted Cloudflare Worker. If the index hasn't been built,
+// One backend: the `test262-index.json` snapshot, resolved through
+// `loadSnapshot` (cache → hosted Worker → bundled fallback). Locally
+// it's also producible via `npm run build-test262-index` from a
+// vendored checkout. If no layer in the chain can produce the index
 // the tool returns `source: "none"` plus an actionable hint, never
-// throwing.
+// throwing. No auth, no subprocess.
 //
 // Earlier revisions had a `gh search code` fallback; it was the only
 // subprocess surface in the whole server, hosted deployments couldn't
@@ -14,9 +14,7 @@
 // Dropped.
 
 import { z } from "zod";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { BUILD_DIR } from "../../paths.js";
+import { loadSnapshot } from "../../data/loader.js";
 
 export const test262SearchSchema = {
   query: z
@@ -109,15 +107,17 @@ interface IndexFile {
 }
 
 let indexCache: IndexFile | null = null;
-let indexCheckedDisk = false;
 
-function loadIndex(): IndexFile | null {
-  if (indexCheckedDisk) return indexCache;
-  indexCheckedDisk = true;
-  const p = join(BUILD_DIR, "test262-index.json");
-  if (!existsSync(p)) return null;
+async function loadIndex(): Promise<IndexFile | null> {
+  if (indexCache) return indexCache;
+  // No negative caching: a transient network failure on the first
+  // call must not poison the result for the rest of the process.
+  // The loader has its own cache + pointer logic, so retrying here
+  // is cheap when the on-disk cache exists.
+  const outcome = await loadSnapshot("test262-index.json");
+  if (outcome.kind === "missing") return null;
   try {
-    indexCache = JSON.parse(readFileSync(p, "utf8")) as IndexFile;
+    indexCache = JSON.parse(outcome.body) as IndexFile;
     return indexCache;
   } catch {
     return null;
@@ -182,11 +182,11 @@ function searchIndex(
 
 // ─── public entry ──────────────────────────────────────────────────
 
-export function test262Search(args: {
+export async function test262Search(args: {
   query?: string;
   esid?: string;
   limit?: number;
-}): Test262SearchResult {
+}): Promise<Test262SearchResult> {
   if (!args.query && !args.esid) {
     return {
       source: "none",
@@ -195,7 +195,7 @@ export function test262Search(args: {
     };
   }
 
-  const idx = loadIndex();
+  const idx = await loadIndex();
   if (idx) return searchIndex(idx, args);
 
   return {

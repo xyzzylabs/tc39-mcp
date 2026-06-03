@@ -6,25 +6,25 @@ import { specCrossrefs } from "./spec_crossrefs.js";
 // reason these tests exist — explicit <emu-xref> coverage alone would
 // underreport "who calls ToNumber" by an order of magnitude.
 
-function safe<T>(fn: () => T): T | undefined {
+async function safe<T>(fn: () => Promise<T>): Promise<T | undefined> {
   try {
-    return fn();
+    return await fn();
   } catch {
     return undefined; // parsed JSON for some (spec, edition) missing
   }
 }
 
 describe("specCrossrefs — single-spec ECMA-262", () => {
-  it("outgoing refs from sec-tonumber stay within 262", () => {
-    const r = safe(() =>
+  it("outgoing refs from sec-tonumber stay within 262", async () => {
+    const r = await safe(() =>
       specCrossrefs({ id: "sec-tonumber", spec: "262", direction: "out" }),
     );
     if (!r?.outgoing) return;
     for (const h of r.outgoing) expect(h.spec).toBe("262");
   });
 
-  it("incoming refs find clauses that mention ToNumber by AOID", () => {
-    const r = safe(() =>
+  it("incoming refs find clauses that mention ToNumber by AOID", async () => {
+    const r = await safe(() =>
       specCrossrefs({
         id: "sec-tonumber",
         spec: "262",
@@ -39,13 +39,13 @@ describe("specCrossrefs — single-spec ECMA-262", () => {
     for (const h of r.incoming) expect(h.spec).toBe("262");
   });
 
-  it("call-site precision: `Set` doesn't false-positive on prose `Set the X`", () => {
+  it("call-site precision: `Set` doesn't false-positive on prose `Set the X`", async () => {
     // The AOID `Set` collides with the English verb `Set` that begins
     // every algorithm step `Set X to Y`. The call-site discriminator
     // (`Set(`) keeps the incoming refs to genuine `Set(o, p, v, throw)`
     // call sites — typically a few dozen, not the hundreds we'd see
     // if every "Set X to Y" prose mention counted.
-    const r = safe(() =>
+    const r = await safe(() =>
       specCrossrefs({
         id: "sec-set-o-p-v-throw",
         spec: "262",
@@ -60,8 +60,8 @@ describe("specCrossrefs — single-spec ECMA-262", () => {
     expect(r.incoming.length).toBeGreaterThan(10);
   });
 
-  it("both directions populate when direction=both", () => {
-    const r = safe(() =>
+  it("both directions populate when direction=both", async () => {
+    const r = await safe(() =>
       specCrossrefs({ id: "sec-tonumber", spec: "262", direction: "both" }),
     );
     if (!r) return;
@@ -69,8 +69,8 @@ describe("specCrossrefs — single-spec ECMA-262", () => {
     expect(r.incoming).toBeDefined();
   });
 
-  it("returns empty arrays (not undefined) for an isolated id", () => {
-    const r = safe(() =>
+  it("returns empty arrays (not undefined) for an isolated id", async () => {
+    const r = await safe(() =>
       specCrossrefs({
         id: "sec-this-clause-does-not-exist-xyz",
         spec: "262",
@@ -84,8 +84,8 @@ describe("specCrossrefs — single-spec ECMA-262", () => {
 });
 
 describe("specCrossrefs — single-spec ECMA-402", () => {
-  it("outgoing refs from sec-intl.numberformat include 402 ops", () => {
-    const r = safe(() =>
+  it("outgoing refs from sec-intl.numberformat include 402 ops", async () => {
+    const r = await safe(() =>
       specCrossrefs({
         id: "sec-intl.numberformat",
         spec: "402",
@@ -103,8 +103,8 @@ describe("specCrossrefs — single-spec ECMA-402", () => {
 });
 
 describe("specCrossrefs — cross-spec (include_cross_spec)", () => {
-  it("does NOT include other-spec hits by default", () => {
-    const r = safe(() =>
+  it("does NOT include other-spec hits by default", async () => {
+    const r = await safe(() =>
       specCrossrefs({
         id: "sec-intl.numberformat",
         spec: "402",
@@ -116,8 +116,8 @@ describe("specCrossrefs — cross-spec (include_cross_spec)", () => {
     for (const h of r.outgoing) expect(h.spec).toBe("402");
   });
 
-  it("include_cross_spec:true on 402 surfaces 262 targets", () => {
-    const r = safe(() =>
+  it("include_cross_spec:true on 402 surfaces 262 targets", async () => {
+    const r = await safe(() =>
       specCrossrefs({
         id: "sec-intl.numberformat",
         spec: "402",
@@ -134,8 +134,8 @@ describe("specCrossrefs — cross-spec (include_cross_spec)", () => {
     expect(hasCrossSpec).toBe(true);
   });
 
-  it("cross-spec hits carry the right `spec` tag on each result", () => {
-    const r = safe(() =>
+  it("cross-spec hits carry the right `spec` tag on each result", async () => {
+    const r = await safe(() =>
       specCrossrefs({
         id: "sec-intl.numberformat",
         spec: "402",
@@ -152,8 +152,8 @@ describe("specCrossrefs — cross-spec (include_cross_spec)", () => {
     expect(specs.has("402")).toBe(true);
   });
 
-  it("include_cross_spec is one-way: incoming stays single-spec", () => {
-    const r = safe(() =>
+  it("include_cross_spec is one-way: incoming stays single-spec", async () => {
+    const r = await safe(() =>
       specCrossrefs({
         id: "sec-tonumber",
         spec: "262",

@@ -11,17 +11,19 @@ import { clauseGet, clauseList, loadSpec } from "../mcp/tools/clause.js";
 // test is wrapped to no-op when the parsed JSON is missing so CI
 // without parsed 402 doesn't fail spuriously.
 
-function maybe402(): { ok: true; spec: ReturnType<typeof loadSpec> } | { ok: false } {
+async function maybe402(): Promise<
+  { ok: true; spec: Awaited<ReturnType<typeof loadSpec>> } | { ok: false }
+> {
   try {
-    return { ok: true, spec: loadSpec("402", "main") };
+    return { ok: true, spec: await loadSpec("402", "main") };
   } catch {
     return { ok: false };
   }
 }
 
 describe("parseSpec402: multi-file inlining", () => {
-  it("captures clauses from multiple spec/*.html source files", () => {
-    const m = maybe402();
+  it("captures clauses from multiple spec/*.html source files", async () => {
+    const m = await maybe402();
     if (!m.ok) return;
     // sec-intl.numberformat lives in spec/numberformat.html;
     // sec-intl.collator lives in spec/collator.html.
@@ -30,8 +32,8 @@ describe("parseSpec402: multi-file inlining", () => {
     expect(m.spec.clauses["sec-intl.collator"]).toBeDefined();
   });
 
-  it("captures the Intl object root clause", () => {
-    const m = maybe402();
+  it("captures the Intl object root clause", async () => {
+    const m = await maybe402();
     if (!m.ok) return;
     // The Intl object root is `intl-object` (defined in spec/intl.html).
     expect(m.spec.clauses["intl-object"]).toBeDefined();
@@ -39,8 +41,8 @@ describe("parseSpec402: multi-file inlining", () => {
 });
 
 describe("parseSpec402: section numbers", () => {
-  it("computes section numbers from tree position", () => {
-    const m = maybe402();
+  it("computes section numbers from tree position", async () => {
+    const m = await maybe402();
     if (!m.ok) return;
     // The number should be a non-empty dotted-decimal string for any
     // non-root clause.
@@ -49,8 +51,8 @@ describe("parseSpec402: section numbers", () => {
     expect(nf!.meta.number).toMatch(/^\d+(\.\d+)+$/);
   });
 
-  it("nested clauses get longer section numbers than their parents", () => {
-    const m = maybe402();
+  it("nested clauses get longer section numbers than their parents", async () => {
+    const m = await maybe402();
     if (!m.ok) return;
     const parent = m.spec.clauses["numberformat-objects"];
     const child = m.spec.clauses["sec-intl-numberformat-constructor"];
@@ -61,14 +63,14 @@ describe("parseSpec402: section numbers", () => {
 });
 
 describe("parseSpec402: AOID synthesis from h1 titles", () => {
-  it("synthesizes an aoid for clauses whose title is `Name ( args )`", () => {
-    const m = maybe402();
+  it("synthesizes an aoid for clauses whose title is `Name ( args )`", async () => {
+    const m = await maybe402();
     if (!m.ok) return;
     // SetNumberFormatUnitOptions is a 402 abstract op. The 402 source
     // doesn't carry `aoid="..."` on <emu-clause>; we derive it from the
     // h1 leading token. This is what makes cross-spec AOID matching
     // discover it from a 262 clause that mentions it.
-    const c = clauseGet({
+    const c = await clauseGet({
       id: "sec-setnumberformatunitoptions",
       spec: "402",
       edition: "main",
@@ -78,11 +80,11 @@ describe("parseSpec402: AOID synthesis from h1 titles", () => {
     expect(c.meta.kind).toBe("op");
   });
 
-  it("does NOT synthesize an aoid for prose-style titles", () => {
-    const m = maybe402();
+  it("does NOT synthesize an aoid for prose-style titles", async () => {
+    const m = await maybe402();
     if (!m.ok) return;
     // "NumberFormat Objects" is a section header, not an op signature.
-    const c = clauseGet({
+    const c = await clauseGet({
       id: "numberformat-objects",
       spec: "402",
       edition: "main",
@@ -94,9 +96,9 @@ describe("parseSpec402: AOID synthesis from h1 titles", () => {
 });
 
 describe("clauseGet / clauseList on ECMA-402", () => {
-  it("clauseList returns op-kind clauses when filtered", () => {
+  it("clauseList returns op-kind clauses when filtered", async () => {
     try {
-      const ops = clauseList({
+      const ops = await clauseList({
         spec: "402",
         edition: "main",
         kind: "op",
@@ -109,9 +111,9 @@ describe("clauseGet / clauseList on ECMA-402", () => {
     }
   });
 
-  it("clauseList section filter narrows by number prefix", () => {
+  it("clauseList section filter narrows by number prefix", async () => {
     try {
-      const numberformatSection = clauseList({
+      const numberformatSection = await clauseList({
         spec: "402",
         edition: "main",
         section: "16",

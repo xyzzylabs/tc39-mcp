@@ -12,15 +12,14 @@
 // historical pins they can reach via `at: "<sha>"`.
 
 import { z } from "zod";
-import { existsSync, readFileSync, statSync } from "node:fs";
 import {
   CONCRETE_EDITIONS,
   SPEC_VALUES,
   isSupported,
-  specJsonPath,
   type ConcreteEdition,
   type Spec,
 } from "../../editions.js";
+import { loadSnapshot } from "../../data/loader.js";
 
 export const specSnapshotsSchema = {
   spec: z
@@ -80,45 +79,50 @@ interface SnapshotJsonHeader {
   };
 }
 
-/** Read just the `pin` block out of a parsed-spec JSON. Skip the full
- *  clauses tree to keep the listing cheap. */
-function readPin(path: string): {
+/** Parse the snapshot body to extract just its `pin` block. The
+ *  parse still walks the full JSON (we don't have a streaming JSON
+ *  parser here), but the resulting object goes straight out of scope
+ *  so it never enters the hot `loadSpec` LRU. */
+function readPin(body: string): {
   sha?: string;
   fetched_at?: string;
   biblio_commit?: string;
 } | null {
   try {
-    const parsed = JSON.parse(readFileSync(path, "utf8")) as SnapshotJsonHeader;
+    const parsed = JSON.parse(body) as SnapshotJsonHeader;
     return parsed.pin ?? null;
   } catch {
     return null;
   }
 }
 
-export function specSnapshots(args: {
+export async function specSnapshots(args: {
   spec?: Spec;
   edition?: string;
-}): SnapshotsResult {
+}): Promise<SnapshotsResult> {
+  // Probes run sequentially so peak memory stays bounded to one
+  // parsed snapshot body at a time (~25-50 MB). Parallelizing across
+  // ~13 supported pairs would spike memory by 13×; this tool is
+  // introspection, not a hot path, so the lower latency isn't worth
+  // the spike.
   const out: SnapshotRow[] = [];
   for (const spec of SPEC_VALUES) {
     if (args.spec && args.spec !== spec) continue;
     for (const edition of CONCRETE_EDITIONS) {
       if (!isSupported(spec, edition)) continue;
       if (args.edition && args.edition !== edition) continue;
-      const path = specJsonPath(spec, edition);
-      if (!existsSync(path)) continue;
-      if (!statSync(path).isFile()) continue;
-      const pin = readPin(path);
+      const outcome = await loadSnapshot(`spec-${spec}-${edition}.json`);
+      if (outcome.kind === "missing") continue;
+      const pin = readPin(outcome.body);
       if (!pin?.sha) continue;
-      const row: SnapshotRow = {
+      out.push({
         spec,
         edition,
         sha: pin.sha,
         live: true,
         ...(pin.fetched_at ? { fetched_at: pin.fetched_at } : {}),
         ...(pin.biblio_commit ? { biblio_commit: pin.biblio_commit } : {}),
-      };
-      out.push(row);
+      });
     }
   }
   // Sort: spec → edition → sha for deterministic output.

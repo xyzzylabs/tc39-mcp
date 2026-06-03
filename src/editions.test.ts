@@ -93,43 +93,43 @@ describe("isSupported", () => {
 // skipped automatically when a needed edition is missing — useful in CI
 // before `npm run parse` has been run for everything.
 
-function tryClauseGet(spec: "262" | "402", id: string, edition: string) {
+async function tryClauseGet(spec: "262" | "402", id: string, edition: string) {
   try {
-    return clauseGet({ id, spec, edition: edition as never });
+    return await clauseGet({ id, spec, edition: edition as never });
   } catch {
     return undefined; // parsed JSON for (spec, edition) not built locally
   }
 }
 
 describe("ECMA-262 multi-edition tools", () => {
-  it("clauseGet resolves sec-tonumber in every released 262 edition", () => {
+  it("clauseGet resolves sec-tonumber in every released 262 edition", async () => {
     for (const ed of RELEASED_262_EDITIONS) {
-      const c = tryClauseGet("262", "sec-tonumber", ed);
+      const c = await tryClauseGet("262", "sec-tonumber", ed);
       if (c === undefined) continue;
       expect(c, `sec-tonumber in ${ed}`).not.toBeNull();
       expect(c!.meta.aoid).toBe("ToNumber");
     }
   });
 
-  it("edition='latest' on 262 resolves to LATEST_262_RELEASE", () => {
-    const a = tryClauseGet("262", "sec-tonumber", "latest");
-    const b = tryClauseGet("262", "sec-tonumber", LATEST_262_RELEASE);
+  it("edition='latest' on 262 resolves to LATEST_262_RELEASE", async () => {
+    const a = await tryClauseGet("262", "sec-tonumber", "latest");
+    const b = await tryClauseGet("262", "sec-tonumber", LATEST_262_RELEASE);
     if (a === undefined || b === undefined) return;
     expect(a).toEqual(b);
   });
 
-  it("edition='draft' on 262 resolves to main", () => {
-    const a = tryClauseGet("262", "sec-tonumber", "draft");
-    const b = tryClauseGet("262", "sec-tonumber", "main");
+  it("edition='draft' on 262 resolves to main", async () => {
+    const a = await tryClauseGet("262", "sec-tonumber", "draft");
+    const b = await tryClauseGet("262", "sec-tonumber", "main");
     if (a === undefined || b === undefined) return;
     expect(a).toEqual(b);
   });
 
-  it("clause counts grow monotonically across 262 editions", () => {
+  it("clause counts grow monotonically across 262 editions", async () => {
     const counts: number[] = [];
     for (const ed of RELEASED_262_EDITIONS) {
       try {
-        counts.push(clauseList({ spec: "262", edition: ed, limit: 2500 }).length);
+        counts.push((await clauseList({ spec: "262", edition: ed, limit: 2500 })).length);
       } catch {
         // Missing parsed JSON — skip this edition.
       }
@@ -139,9 +139,9 @@ describe("ECMA-262 multi-edition tools", () => {
     }
   });
 
-  it("specSearch works in earlier 262 editions (es2022 has ToNumber)", () => {
+  it("specSearch works in earlier 262 editions (es2022 has ToNumber)", async () => {
     try {
-      const hits = specSearch({ query: "ToNumber", spec: "262", edition: "es2022" });
+      const hits = await specSearch({ query: "ToNumber", spec: "262", edition: "es2022" });
       expect(hits.length).toBeGreaterThan(0);
       expect(hits[0]?.aoid).toBe("ToNumber");
     } catch {
@@ -151,16 +151,16 @@ describe("ECMA-262 multi-edition tools", () => {
 });
 
 describe("ECMA-402 tooling", () => {
-  it("clauseGet resolves an Intl clause on 402/main", () => {
+  it("clauseGet resolves an Intl clause on 402/main", async () => {
     // sec-intl.numberformat is the NumberFormat constructor clause.
-    const c = tryClauseGet("402", "sec-intl.numberformat", "main");
+    const c = await tryClauseGet("402", "sec-intl.numberformat", "main");
     if (c === undefined) return;
     expect(c).not.toBeNull();
   });
 
-  it("clauseList on 402 returns Intl-flavored clauses", () => {
+  it("clauseList on 402 returns Intl-flavored clauses", async () => {
     try {
-      const hits = clauseList({ spec: "402", edition: "main", limit: 50 });
+      const hits = await clauseList({ spec: "402", edition: "main", limit: 50 });
       expect(hits.length).toBeGreaterThan(0);
       // Spot-check: at least one clause id mentions intl.
       expect(hits.some((h) => h.id.includes("intl"))).toBe(true);
@@ -171,9 +171,9 @@ describe("ECMA-402 tooling", () => {
 });
 
 describe("specDiff (generic from/to)", () => {
-  it("defaults to latest → main on 262 when neither is supplied", () => {
+  it("defaults to latest → main on 262 when neither is supplied", async () => {
     try {
-      const r = specDiff({ id: "sec-tonumber" });
+      const r = await specDiff({ id: "sec-tonumber" });
       expect(r.from).toBe(LATEST_262_RELEASE);
       expect(r.to).toBe("main");
     } catch {
@@ -181,9 +181,9 @@ describe("specDiff (generic from/to)", () => {
     }
   });
 
-  it("compares two arbitrary 262 editions", () => {
+  it("compares two arbitrary 262 editions", async () => {
     try {
-      const r = specDiff({
+      const r = await specDiff({
         id: "sec-tonumber",
         spec: "262",
         from: "es2022",
@@ -197,10 +197,10 @@ describe("specDiff (generic from/to)", () => {
     }
   });
 
-  it("resolves alias arguments (draft → main)", () => {
+  it("resolves alias arguments (draft → main)", async () => {
     try {
-      const a = specDiff({ id: "sec-tonumber", from: "es2025", to: "draft" });
-      const b = specDiff({ id: "sec-tonumber", from: "es2025", to: "main" });
+      const a = await specDiff({ id: "sec-tonumber", from: "es2025", to: "draft" });
+      const b = await specDiff({ id: "sec-tonumber", from: "es2025", to: "main" });
       expect(a.from).toBe(b.from);
       expect(a.to).toBe(b.to);
       expect(a.status).toBe(b.status);
@@ -211,9 +211,9 @@ describe("specDiff (generic from/to)", () => {
 });
 
 describe("cross-spec crossrefs (262 ↔ 402)", () => {
-  it("default outgoing query stays within 262", () => {
+  it("default outgoing query stays within 262", async () => {
     try {
-      const r = specCrossrefs({
+      const r = await specCrossrefs({
         id: "sec-tonumber",
         spec: "262",
         direction: "out",
@@ -225,13 +225,13 @@ describe("cross-spec crossrefs (262 ↔ 402)", () => {
     }
   });
 
-  it("include_cross_spec: true on 402 surfaces 262 targets", () => {
+  it("include_cross_spec: true on 402 surfaces 262 targets", async () => {
     try {
       // sec-intl.numberformat references many 262 abstract ops via AOID
       // mentions in its algorithm steps (OrdinaryCreateFromConstructor,
       // SetNumberFormatUnitOptions, ResolveOptions, etc.). Some of those
       // resolve to 262, so the cross-spec hits should be non-empty.
-      const r = specCrossrefs({
+      const r = await specCrossrefs({
         id: "sec-intl.numberformat",
         spec: "402",
         direction: "out",

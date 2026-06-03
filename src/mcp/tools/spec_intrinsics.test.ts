@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { specIntrinsics } from "./spec_intrinsics.js";
 
 describe("specIntrinsics", () => {
-  it("enumerates a non-trivial set of intrinsics on ECMA-262", () => {
+  it("enumerates a non-trivial set of intrinsics on ECMA-262", async () => {
     try {
-      const r = specIntrinsics({ spec: "262", edition: "latest", limit: 500 });
+      const r = await specIntrinsics({ spec: "262", edition: "latest", limit: 500 });
       expect(r.spec).toBe("262");
       // There are 100+ well-known intrinsics in modern ECMA-262.
       expect(r.hits.length).toBeGreaterThan(50);
@@ -13,9 +13,9 @@ describe("specIntrinsics", () => {
     }
   });
 
-  it("each hit carries the documented shape", () => {
+  it("each hit carries the documented shape", async () => {
     try {
-      const r = specIntrinsics({ spec: "262", edition: "latest", limit: 5 });
+      const r = await specIntrinsics({ spec: "262", edition: "latest", limit: 5 });
       for (const h of r.hits) {
         expect(typeof h.name).toBe("string");
         expect(h.name.length).toBeGreaterThan(0);
@@ -33,9 +33,9 @@ describe("specIntrinsics", () => {
     }
   });
 
-  it("filter narrows results by case-insensitive name substring", () => {
+  it("filter narrows results by case-insensitive name substring", async () => {
     try {
-      const r = specIntrinsics({
+      const r = await specIntrinsics({
         spec: "262",
         edition: "latest",
         filter: "object.prototype",
@@ -49,9 +49,9 @@ describe("specIntrinsics", () => {
     }
   });
 
-  it("finds Object.prototype with a defining clause", () => {
+  it("finds Object.prototype with a defining clause", async () => {
     try {
-      const r = specIntrinsics({
+      const r = await specIntrinsics({
         spec: "262",
         edition: "latest",
         filter: "Object.prototype",
@@ -67,9 +67,9 @@ describe("specIntrinsics", () => {
     }
   });
 
-  it("works on ECMA-402 (finds Intl.NumberFormat)", () => {
+  it("works on ECMA-402 (finds Intl.NumberFormat)", async () => {
     try {
-      const r = specIntrinsics({
+      const r = await specIntrinsics({
         spec: "402",
         edition: "main",
         filter: "Intl.NumberFormat",
@@ -85,9 +85,9 @@ describe("specIntrinsics", () => {
     }
   });
 
-  it("ranks heuristic-path hits by mention count (402)", () => {
+  it("ranks heuristic-path hits by mention count (402)", async () => {
     try {
-      const r = specIntrinsics({ spec: "402", edition: "main", limit: 20 });
+      const r = await specIntrinsics({ spec: "402", edition: "main", limit: 20 });
       if (r.source !== "heuristic" || r.hits.length < 2) return;
       for (let i = 1; i < r.hits.length; i++) {
         expect(r.hits[i]!.mention_count).toBeLessThanOrEqual(
@@ -101,18 +101,18 @@ describe("specIntrinsics", () => {
 });
 
 describe("specIntrinsics — source resolution", () => {
-  it("uses 'table' source on ECMA-262 when the WKI table is present", () => {
+  it("uses 'table' source on ECMA-262 when the WKI table is present", async () => {
     try {
-      const r = specIntrinsics({ spec: "262", edition: "latest", limit: 5 });
+      const r = await specIntrinsics({ spec: "262", edition: "latest", limit: 5 });
       expect(r.source).toBe("table");
     } catch {
       // Parsed JSON missing.
     }
   });
 
-  it("table-path hits carry global_name + association from the table row", () => {
+  it("table-path hits carry global_name + association from the table row", async () => {
     try {
-      const r = specIntrinsics({
+      const r = await specIntrinsics({
         spec: "262",
         edition: "latest",
         filter: "Array",
@@ -132,9 +132,9 @@ describe("specIntrinsics — source resolution", () => {
     }
   });
 
-  it("table-path lands %Array% on 'The Array Constructor', not 'IsArray'", () => {
+  it("table-path lands %Array% on 'The Array Constructor', not 'IsArray'", async () => {
     try {
-      const r = specIntrinsics({
+      const r = await specIntrinsics({
         spec: "262",
         edition: "latest",
         filter: "Array",
@@ -152,9 +152,9 @@ describe("specIntrinsics — source resolution", () => {
     }
   });
 
-  it("uses 'heuristic' source on ECMA-402 (no WKI table)", () => {
+  it("uses 'heuristic' source on ECMA-402 (no WKI table)", async () => {
     try {
-      const r = specIntrinsics({ spec: "402", edition: "main", limit: 5 });
+      const r = await specIntrinsics({ spec: "402", edition: "main", limit: 5 });
       expect(r.source).toBe("heuristic");
     } catch {
       // Parsed JSON missing.

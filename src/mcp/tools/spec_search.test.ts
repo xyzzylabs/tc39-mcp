@@ -6,8 +6,8 @@ import { specSearch } from "./spec_search.js";
 // "I don't know the exact id" queries.
 
 describe("specSearch", () => {
-  it("finds Canonicalize by aoid (the query the tc39 MCP whiffed on)", () => {
-    const hits = specSearch({ query: "Canonicalize" });
+  it("finds Canonicalize by aoid (the query the tc39 MCP whiffed on)", async () => {
+    const hits = await specSearch({ query: "Canonicalize" });
     const ids = hits.map((h) => h.id);
     expect(ids).toContain("sec-runtime-semantics-canonicalize-ch");
     // aoid-exact should rank the §22.2 Canonicalize first.
@@ -15,18 +15,18 @@ describe("specSearch", () => {
     expect(hits[0]?.matched_on).toBe("aoid-exact");
   });
 
-  it("finds CharacterSetMatcher by aoid", () => {
-    const hits = specSearch({ query: "CharacterSetMatcher" });
+  it("finds CharacterSetMatcher by aoid", async () => {
+    const hits = await specSearch({ query: "CharacterSetMatcher" });
     expect(hits.some((h) => h.aoid === "CharacterSetMatcher")).toBe(true);
   });
 
-  it("finds many RegExp clauses by id/title substring", () => {
-    const hits = specSearch({ query: "RegExp", limit: 100 });
+  it("finds many RegExp clauses by id/title substring", async () => {
+    const hits = await specSearch({ query: "RegExp", limit: 100 });
     expect(hits.length).toBeGreaterThan(20);
   });
 
-  it("ranks aoid-exact above substring matches", () => {
-    const hits = specSearch({ query: "ToNumber" });
+  it("ranks aoid-exact above substring matches", async () => {
+    const hits = await specSearch({ query: "ToNumber" });
     // The exact ToNumber op should outrank ToNumeric, StringToNumber, etc.
     expect(hits[0]?.aoid).toBe("ToNumber");
     expect(hits[0]?.score).toBeGreaterThanOrEqual(
@@ -34,30 +34,30 @@ describe("specSearch", () => {
     );
   });
 
-  it("respects the limit", () => {
-    const hits = specSearch({ query: "sec-", limit: 5 });
+  it("respects the limit", async () => {
+    const hits = await specSearch({ query: "sec-", limit: 5 });
     expect(hits.length).toBe(5);
   });
 
-  it("returns [] for a query that matches nothing", () => {
-    expect(specSearch({ query: "zzz-no-such-clause-xyz" })).toEqual([]);
+  it("returns [] for a query that matches nothing", async () => {
+    expect(await specSearch({ query: "zzz-no-such-clause-xyz" })).toEqual([]);
   });
 
-  it("matches step text only when search_steps is true", () => {
+  it("matches step text only when search_steps is true", async () => {
     // 'CaseFolding.txt' appears in Canonicalize's step text but not in
     // any id/aoid/title.
-    const without = specSearch({ query: "CaseFolding.txt" });
+    const without = await specSearch({ query: "CaseFolding.txt" });
     expect(without).toEqual([]);
-    const withSteps = specSearch({ query: "CaseFolding.txt", search_steps: true });
+    const withSteps = await specSearch({ query: "CaseFolding.txt", search_steps: true });
     expect(withSteps.some((h) => h.id === "sec-runtime-semantics-canonicalize-ch")).toBe(true);
     expect(withSteps[0]?.matched_on).toBe("steps");
   });
 });
 
 describe("specSearch on ECMA-402", () => {
-  it("finds NumberFormat by title substring on 402/main", () => {
+  it("finds NumberFormat by title substring on 402/main", async () => {
     try {
-      const hits = specSearch({
+      const hits = await specSearch({
         query: "NumberFormat",
         spec: "402",
         edition: "main",
@@ -71,12 +71,12 @@ describe("specSearch on ECMA-402", () => {
     }
   });
 
-  it("finds a synthesized-AOID 402 op via aoid-exact match", () => {
+  it("finds a synthesized-AOID 402 op via aoid-exact match", async () => {
     // SetNumberFormatUnitOptions doesn't have an `aoid` attribute in
     // the 402 source; we derived it from the h1 title. The aoid-exact
     // matcher should now find it.
     try {
-      const hits = specSearch({
+      const hits = await specSearch({
         query: "SetNumberFormatUnitOptions",
         spec: "402",
         edition: "main",

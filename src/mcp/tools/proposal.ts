@@ -1,8 +1,7 @@
 // MCP tools: proposal.list / proposal.get — TC39 proposal index.
 //
-// The index is built once by `npm run build-proposals-index` from a
-// vendored tc39/proposals checkout. It's a flat list of every proposal
-// across every stage file in that repo:
+// The index is a flat list of every proposal across every stage file
+// in tc39/proposals:
 //
 //   README.md                — Stages 2 / 2.7 / 3 (active)
 //   stage-1-proposals.md     — Stage 1
@@ -10,14 +9,13 @@
 //   finished-proposals.md    — Stage 4 (advanced)
 //   inactive-proposals.md    — withdrawn / rejected
 //
-// Same offline-only contract as test262.search: served from a static
-// JSON file on disk; no auth, no network, no subprocess. If the index
-// hasn't been built, the tools return source: "none" + a hint.
+// Sourced via `loadSnapshot` (cache → hosted Worker → bundled fallback);
+// also producible locally via `npm run build-proposals-index` from a
+// vendored checkout. No auth, no subprocess. If no layer in the chain
+// can produce the index, the tools return source: "none" + a hint.
 
 import { z } from "zod";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { BUILD_DIR } from "../../paths.js";
+import { loadSnapshot } from "../../data/loader.js";
 import type { ProposalEntry } from "../../index/proposals_parser.js";
 
 // Re-export so historical callers can keep importing `ProposalEntry`
@@ -34,14 +32,16 @@ interface IndexFile {
 }
 
 let cache: IndexFile | null = null;
-let checkedDisk = false;
-function loadIndex(): IndexFile | null {
-  if (checkedDisk) return cache;
-  checkedDisk = true;
-  const p = join(BUILD_DIR, "proposals-index.json");
-  if (!existsSync(p)) return null;
+async function loadIndex(): Promise<IndexFile | null> {
+  if (cache) return cache;
+  // No negative caching: a transient network failure on the first
+  // call must not poison the result for the rest of the process.
+  // The loader has its own cache + pointer logic, so retrying here
+  // is cheap when the on-disk cache exists.
+  const outcome = await loadSnapshot("proposals-index.json");
+  if (outcome.kind === "missing") return null;
   try {
-    cache = JSON.parse(readFileSync(p, "utf8")) as IndexFile;
+    cache = JSON.parse(outcome.body) as IndexFile;
     return cache;
   } catch {
     return null;
@@ -108,13 +108,13 @@ export interface ProposalListResult {
   hint?: string;
 }
 
-export function proposalList(args: {
+export async function proposalList(args: {
   stage?: string;
   champion?: string;
   contains?: string;
   limit?: number;
-}): ProposalListResult {
-  const idx = loadIndex();
+}): Promise<ProposalListResult> {
+  const idx = await loadIndex();
   if (!idx) {
     return { source: "none", total: 0, proposals: [], hint: NO_INDEX_HINT };
   }
@@ -176,8 +176,8 @@ export interface ProposalGetResult {
   hint?: string;
 }
 
-export function proposalGet(args: { name: string }): ProposalGetResult {
-  const idx = loadIndex();
+export async function proposalGet(args: { name: string }): Promise<ProposalGetResult> {
+  const idx = await loadIndex();
   if (!idx) {
     return { source: "none", proposal: null, hint: NO_INDEX_HINT };
   }

@@ -78,9 +78,12 @@ const server = new McpServer(
 
 // All tool registrations below use `server.registerTool()` with
 // `annotations: { readOnlyHint: true }`. Every tool in this server
-// reads structured spec data — none mutate state, write files, or
-// reach the network at call time. The `title` field gives each tool
-// a human-readable label that clients display in tool pickers.
+// reads structured spec data — none mutate state or write files
+// outside the local cache directory. Tools may reach the hosted
+// Worker to fetch a snapshot the local cache hasn't seen yet; once
+// cached, subsequent calls stay local until the live-key pointer
+// goes stale (4 h). The `title` field gives each tool a
+// human-readable label that clients display in tool pickers.
 
 server.registerTool(
   "spec.about",
@@ -92,7 +95,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async () => {
-    const r = specAbout();
+    const r = await specAbout();
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -107,7 +110,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specSnapshots(args);
+    const r = await specSnapshots(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -122,7 +125,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const clause = clauseGet(args);
+    const clause = await clauseGet(args);
     if (!clause) {
       return {
         content: [
@@ -150,7 +153,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const hits = clauseList(args);
+    const hits = await clauseList(args);
     return {
       content: [{ type: "text", text: JSON.stringify({ hits }, null, 2) }],
     };
@@ -167,7 +170,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = clauseOutline(args);
+    const r = await clauseOutline(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -182,7 +185,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const hits = specSearch(args);
+    const hits = await specSearch(args);
     return {
       content: [{ type: "text", text: JSON.stringify({ hits }, null, 2) }],
     };
@@ -199,7 +202,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specCrossrefs(args);
+    const r = await specCrossrefs(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -214,7 +217,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specDiff(args);
+    const r = await specDiff(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -244,7 +247,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specSymbolResolve(args);
+    const r = await specSymbolResolve(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -259,7 +262,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specSdoIndex(args);
+    const r = await specSdoIndex(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -274,7 +277,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const hits = specGlobalSearch(args);
+    const hits = await specGlobalSearch(args);
     return { content: [{ type: "text", text: JSON.stringify({ hits }, null, 2) }] };
   },
 );
@@ -289,7 +292,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specIntrinsics(args);
+    const r = await specIntrinsics(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -304,7 +307,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specTables(args);
+    const r = await specTables(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -319,7 +322,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specGrammar(args);
+    const r = await specGrammar(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -329,12 +332,12 @@ server.registerTool(
   {
     title: "Search test262",
     description:
-      "Search tc39/test262 for tests matching a free-text query and/or an esid (clause id, prefix-matched). test262 covers both ECMA-262 and ECMA-402. Served entirely from a local index (build/test262-index.json); if the index hasn't been built the result is empty + a hint explaining the one-time setup. No auth, no network, no subprocess.",
+      "Search tc39/test262 for tests matching a free-text query and/or an esid (clause id, prefix-matched). test262 covers both ECMA-262 and ECMA-402. Served from a parsed test262 index sourced via the loader chain (local cache → hosted Worker → bundled fallback); the index is fetched on first use and cached locally. If no layer can produce the index the result is empty + a hint explaining the one-time local build. No auth, no subprocess.",
     inputSchema: test262SearchSchema,
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = test262Search(args);
+    const r = await test262Search(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -359,12 +362,12 @@ server.registerTool(
   {
     title: "List TC39 proposals",
     description:
-      "List TC39 proposals from a static index built once from tc39/proposals. Filter by `stage` ('0'|'1'|'2'|'2.7'|'3'|'finished'|'inactive'|'active'), `champion` (substring), or `contains` (name/slug substring). Returns lightweight rows; follow up with `proposal.get`. Index-only: no auth, no network.",
+      "List TC39 proposals from a parsed proposals index sourced via the loader chain (local cache → hosted Worker → bundled fallback); the index is fetched on first use and cached locally. Filter by `stage` ('0'|'1'|'2'|'2.7'|'3'|'finished'|'inactive'|'active'), `champion` (substring), or `contains` (name/slug substring). Returns lightweight rows; follow up with `proposal.get`. No auth, no subprocess.",
     inputSchema: proposalListSchema,
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = proposalList(args);
+    const r = await proposalList(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -379,7 +382,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = proposalGet(args);
+    const r = await proposalGet(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );

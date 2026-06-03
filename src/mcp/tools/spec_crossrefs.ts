@@ -118,10 +118,10 @@ function indexKey(spec: Spec, edition: ConcreteEdition): string {
   return `${spec}:${edition}`;
 }
 
-function buildIndices(spec: Spec, edition: ConcreteEdition): CrossrefIndices {
+async function buildIndices(spec: Spec, edition: ConcreteEdition): Promise<CrossrefIndices> {
   const cached = indexCache.get(indexKey(spec, edition));
   if (cached) return cached;
-  const parsed = loadSpec(spec, edition);
+  const parsed = await loadSpec(spec, edition);
 
   const aoidToId = new Map<string, string>();
   for (const [id, c] of Object.entries(parsed.clauses)) {
@@ -192,16 +192,16 @@ function hit(spec: Spec, parsed: ParsedSpec, id: string): CrossrefHit | null {
 /** Cross-spec outgoing refs: scan the source clause's text for AOID
  *  mentions that resolve into the OTHER spec. The other spec is read
  *  at its `latest` (which is spec-aware: es2025 for 262, main for 402). */
-function crossSpecOutgoing(
+async function crossSpecOutgoing(
   sourceSpec: Spec,
   sourceParsed: ParsedSpec,
   sourceId: string,
   limit: number,
-): CrossrefHit[] {
+): Promise<CrossrefHit[]> {
   const otherSpec: Spec = sourceSpec === "262" ? "402" : "262";
   let otherParsed: ParsedSpec;
   try {
-    otherParsed = loadSpec(otherSpec, "latest");
+    otherParsed = await loadSpec(otherSpec, "latest");
   } catch {
     // Other spec hasn't been parsed locally; nothing to do.
     return [];
@@ -243,20 +243,22 @@ function crossSpecOutgoing(
   return hits;
 }
 
-export function specCrossrefs(args: {
+export async function specCrossrefs(args: {
   id: string;
   spec?: Spec;
   edition?: Edition;
   direction?: "in" | "out" | "both";
   include_cross_spec?: boolean;
   limit?: number;
-}): CrossrefsResult {
+}): Promise<CrossrefsResult> {
   const spec = args.spec ?? "262";
   const edition = resolveEdition(spec, args.edition ?? "latest");
-  const parsed = loadSpec(spec, edition);
+  const [parsed, indices] = await Promise.all([
+    loadSpec(spec, edition),
+    buildIndices(spec, edition),
+  ]);
   const direction = args.direction ?? "both";
   const limit = args.limit ?? 100;
-  const indices = buildIndices(spec, edition);
   const out: CrossrefsResult = {};
 
   if (direction === "out" || direction === "both") {
@@ -268,7 +270,7 @@ export function specCrossrefs(args: {
     }
     hits.sort((a, b) => a.number.localeCompare(b.number));
     if (args.include_cross_spec) {
-      const cross = crossSpecOutgoing(spec, parsed, args.id, limit);
+      const cross = await crossSpecOutgoing(spec, parsed, args.id, limit);
       cross.sort((a, b) => a.number.localeCompare(b.number));
       hits.push(...cross);
     }

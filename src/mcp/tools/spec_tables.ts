@@ -107,15 +107,15 @@ export type SpecTablesResult =
       tables: TableSummary[];
     };
 
-export function specTables(args: {
+export async function specTables(args: {
   id?: string;
   filter?: string;
   spec?: Spec;
   edition?: Edition;
   limit?: number;
-}): SpecTablesResult {
+}): Promise<SpecTablesResult> {
   const spec = args.spec ?? "262";
-  const parsed = loadSpec(spec, args.edition ?? "latest");
+  const parsed = await loadSpec(spec, args.edition ?? "latest");
   const all = parsed.tables ?? {};
 
   if (args.id) {

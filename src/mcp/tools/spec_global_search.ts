@@ -50,11 +50,11 @@ export interface GlobalSearchHit extends SpecSearchHit {
   spec: Spec;
 }
 
-export function specGlobalSearch(args: {
+export async function specGlobalSearch(args: {
   query: string;
   search_steps?: boolean;
   limit?: number;
-}): GlobalSearchHit[] {
+}): Promise<GlobalSearchHit[]> {
   const limit = args.limit ?? 20;
   const search_steps = args.search_steps ?? false;
   const all: GlobalSearchHit[] = [];
@@ -62,22 +62,27 @@ export function specGlobalSearch(args: {
   // Per-spec searches use each spec's `latest` resolution (which is
   // spec-aware: es2025 for 262, main for 402). Limit per-spec to
   // `limit` so an over-saturated 262 can't shut 402 out completely;
-  // we re-trim after interleaving.
-  for (const spec of SPEC_VALUES) {
-    try {
-      const hits = specSearch({
-        query: args.query,
-        spec,
-        edition: "latest",
-        search_steps,
-        limit,
-      });
-      for (const h of hits) all.push({ ...h, spec });
-    } catch {
-      // Parsed JSON for one spec might be missing locally; skip it
-      // rather than crash the whole call.
-    }
-  }
+  // we re-trim after interleaving. The two specs are loaded in
+  // parallel so the cold path doesn't pay 2× the snapshot latency.
+  const perSpec = await Promise.all(
+    SPEC_VALUES.map(async (spec) => {
+      try {
+        const hits = await specSearch({
+          query: args.query,
+          spec,
+          edition: "latest",
+          search_steps,
+          limit,
+        });
+        return hits.map((h) => ({ ...h, spec }));
+      } catch {
+        // Parsed JSON for one spec might be missing locally; skip it
+        // rather than crash the whole call.
+        return [] as GlobalSearchHit[];
+      }
+    }),
+  );
+  for (const hits of perSpec) all.push(...hits);
 
   // Sort by score desc, then by section number (ascending). Score
   // dominates so cross-spec interleaving is rank-based, not
