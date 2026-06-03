@@ -119,17 +119,19 @@ function flatSteps(c: Clause): string[] {
 }
 
 /** Generic clause diff across any two editions. */
-export function specDiff(args: {
+export async function specDiff(args: {
   id: string;
   spec?: Spec;
   from?: Edition;
   to?: Edition;
-}): SpecDiffResult {
+}): Promise<SpecDiffResult> {
   const spec = args.spec ?? "262";
   const fromEd = resolveEdition(spec, args.from ?? "latest");
   const toEd = resolveEdition(spec, args.to ?? "main");
-  const before = loadSpec(spec, fromEd);
-  const after = loadSpec(spec, toEd);
+  const [before, after] = await Promise.all([
+    loadSpec(spec, fromEd),
+    loadSpec(spec, toEd),
+  ]);
   const a = before.clauses[args.id];
   const b = after.clauses[args.id];
 

@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { specSnapshots } from "./spec_snapshots.js";
 
 describe("specSnapshots", () => {
-  it("enumerates every available (spec, edition) pair", () => {
+  it("enumerates every available (spec, edition) pair", async () => {
     try {
-      const r = specSnapshots({});
+      const r = await specSnapshots({});
       // Locally we've parsed all 13 supported pairs (11×262 + 2×402).
       expect(r.snapshots.length).toBeGreaterThan(0);
       expect(r.snapshots.length).toBeLessThanOrEqual(13);
@@ -13,9 +13,9 @@ describe("specSnapshots", () => {
     }
   });
 
-  it("returns sha + fetched_at + biblio_commit per row", () => {
+  it("returns sha + fetched_at + biblio_commit per row", async () => {
     try {
-      const r = specSnapshots({ spec: "262", edition: "main" });
+      const r = await specSnapshots({ spec: "262", edition: "main" });
       const row = r.snapshots[0];
       if (!row) return;
       expect(row.spec).toBe("262");
@@ -30,9 +30,9 @@ describe("specSnapshots", () => {
     }
   });
 
-  it("filter by spec narrows the result", () => {
+  it("filter by spec narrows the result", async () => {
     try {
-      const r = specSnapshots({ spec: "402" });
+      const r = await specSnapshots({ spec: "402" });
       expect(r.spec_filter).toBe("402");
       for (const s of r.snapshots) expect(s.spec).toBe("402");
     } catch {
@@ -40,9 +40,9 @@ describe("specSnapshots", () => {
     }
   });
 
-  it("filter by edition narrows further", () => {
+  it("filter by edition narrows further", async () => {
     try {
-      const r = specSnapshots({ spec: "262", edition: "es2025" });
+      const r = await specSnapshots({ spec: "262", edition: "es2025" });
       expect(r.edition_filter).toBe("es2025");
       for (const s of r.snapshots) {
         expect(s.spec).toBe("262");
@@ -53,9 +53,9 @@ describe("specSnapshots", () => {
     }
   });
 
-  it("returns deterministic ordering (spec → edition → sha)", () => {
+  it("returns deterministic ordering (spec → edition → sha)", async () => {
     try {
-      const r = specSnapshots({});
+      const r = await specSnapshots({});
       for (let i = 1; i < r.snapshots.length; i++) {
         const prev = r.snapshots[i - 1]!;
         const cur = r.snapshots[i]!;

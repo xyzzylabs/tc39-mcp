@@ -43,9 +43,9 @@ describe("buildResourceUri", () => {
 });
 
 describe("listResources", () => {
-  it("returns top-level clauses across all loaded snapshots", () => {
+  it("returns top-level clauses across all loaded snapshots", async () => {
     try {
-      const r = listResources({ per_snapshot: 5 });
+      const r = await listResources({ per_snapshot: 5 });
       expect(r.resources.length).toBeGreaterThan(0);
       for (const res of r.resources) {
         expect(res.uri).toMatch(/^tc39:\/\//);
@@ -57,9 +57,9 @@ describe("listResources", () => {
     }
   });
 
-  it("respects per_snapshot cap", () => {
+  it("respects per_snapshot cap", async () => {
     try {
-      const r = listResources({ per_snapshot: 2 });
+      const r = await listResources({ per_snapshot: 2 });
       // We have 13 supported pairs; with cap=2 we'd see at most 26.
       expect(r.resources.length).toBeLessThanOrEqual(26);
     } catch {
@@ -69,9 +69,9 @@ describe("listResources", () => {
 });
 
 describe("readResource", () => {
-  it("returns clause JSON for a known URI", () => {
+  it("returns clause JSON for a known URI", async () => {
     try {
-      const r = readResource("tc39://262/latest/sec-tonumber");
+      const r = await readResource("tc39://262/latest/sec-tonumber");
       expect(r.contents.length).toBe(1);
       const c = r.contents[0]!;
       expect(c.uri).toBe("tc39://262/latest/sec-tonumber");
@@ -83,17 +83,17 @@ describe("readResource", () => {
     }
   });
 
-  it("throws on malformed URI", () => {
-    expect(() => readResource("not-a-uri")).toThrow(/Invalid tc39/);
+  it("throws on malformed URI", async () => {
+    await expect(readResource("not-a-uri")).rejects.toThrow(/Invalid tc39/);
   });
 
-  it("throws on unknown spec", () => {
-    expect(() => readResource("tc39://999/main/sec-x")).toThrow(/Unknown spec/);
+  it("throws on unknown spec", async () => {
+    await expect(readResource("tc39://999/main/sec-x")).rejects.toThrow(/Unknown spec/);
   });
 
-  it("throws on unknown clause id", () => {
-    expect(() =>
+  it("throws on unknown clause id", async () => {
+    await expect(
       readResource("tc39://262/latest/sec-this-does-not-exist-xyz"),
-    ).toThrow(/No such clause/);
+    ).rejects.toThrow(/No such clause/);
   });
 });

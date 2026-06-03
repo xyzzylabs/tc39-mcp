@@ -120,16 +120,16 @@ export type SpecGrammarResult =
       total: number;
     };
 
-export function specGrammar(args: {
+export async function specGrammar(args: {
   nonterminal?: string;
   contains?: string;
   include_sdo?: boolean;
   spec?: Spec;
   edition?: Edition;
   limit?: number;
-}): SpecGrammarResult {
+}): Promise<SpecGrammarResult> {
   const spec = args.spec ?? "262";
-  const parsed = loadSpec(spec, args.edition ?? "latest");
+  const parsed = await loadSpec(spec, args.edition ?? "latest");
   const limit = args.limit ?? 100;
   const includeSdo = args.include_sdo ?? false;
 

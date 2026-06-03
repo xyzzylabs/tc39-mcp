@@ -109,14 +109,14 @@ function compareSectionNumbers(a: string, b: string): number {
   return aP.length - bP.length;
 }
 
-export function clauseOutline(args: {
+export async function clauseOutline(args: {
   spec?: Spec;
   edition?: Edition;
   depth?: number;
   under?: string;
-}): OutlineResult {
+}): Promise<OutlineResult> {
   const spec = args.spec ?? "262";
-  const parsed = loadSpec(spec, args.edition ?? "latest");
+  const parsed = await loadSpec(spec, args.edition ?? "latest");
   const maxDepth = args.depth;
 
   // Collect rows + sort by section number.

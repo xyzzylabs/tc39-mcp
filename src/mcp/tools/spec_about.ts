@@ -10,18 +10,16 @@
 // only, without loading the full clause tree.
 
 import { z } from "zod";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import {
   CONCRETE_EDITIONS,
   SPEC_VALUES,
   isSupported,
-  specJsonPath,
   type ConcreteEdition,
   type Spec,
 } from "../../editions.js";
-import { BUILD_DIR } from "../../paths.js";
-import { join } from "node:path";
+import { loadSnapshot } from "../../data/loader.js";
 
 const req = createRequire(import.meta.url);
 
@@ -101,18 +99,16 @@ function serverInfo(): { name: string; version: string } {
   }
 }
 
-/** Read a parsed-spec JSON file's metadata without loading its full
- *  clauses tree. Reads the on-disk bytes once and parses; the
- *  intermediate object is dropped after we extract just the
- *  inexpensive bits. */
-function snapshotInfo(spec: Spec, edition: ConcreteEdition): SnapshotInfo {
-  const path = specJsonPath(spec, edition);
-  if (!existsSync(path)) {
+/** Read a parsed-spec snapshot's metadata without loading its full
+ *  clauses tree into the hot LRU. Sources bytes via `loadSnapshot`
+ *  (cache → network → bundle) and extracts just the inexpensive bits. */
+async function snapshotInfo(spec: Spec, edition: ConcreteEdition): Promise<SnapshotInfo> {
+  const outcome = await loadSnapshot(`spec-${spec}-${edition}.json`);
+  if (outcome.kind === "missing") {
     return { spec, edition, present: false };
   }
   try {
-    const bytes = statSync(path).size;
-    const parsed = JSON.parse(readFileSync(path, "utf8")) as {
+    const parsed = JSON.parse(outcome.body) as {
       pin?: {
         sha?: string;
         fetched_at?: string;
@@ -132,7 +128,7 @@ function snapshotInfo(spec: Spec, edition: ConcreteEdition): SnapshotInfo {
       clause_count: parsed.clauses ? Object.keys(parsed.clauses).length : 0,
       has_tables: Boolean(parsed.tables && Object.keys(parsed.tables).length > 0),
       has_grammar: Boolean(parsed.grammar && Array.isArray(parsed.grammar) && parsed.grammar.length > 0),
-      bytes_on_disk: bytes,
+      bytes_on_disk: Buffer.byteLength(outcome.body, "utf8"),
     };
   } catch {
     return { spec, edition, present: false };
@@ -151,50 +147,51 @@ interface ProposalsIndexHeader {
   proposals: unknown[];
 }
 
-function test262IndexInfo(): AboutResult["test262_index"] {
-  const path = join(BUILD_DIR, "test262-index.json");
-  if (!existsSync(path)) return undefined;
+async function test262IndexInfo(): Promise<AboutResult["test262_index"]> {
+  const outcome = await loadSnapshot("test262-index.json");
+  if (outcome.kind === "missing") return undefined;
   try {
-    const bytes = statSync(path).size;
-    const idx = JSON.parse(readFileSync(path, "utf8")) as Test262IndexHeader;
+    const idx = JSON.parse(outcome.body) as Test262IndexHeader;
     return {
       test262_sha: idx.test262_sha,
       generated_at: idx.generated_at,
       test_count: Array.isArray(idx.tests) ? idx.tests.length : 0,
-      bytes_on_disk: bytes,
+      bytes_on_disk: Buffer.byteLength(outcome.body, "utf8"),
     };
   } catch {
     return undefined;
   }
 }
 
-function proposalsIndexInfo(): AboutResult["proposals_index"] {
-  const path = join(BUILD_DIR, "proposals-index.json");
-  if (!existsSync(path)) return undefined;
+async function proposalsIndexInfo(): Promise<AboutResult["proposals_index"]> {
+  const outcome = await loadSnapshot("proposals-index.json");
+  if (outcome.kind === "missing") return undefined;
   try {
-    const bytes = statSync(path).size;
-    const idx = JSON.parse(readFileSync(path, "utf8")) as ProposalsIndexHeader;
+    const idx = JSON.parse(outcome.body) as ProposalsIndexHeader;
     return {
       proposals_sha: idx.proposals_sha,
       generated_at: idx.generated_at,
       proposal_count: Array.isArray(idx.proposals) ? idx.proposals.length : 0,
-      bytes_on_disk: bytes,
+      bytes_on_disk: Buffer.byteLength(outcome.body, "utf8"),
     };
   } catch {
     return undefined;
   }
 }
 
-export function specAbout(): AboutResult {
-  const snapshots: SnapshotInfo[] = [];
+export async function specAbout(): Promise<AboutResult> {
+  const snapshotPromises: Promise<SnapshotInfo>[] = [];
   for (const spec of SPEC_VALUES) {
     for (const edition of CONCRETE_EDITIONS) {
       if (!isSupported(spec, edition)) continue;
-      snapshots.push(snapshotInfo(spec, edition));
+      snapshotPromises.push(snapshotInfo(spec, edition));
     }
   }
-  const t262 = test262IndexInfo();
-  const props = proposalsIndexInfo();
+  const [snapshots, t262, props] = await Promise.all([
+    Promise.all(snapshotPromises),
+    test262IndexInfo(),
+    proposalsIndexInfo(),
+  ]);
   return {
     server: serverInfo(),
     generated_at: new Date().toISOString(),

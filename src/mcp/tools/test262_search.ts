@@ -14,9 +14,7 @@
 // Dropped.
 
 import { z } from "zod";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { BUILD_DIR } from "../../paths.js";
+import { loadSnapshot } from "../../data/loader.js";
 
 export const test262SearchSchema = {
   query: z
@@ -109,15 +107,16 @@ interface IndexFile {
 }
 
 let indexCache: IndexFile | null = null;
-let indexCheckedDisk = false;
+let indexAttempted = false;
 
-function loadIndex(): IndexFile | null {
-  if (indexCheckedDisk) return indexCache;
-  indexCheckedDisk = true;
-  const p = join(BUILD_DIR, "test262-index.json");
-  if (!existsSync(p)) return null;
+async function loadIndex(): Promise<IndexFile | null> {
+  if (indexCache) return indexCache;
+  if (indexAttempted) return null;
+  indexAttempted = true;
+  const outcome = await loadSnapshot("test262-index.json");
+  if (outcome.kind === "missing") return null;
   try {
-    indexCache = JSON.parse(readFileSync(p, "utf8")) as IndexFile;
+    indexCache = JSON.parse(outcome.body) as IndexFile;
     return indexCache;
   } catch {
     return null;
@@ -182,11 +181,11 @@ function searchIndex(
 
 // ─── public entry ──────────────────────────────────────────────────
 
-export function test262Search(args: {
+export async function test262Search(args: {
   query?: string;
   esid?: string;
   limit?: number;
-}): Test262SearchResult {
+}): Promise<Test262SearchResult> {
   if (!args.query && !args.esid) {
     return {
       source: "none",
@@ -195,7 +194,7 @@ export function test262Search(args: {
     };
   }
 
-  const idx = loadIndex();
+  const idx = await loadIndex();
   if (idx) return searchIndex(idx, args);
 
   return {

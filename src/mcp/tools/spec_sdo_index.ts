@@ -94,15 +94,15 @@ export interface SdoIndexResult {
   groups: Record<string, SdoEntry[]>;
 }
 
-export function specSdoIndex(args: {
+export async function specSdoIndex(args: {
   spec?: Spec;
   edition?: Edition;
   by?: "production" | "sdo";
   filter?: string;
   limit?: number;
-}): SdoIndexResult {
+}): Promise<SdoIndexResult> {
   const spec = args.spec ?? "262";
-  const parsed = loadSpec(spec, args.edition ?? "latest");
+  const parsed = await loadSpec(spec, args.edition ?? "latest");
   const by = args.by ?? "production";
   const filter = args.filter?.toLowerCase();
   const limit = args.limit ?? 50;

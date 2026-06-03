@@ -7,9 +7,9 @@ import { specSdoIndex } from "./spec_sdo_index.js";
 // Identifier`, `Statement : ExpressionStatement`, etc.
 
 describe("specSdoIndex", () => {
-  it("returns a non-trivial number of SDO definitions on ECMA-262", () => {
+  it("returns a non-trivial number of SDO definitions on ECMA-262", async () => {
     try {
-      const r = specSdoIndex({ spec: "262", edition: "latest", limit: 500 });
+      const r = await specSdoIndex({ spec: "262", edition: "latest", limit: 500 });
       expect(r.spec).toBe("262");
       // ECMA-262's syntactic SDOs span hundreds of clauses; pair count
       // should easily clear a few hundred.
@@ -20,9 +20,9 @@ describe("specSdoIndex", () => {
     }
   });
 
-  it("by='production' returns productions as keys", () => {
+  it("by='production' returns productions as keys", async () => {
     try {
-      const r = specSdoIndex({
+      const r = await specSdoIndex({
         spec: "262",
         edition: "latest",
         by: "production",
@@ -43,9 +43,9 @@ describe("specSdoIndex", () => {
     }
   });
 
-  it("by='sdo' returns SDO clause titles as keys", () => {
+  it("by='sdo' returns SDO clause titles as keys", async () => {
     try {
-      const r = specSdoIndex({
+      const r = await specSdoIndex({
         spec: "262",
         edition: "latest",
         by: "sdo",
@@ -60,9 +60,9 @@ describe("specSdoIndex", () => {
     }
   });
 
-  it("filter narrows keys by substring (case-insensitive)", () => {
+  it("filter narrows keys by substring (case-insensitive)", async () => {
     try {
-      const r = specSdoIndex({
+      const r = await specSdoIndex({
         spec: "262",
         edition: "latest",
         by: "production",
@@ -77,9 +77,9 @@ describe("specSdoIndex", () => {
     }
   });
 
-  it("respects the group `limit`", () => {
+  it("respects the group `limit`", async () => {
     try {
-      const r = specSdoIndex({
+      const r = await specSdoIndex({
         spec: "262",
         edition: "latest",
         by: "production",

@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { specGrammar } from "./spec_grammar.js";
 
 describe("specGrammar — list mode", () => {
-  it("lists non-terminals when no filter is given", () => {
+  it("lists non-terminals when no filter is given", async () => {
     try {
-      const r = specGrammar({ spec: "262", edition: "latest" });
+      const r = await specGrammar({ spec: "262", edition: "latest" });
       if (r.mode !== "list") throw new Error("expected list mode");
       // ECMA-262 has 150+ standalone non-terminals across §11-15.
       expect(r.total).toBeGreaterThan(100);
@@ -19,9 +19,9 @@ describe("specGrammar — list mode", () => {
 });
 
 describe("specGrammar — by_nonterminal mode", () => {
-  it("returns BindingIdentifier productions", () => {
+  it("returns BindingIdentifier productions", async () => {
     try {
-      const r = specGrammar({
+      const r = await specGrammar({
         spec: "262",
         edition: "latest",
         nonterminal: "BindingIdentifier",
@@ -40,9 +40,9 @@ describe("specGrammar — by_nonterminal mode", () => {
     }
   });
 
-  it("returns Statement productions", () => {
+  it("returns Statement productions", async () => {
     try {
-      const r = specGrammar({
+      const r = await specGrammar({
         spec: "262",
         edition: "latest",
         nonterminal: "Statement",
@@ -58,9 +58,9 @@ describe("specGrammar — by_nonterminal mode", () => {
     }
   });
 
-  it("returns empty for an unknown non-terminal", () => {
+  it("returns empty for an unknown non-terminal", async () => {
     try {
-      const r = specGrammar({
+      const r = await specGrammar({
         spec: "262",
         edition: "latest",
         nonterminal: "NoSuchNonterminalXYZ",
@@ -75,9 +75,9 @@ describe("specGrammar — by_nonterminal mode", () => {
 });
 
 describe("specGrammar — contains mode", () => {
-  it("filters by RHS substring", () => {
+  it("filters by RHS substring", async () => {
     try {
-      const r = specGrammar({
+      const r = await specGrammar({
         spec: "262",
         edition: "latest",
         contains: "yield",
@@ -96,10 +96,10 @@ describe("specGrammar — contains mode", () => {
 });
 
 describe("specGrammar — include_sdo flag", () => {
-  it("standalone-only is the default and excludes SDO-attached grammar", () => {
+  it("standalone-only is the default and excludes SDO-attached grammar", async () => {
     try {
-      const off = specGrammar({ spec: "262", edition: "latest" });
-      const on = specGrammar({
+      const off = await specGrammar({ spec: "262", edition: "latest" });
+      const on = await specGrammar({
         spec: "262",
         edition: "latest",
         include_sdo: true,

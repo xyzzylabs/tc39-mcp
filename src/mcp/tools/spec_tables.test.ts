@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { specTables } from "./spec_tables.js";
 
 describe("specTables — list mode", () => {
-  it("lists tables when no id is given", () => {
+  it("lists tables when no id is given", async () => {
     try {
-      const r = specTables({ spec: "262", edition: "latest" });
+      const r = await specTables({ spec: "262", edition: "latest" });
       if (r.mode !== "list") throw new Error("expected list mode");
       expect(r.total).toBeGreaterThan(50);
       expect(Array.isArray(r.tables)).toBe(true);
@@ -19,9 +19,9 @@ describe("specTables — list mode", () => {
     }
   });
 
-  it("filter narrows by caption or id substring (case-insensitive)", () => {
+  it("filter narrows by caption or id substring (case-insensitive)", async () => {
     try {
-      const r = specTables({
+      const r = await specTables({
         spec: "262",
         edition: "latest",
         filter: "well-known intrinsic",
@@ -37,9 +37,9 @@ describe("specTables — list mode", () => {
     }
   });
 
-  it("respects the limit", () => {
+  it("respects the limit", async () => {
     try {
-      const r = specTables({ spec: "262", edition: "latest", limit: 3 });
+      const r = await specTables({ spec: "262", edition: "latest", limit: 3 });
       if (r.mode !== "list") throw new Error("expected list mode");
       expect(r.tables.length).toBeLessThanOrEqual(3);
     } catch {
@@ -49,9 +49,9 @@ describe("specTables — list mode", () => {
 });
 
 describe("specTables — get mode", () => {
-  it("returns the well-known intrinsics table by id", () => {
+  it("returns the well-known intrinsics table by id", async () => {
     try {
-      const r = specTables({
+      const r = await specTables({
         spec: "262",
         edition: "latest",
         id: "table-well-known-intrinsic-objects",
@@ -72,9 +72,9 @@ describe("specTables — get mode", () => {
     }
   });
 
-  it("returns table:null for an id that doesn't exist", () => {
+  it("returns table:null for an id that doesn't exist", async () => {
     try {
-      const r = specTables({
+      const r = await specTables({
         spec: "262",
         edition: "latest",
         id: "table-does-not-exist-xyz",
@@ -86,9 +86,9 @@ describe("specTables — get mode", () => {
     }
   });
 
-  it("captures the well-known symbols table", () => {
+  it("captures the well-known symbols table", async () => {
     try {
-      const r = specTables({
+      const r = await specTables({
         spec: "262",
         edition: "latest",
         id: "table-well-known-symbols",
@@ -101,9 +101,9 @@ describe("specTables — get mode", () => {
     }
   });
 
-  it("works on ECMA-402", () => {
+  it("works on ECMA-402", async () => {
     try {
-      const r = specTables({ spec: "402", edition: "main" });
+      const r = await specTables({ spec: "402", edition: "main" });
       if (r.mode !== "list") throw new Error("expected list mode");
       // 402 has plenty of locale-data tables; some captures expected.
       expect(r.total).toBeGreaterThan(0);

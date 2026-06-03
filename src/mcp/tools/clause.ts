@@ -1,6 +1,5 @@
 // MCP tool: clause.get / clause.list — read a parsed (spec, edition).
 
-import { readFileSync, existsSync } from "node:fs";
 import { z } from "zod";
 import type { ParsedSpec, Clause } from "../../parser/schema.js";
 import {
@@ -8,12 +7,12 @@ import {
   SPEC_VALUES,
   isSupported,
   resolveEdition,
-  specJsonPath,
   type ConcreteEdition,
   type Edition,
   type Spec,
 } from "../../editions.js";
 import { LruMap } from "../../util/lru.js";
+import { loadSnapshot } from "../../data/loader.js";
 
 /** Bounded cache keyed on (spec, concrete edition). One in-memory
  *  parse per pair; aliases reuse the same entry as their concrete
@@ -30,10 +29,17 @@ function cacheKey(spec: Spec, ed: ConcreteEdition): string {
   return `${spec}:${ed}`;
 }
 
+/** R2 key for the live (current) parsed snapshot of a (spec, edition). */
+function snapshotKey(spec: Spec, ed: ConcreteEdition): string {
+  return `spec-${spec}-${ed}.json`;
+}
+
 /** Load (and cache) a parsed (spec, edition). Aliases resolve to a
- *  concrete edition first; `latest` is spec-aware. Throws if the
- *  combination isn't supported or the parsed JSON hasn't been built. */
-export function loadSpec(spec: Spec, edition: Edition): ParsedSpec {
+ *  concrete edition first; `latest` is spec-aware. Bytes are sourced
+ *  through `loadSnapshot` (local cache → hosted Worker R2 → bundled
+ *  fallback). Throws if the combination isn't supported or no layer
+ *  in the chain can produce the snapshot. */
+export async function loadSpec(spec: Spec, edition: Edition): Promise<ParsedSpec> {
   const concrete = resolveEdition(spec, edition);
   if (!isSupported(spec, concrete)) {
     throw new Error(
@@ -46,13 +52,13 @@ export function loadSpec(spec: Spec, edition: Edition): ParsedSpec {
   const key = cacheKey(spec, concrete);
   const hit = cached.get(key);
   if (hit) return hit;
-  const path = specJsonPath(spec, concrete);
-  if (!existsSync(path)) {
+  const outcome = await loadSnapshot(snapshotKey(spec, concrete));
+  if (outcome.kind === "missing") {
     throw new Error(
-      `Parsed spec missing: ${path}. Run 'npm run parse' first.`,
+      `Parsed spec unavailable for ${spec}/${concrete}: ${outcome.reason}`,
     );
   }
-  const parsed = JSON.parse(readFileSync(path, "utf8")) as ParsedSpec;
+  const parsed = JSON.parse(outcome.body) as ParsedSpec;
   cached.set(key, parsed);
   return parsed;
 }
@@ -92,8 +98,8 @@ export const clauseGetExamples = [
   },
 ] as const;
 
-export function clauseGet(args: ClauseGetArgs): Clause | null {
-  const parsed = loadSpec(args.spec ?? "262", args.edition ?? "latest");
+export async function clauseGet(args: ClauseGetArgs): Promise<Clause | null> {
+  const parsed = await loadSpec(args.spec ?? "262", args.edition ?? "latest");
   return parsed.clauses[args.id] ?? null;
 }
 
@@ -170,15 +176,15 @@ export interface ClauseListHit {
   algorithms: number;
 }
 
-export function clauseList(args: {
+export async function clauseList(args: {
   spec?: Spec;
   edition?: Edition;
   kind?: string;
   section?: string;
   has_algorithm?: boolean;
   limit?: number;
-}): ClauseListHit[] {
-  const parsed = loadSpec(args.spec ?? "262", args.edition ?? "latest");
+}): Promise<ClauseListHit[]> {
+  const parsed = await loadSpec(args.spec ?? "262", args.edition ?? "latest");
   const limit = args.limit ?? 200;
   const out: ClauseListHit[] = [];
   for (const [id, c] of Object.entries(parsed.clauses)) {

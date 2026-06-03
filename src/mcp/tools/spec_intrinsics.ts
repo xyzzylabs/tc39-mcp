@@ -297,14 +297,14 @@ function fromHeuristic(
 
 // ─── public entry ──────────────────────────────────────────────────
 
-export function specIntrinsics(args: {
+export async function specIntrinsics(args: {
   spec?: Spec;
   edition?: Edition;
   filter?: string;
   limit?: number;
-}): IntrinsicsResult {
+}): Promise<IntrinsicsResult> {
   const spec = args.spec ?? "262";
-  const parsed: ParsedSpec = loadSpec(spec, args.edition ?? "latest");
+  const parsed: ParsedSpec = await loadSpec(spec, args.edition ?? "latest");
   const filter = args.filter?.toLowerCase();
   const limit = args.limit ?? 100;
 

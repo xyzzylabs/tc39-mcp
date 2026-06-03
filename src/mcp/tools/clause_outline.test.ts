@@ -14,9 +14,9 @@ function countNodes(roots: OutlineNode[]): number {
 }
 
 describe("clauseOutline", () => {
-  it("returns top-level clauses only with depth=1", () => {
+  it("returns top-level clauses only with depth=1", async () => {
     try {
-      const r = clauseOutline({ spec: "262", edition: "latest", depth: 1 });
+      const r = await clauseOutline({ spec: "262", edition: "latest", depth: 1 });
       // The top-level of ECMA-262 has ~30 clauses (§1–§29 + a few annexes).
       expect(r.roots.length).toBeGreaterThan(10);
       for (const root of r.roots) {
@@ -28,9 +28,9 @@ describe("clauseOutline", () => {
     }
   });
 
-  it("returns a tree at depth=2 with first-level children populated", () => {
+  it("returns a tree at depth=2 with first-level children populated", async () => {
     try {
-      const r = clauseOutline({ spec: "262", edition: "latest", depth: 2 });
+      const r = await clauseOutline({ spec: "262", edition: "latest", depth: 2 });
       expect(r.node_count).toBeGreaterThan(r.roots.length);
       // At least one root should have children at this depth.
       expect(r.roots.some((root) => root.children.length > 0)).toBe(true);
@@ -45,9 +45,9 @@ describe("clauseOutline", () => {
     }
   });
 
-  it("children are ordered by section number", () => {
+  it("children are ordered by section number", async () => {
     try {
-      const r = clauseOutline({ spec: "262", edition: "latest", depth: 2 });
+      const r = await clauseOutline({ spec: "262", edition: "latest", depth: 2 });
       for (const root of r.roots) {
         let prev = "";
         for (const child of root.children) {
@@ -73,14 +73,14 @@ describe("clauseOutline", () => {
     }
   });
 
-  it("`under` filter limits to descendants of a clause", () => {
+  it("`under` filter limits to descendants of a clause", async () => {
     try {
       // §22.2 RegExp has dozens of descendants but only one top-level
       // RegExp clause. Anchor at one to verify scoping.
-      const all = clauseOutline({ spec: "262", edition: "latest", depth: 1 });
+      const all = await clauseOutline({ spec: "262", edition: "latest", depth: 1 });
       const regexpClause = all.roots.find((r) => /regular expressions?/i.test(r.title));
       if (!regexpClause) return;
-      const r = clauseOutline({
+      const r = await clauseOutline({
         spec: "262",
         edition: "latest",
         under: regexpClause.id,
@@ -95,9 +95,9 @@ describe("clauseOutline", () => {
     }
   });
 
-  it("works on ECMA-402", () => {
+  it("works on ECMA-402", async () => {
     try {
-      const r = clauseOutline({ spec: "402", edition: "main", depth: 1 });
+      const r = await clauseOutline({ spec: "402", edition: "main", depth: 1 });
       expect(r.spec).toBe("402");
       expect(r.roots.length).toBeGreaterThan(5);
       for (const root of r.roots) {
@@ -109,20 +109,20 @@ describe("clauseOutline", () => {
     }
   });
 
-  it("node_count matches actual tree size", () => {
+  it("node_count matches actual tree size", async () => {
     try {
-      const r = clauseOutline({ spec: "262", edition: "latest", depth: 3 });
+      const r = await clauseOutline({ spec: "262", edition: "latest", depth: 3 });
       expect(countNodes(r.roots)).toBe(r.node_count);
     } catch {
       // Parsed JSON missing.
     }
   });
 
-  it("annexes (A, B, …) sort after numeric sections", () => {
+  it("annexes (A, B, …) sort after numeric sections", async () => {
     // Verified indirectly: collect top-level roots and verify every
     // annex (letter-numbered) comes after every numeric-numbered root.
     try {
-      const r = clauseOutline({ spec: "262", edition: "latest", depth: 1 });
+      const r = await clauseOutline({ spec: "262", edition: "latest", depth: 1 });
       let seenAnnex = false;
       for (const root of r.roots) {
         const isAnnex = /^[A-Z]+$/.test(root.number);
@@ -138,9 +138,9 @@ describe("clauseOutline", () => {
     }
   });
 
-  it("sibling annexes (A, B, C) sort alphabetically", () => {
+  it("sibling annexes (A, B, C) sort alphabetically", async () => {
     try {
-      const r = clauseOutline({ spec: "262", edition: "latest", depth: 1 });
+      const r = await clauseOutline({ spec: "262", edition: "latest", depth: 1 });
       const annexes = r.roots.filter((x) => /^[A-Z]+$/.test(x.number));
       for (let i = 1; i < annexes.length; i++) {
         // 'A' < 'B' < 'C' as plain string compare.

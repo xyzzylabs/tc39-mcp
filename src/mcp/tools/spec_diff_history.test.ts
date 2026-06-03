@@ -7,26 +7,26 @@ import { clauseList } from "./clause.js";
 const specHistoryInput = z.object(specHistorySchema);
 
 describe("specDiff — latest → main default", () => {
-  it("reports `identical` or `modified` for a stable clause between latest and main", () => {
+  it("reports `identical` or `modified` for a stable clause between latest and main", async () => {
     // ToBoolean is rock-stable; very unlikely to change between the
     // pinned release and main. If it ever does, this test surfaces it.
-    const r = specDiff({ id: "sec-toboolean" });
+    const r = await specDiff({ id: "sec-toboolean" });
     expect(r.id).toBe("sec-toboolean");
     expect(r.status).toMatch(/identical|modified/);
     expect(r.from_summary).toBeDefined();
     expect(r.to_summary).toBeDefined();
   });
 
-  it("returns missing-from-both for a clause that doesn't exist", () => {
-    const r = specDiff({ id: "sec-this-clause-does-not-exist-anywhere" });
+  it("returns missing-from-both for a clause that doesn't exist", async () => {
+    const r = await specDiff({ id: "sec-this-clause-does-not-exist-anywhere" });
     expect(r.status).toBe("missing-from-both");
     expect(r.same).toBe(true);
   });
 
-  it("structurally describes a modified clause if any", () => {
+  it("structurally describes a modified clause if any", async () => {
     // We don't know which clauses will have drifted in main, but we can
     // sanity-check the diff shape on a known clause.
-    const r = specDiff({ id: "sec-tonumber" });
+    const r = await specDiff({ id: "sec-tonumber" });
     expect(r.id).toBe("sec-tonumber");
     if (r.status === "modified") {
       expect(r.diffs).toBeDefined();
@@ -129,15 +129,15 @@ describe("specDiff (generic) — reworded-step branch", () => {
   // The reworded-step path triggers when step_count is equal in both
   // editions but the per-step text isn't. We scan recent 262 editions
   // for a clause that exhibits this to exercise the branch.
-  function findRewordedClause(
+  async function findRewordedClause(
     fromEd: "es2024" | "es2025",
     toEd: "es2025" | "main",
-  ): string | null {
+  ): Promise<string | null> {
     try {
-      const fromList = clauseList({ spec: "262", edition: fromEd, limit: 2500 });
+      const fromList = await clauseList({ spec: "262", edition: fromEd, limit: 2500 });
       for (const c of fromList) {
         if (c.algorithms === 0) continue;
-        const d = specDiff({ id: c.id, spec: "262", from: fromEd, to: toEd });
+        const d = await specDiff({ id: c.id, spec: "262", from: fromEd, to: toEd });
         if (d.status !== "modified" || !d.diffs) continue;
         const stepDiff = d.diffs.find((x) => x.field === "steps");
         if (!stepDiff) continue;
@@ -155,10 +155,10 @@ describe("specDiff (generic) — reworded-step branch", () => {
     return null;
   }
 
-  it("detects reworded steps when step counts are equal", () => {
-    const id = findRewordedClause("es2024", "main");
+  it("detects reworded steps when step counts are equal", async () => {
+    const id = await findRewordedClause("es2024", "main");
     if (!id) return; // no reworded clauses found between editions
-    const r = specDiff({ id, spec: "262", from: "es2024", to: "main" });
+    const r = await specDiff({ id, spec: "262", from: "es2024", to: "main" });
     expect(r.status).toBe("modified");
     const stepDiff = r.diffs?.find((d) => d.field === "steps");
     expect(stepDiff).toBeDefined();
@@ -168,14 +168,14 @@ describe("specDiff (generic) — reworded-step branch", () => {
 });
 
 describe("specDiff — added / removed status", () => {
-  it("reports `added` for a clause that exists only in `to`", () => {
+  it("reports `added` for a clause that exists only in `to`", async () => {
     // Find a clause that exists in main but not in es2025.
     try {
       const inMain = new Set(
-        clauseList({ spec: "262", edition: "main", limit: 2500 }).map((c) => c.id),
+        (await clauseList({ spec: "262", edition: "main", limit: 2500 })).map((c) => c.id),
       );
       const inLatest = new Set(
-        clauseList({ spec: "262", edition: "es2025", limit: 2500 }).map((c) => c.id),
+        (await clauseList({ spec: "262", edition: "es2025", limit: 2500 })).map((c) => c.id),
       );
       let addedId: string | undefined;
       for (const id of inMain) {
@@ -185,7 +185,7 @@ describe("specDiff — added / removed status", () => {
         }
       }
       if (!addedId) return; // nothing was added between es2025 and main
-      const r = specDiff({ id: addedId, spec: "262", from: "es2025", to: "main" });
+      const r = await specDiff({ id: addedId, spec: "262", from: "es2025", to: "main" });
       expect(r.status).toBe("added");
       expect(r.to_summary).toBeDefined();
       expect(r.from_summary).toBeUndefined();
@@ -194,12 +194,12 @@ describe("specDiff — added / removed status", () => {
     }
   });
 
-  it("reports `removed` for a clause that exists only in `from`", () => {
+  it("reports `removed` for a clause that exists only in `from`", async () => {
     try {
       const inMain = new Set(
-        clauseList({ spec: "262", edition: "main", limit: 2500 }).map((c) => c.id),
+        (await clauseList({ spec: "262", edition: "main", limit: 2500 })).map((c) => c.id),
       );
-      const inLatest = clauseList({ spec: "262", edition: "es2025", limit: 2500 });
+      const inLatest = await clauseList({ spec: "262", edition: "es2025", limit: 2500 });
       let removedId: string | undefined;
       for (const c of inLatest) {
         if (!inMain.has(c.id)) {
@@ -208,7 +208,7 @@ describe("specDiff — added / removed status", () => {
         }
       }
       if (!removedId) return;
-      const r = specDiff({ id: removedId, spec: "262", from: "es2025", to: "main" });
+      const r = await specDiff({ id: removedId, spec: "262", from: "es2025", to: "main" });
       expect(r.status).toBe("removed");
       expect(r.from_summary).toBeDefined();
       expect(r.to_summary).toBeUndefined();

@@ -145,14 +145,14 @@ function countOccurrences(haystack: string, needle: string): number {
   return count;
 }
 
-export function specSymbolResolve(args: {
+export async function specSymbolResolve(args: {
   notation: string;
   spec?: Spec;
   edition?: Edition;
   limit?: number;
-}): SymbolResolveResult {
+}): Promise<SymbolResolveResult> {
   const { kind, name } = classify(args.notation);
-  const parsed = loadSpec(args.spec ?? "262", args.edition ?? "latest");
+  const parsed = await loadSpec(args.spec ?? "262", args.edition ?? "latest");
   const limit = args.limit ?? 10;
   const hits: SymbolHit[] = [];
 

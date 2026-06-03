@@ -92,8 +92,8 @@ export interface SpecSearchHit {
   score: number;
 }
 
-export function specSearch(args: SpecSearchArgs): SpecSearchHit[] {
-  const spec = loadSpec(args.spec ?? "262", args.edition ?? "latest");
+export async function specSearch(args: SpecSearchArgs): Promise<SpecSearchHit[]> {
+  const spec = await loadSpec(args.spec ?? "262", args.edition ?? "latest");
   const q = args.query.toLowerCase();
   const searchSteps = args.search_steps ?? false;
   const limit = args.limit ?? 20;

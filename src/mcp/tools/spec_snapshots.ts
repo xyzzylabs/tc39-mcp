@@ -12,15 +12,14 @@
 // historical pins they can reach via `at: "<sha>"`.
 
 import { z } from "zod";
-import { existsSync, readFileSync, statSync } from "node:fs";
 import {
   CONCRETE_EDITIONS,
   SPEC_VALUES,
   isSupported,
-  specJsonPath,
   type ConcreteEdition,
   type Spec,
 } from "../../editions.js";
+import { loadSnapshot } from "../../data/loader.js";
 
 export const specSnapshotsSchema = {
   spec: z
@@ -80,47 +79,51 @@ interface SnapshotJsonHeader {
   };
 }
 
-/** Read just the `pin` block out of a parsed-spec JSON. Skip the full
- *  clauses tree to keep the listing cheap. */
-function readPin(path: string): {
+/** Read just the `pin` block out of a parsed-spec snapshot body. Skip
+ *  the full clauses tree to keep the listing cheap. */
+function readPin(body: string): {
   sha?: string;
   fetched_at?: string;
   biblio_commit?: string;
 } | null {
   try {
-    const parsed = JSON.parse(readFileSync(path, "utf8")) as SnapshotJsonHeader;
+    const parsed = JSON.parse(body) as SnapshotJsonHeader;
     return parsed.pin ?? null;
   } catch {
     return null;
   }
 }
 
-export function specSnapshots(args: {
+export async function specSnapshots(args: {
   spec?: Spec;
   edition?: string;
-}): SnapshotsResult {
-  const out: SnapshotRow[] = [];
+}): Promise<SnapshotsResult> {
+  const probes: Promise<SnapshotRow | null>[] = [];
   for (const spec of SPEC_VALUES) {
     if (args.spec && args.spec !== spec) continue;
     for (const edition of CONCRETE_EDITIONS) {
       if (!isSupported(spec, edition)) continue;
       if (args.edition && args.edition !== edition) continue;
-      const path = specJsonPath(spec, edition);
-      if (!existsSync(path)) continue;
-      if (!statSync(path).isFile()) continue;
-      const pin = readPin(path);
-      if (!pin?.sha) continue;
-      const row: SnapshotRow = {
-        spec,
-        edition,
-        sha: pin.sha,
-        live: true,
-        ...(pin.fetched_at ? { fetched_at: pin.fetched_at } : {}),
-        ...(pin.biblio_commit ? { biblio_commit: pin.biblio_commit } : {}),
-      };
-      out.push(row);
+      probes.push(
+        (async (): Promise<SnapshotRow | null> => {
+          const outcome = await loadSnapshot(`spec-${spec}-${edition}.json`);
+          if (outcome.kind === "missing") return null;
+          const pin = readPin(outcome.body);
+          if (!pin?.sha) return null;
+          return {
+            spec,
+            edition,
+            sha: pin.sha,
+            live: true,
+            ...(pin.fetched_at ? { fetched_at: pin.fetched_at } : {}),
+            ...(pin.biblio_commit ? { biblio_commit: pin.biblio_commit } : {}),
+          };
+        })(),
+      );
     }
   }
+  const rows = await Promise.all(probes);
+  const out: SnapshotRow[] = rows.filter((r): r is SnapshotRow => r !== null);
   // Sort: spec → edition → sha for deterministic output.
   out.sort(
     (a, b) =>

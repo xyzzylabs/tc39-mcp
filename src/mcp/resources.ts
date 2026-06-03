@@ -61,16 +61,16 @@ export function buildResourceUri(
  *  dot, i.e. "1", "16", "A". Limits the result to the first N
  *  clauses per snapshot so the response stays under MCP's normal
  *  message-size budget. */
-export function listResources(args: { per_snapshot?: number } = {}): {
+export async function listResources(args: { per_snapshot?: number } = {}): Promise<{
   resources: ResourceDescriptor[];
-} {
+}> {
   const cap = args.per_snapshot ?? 50;
   const out: ResourceDescriptor[] = [];
   for (const spec of SPEC_VALUES) {
     for (const edition of CONCRETE_EDITIONS) {
       let parsed;
       try {
-        parsed = loadSpec(spec, edition);
+        parsed = await loadSpec(spec, edition);
       } catch {
         continue;
       }
@@ -96,9 +96,9 @@ export function listResources(args: { per_snapshot?: number } = {}): {
 }
 
 /** Fetch a single resource. Returns the parsed clause as JSON. */
-export function readResource(uri: string): {
+export async function readResource(uri: string): Promise<{
   contents: { uri: string; mimeType: string; text: string }[];
-} {
+}> {
   const parts = parseResourceUri(uri);
   if (!parts) {
     throw new Error(
@@ -111,7 +111,7 @@ export function readResource(uri: string): {
   const spec = parts.spec as Spec;
   const edition = parts.edition as Edition;
   const concrete = resolveEdition(spec, edition);
-  const parsed = loadSpec(spec, concrete);
+  const parsed = await loadSpec(spec, concrete);
   const clause = parsed.clauses[parts.id];
   if (!clause) {
     throw new Error(`No such clause in ${spec}/${concrete}: ${parts.id}`);

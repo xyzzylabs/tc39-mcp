@@ -92,7 +92,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async () => {
-    const r = specAbout();
+    const r = await specAbout();
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -107,7 +107,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specSnapshots(args);
+    const r = await specSnapshots(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -122,7 +122,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const clause = clauseGet(args);
+    const clause = await clauseGet(args);
     if (!clause) {
       return {
         content: [
@@ -150,7 +150,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const hits = clauseList(args);
+    const hits = await clauseList(args);
     return {
       content: [{ type: "text", text: JSON.stringify({ hits }, null, 2) }],
     };
@@ -167,7 +167,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = clauseOutline(args);
+    const r = await clauseOutline(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -182,7 +182,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const hits = specSearch(args);
+    const hits = await specSearch(args);
     return {
       content: [{ type: "text", text: JSON.stringify({ hits }, null, 2) }],
     };
@@ -199,7 +199,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specCrossrefs(args);
+    const r = await specCrossrefs(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -214,7 +214,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specDiff(args);
+    const r = await specDiff(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -244,7 +244,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specSymbolResolve(args);
+    const r = await specSymbolResolve(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -259,7 +259,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specSdoIndex(args);
+    const r = await specSdoIndex(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -274,7 +274,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const hits = specGlobalSearch(args);
+    const hits = await specGlobalSearch(args);
     return { content: [{ type: "text", text: JSON.stringify({ hits }, null, 2) }] };
   },
 );
@@ -289,7 +289,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specIntrinsics(args);
+    const r = await specIntrinsics(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -304,7 +304,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specTables(args);
+    const r = await specTables(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -319,7 +319,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = specGrammar(args);
+    const r = await specGrammar(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -334,7 +334,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = test262Search(args);
+    const r = await test262Search(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -364,7 +364,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = proposalList(args);
+    const r = await proposalList(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
@@ -379,7 +379,7 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => {
-    const r = proposalGet(args);
+    const r = await proposalGet(args);
     return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
   },
 );
