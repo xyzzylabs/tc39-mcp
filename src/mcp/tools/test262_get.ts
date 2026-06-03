@@ -105,14 +105,11 @@ function vendorSha(): string | null {
 }
 
 export function test262Get(args: { path: string }): Test262GetResult {
-  const vendor = join(VENDOR_ROOT, "test262");
-  if (!existsSync(vendor)) {
-    return {
-      path: args.path,
-      hint:
-        "vendor/test262 not present. Run `npm run fetch-test262` to clone the suite locally.",
-    };
-  }
+  // Path validation runs first: rejecting `..` / absolute / symlink
+  // escapes is a pure-input check that must not depend on whether
+  // vendor/test262 happens to be present. Otherwise a malicious path
+  // received in a fresh install (no vendor yet) would silently look
+  // like an ordinary "missing data" response instead of a rejection.
   const abs = safeResolve(args.path);
   if (!abs) {
     return {
@@ -120,6 +117,14 @@ export function test262Get(args: { path: string }): Test262GetResult {
       hint:
         "Path rejected: must be relative and within the test262 checkout. " +
         "Example: 'test/built-ins/Number/prototype/toString/S15.7.4.2_A1_T01.js'.",
+    };
+  }
+  const vendor = join(VENDOR_ROOT, "test262");
+  if (!existsSync(vendor)) {
+    return {
+      path: args.path,
+      hint:
+        "vendor/test262 not present. Run `npm run fetch-test262` to clone the suite locally.",
     };
   }
   if (!existsSync(abs) || !statSync(abs).isFile()) {
