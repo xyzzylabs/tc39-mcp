@@ -179,7 +179,7 @@ jobs:
             echo
             echo "- \`$PREV\` → \`$CURR\`"
             echo
-            echo "402 publishes editions as branches (not 262's immutable tags), so this is expected post-publication editorial drift. R2 has been refreshed to the new SHA."
+            echo "402 publishes editions as branches (not 262's immutable tags), so this is expected post-publication editorial drift. The new SHA reaches R2 via the deploy this run triggers."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: File a tracking issue for the 402 branch move
@@ -187,8 +187,8 @@ jobs:
         # issue when the current 402 release branch drifts — a durable
         # signal that reaches repo watchers. Deduped on the new SHA so a
         # manual re-run before the sentinel commit lands won't double-
-        # file. R2 is already refreshed by this run; the issue is purely
-        # a prompt for a human to review the upstream change.
+        # file. The new SHA reaches R2 via the deploy this run triggers;
+        # the issue is purely a prompt to review the upstream change.
         if: steps.decide.outputs.moved_402_latest == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -213,7 +213,7 @@ jobs:
             "- **New SHA:** $CURR" \
             "- **Compare:** https://github.com/tc39/ecma402/compare/$PREV...$CURR" \
             "" \
-            "402 publishes annual editions as branches (not 262's immutable tags), so the current one can take editorial commits after it is cut. R2 has already been refreshed to the new SHA by this run; no action is required unless the change is unexpected. Close once reviewed.")
+            "402 publishes annual editions as branches (not 262's immutable tags), so the current one can take editorial commits after it is cut. The new SHA reaches R2 via the deploy this run triggers; no action is required unless the change is unexpected. Close once reviewed.")
           gh issue create \
             --label ecma402-drift \
             --title "ECMA-402 $EDITION_402_LATEST release branch moved ($short_prev -> $short_curr)" \
