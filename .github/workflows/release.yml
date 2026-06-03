@@ -81,7 +81,17 @@ jobs:
         #
         # `--provenance` signs the publish into the sigstore
         # transparency log. Requires the source repo to be public.
-        run: npm publish --provenance --access public
+        #
+        # Idempotent: skip if this version is already on the registry
+        # (e.g. a re-run after a later step failed) so the downstream
+        # MCP Registry + GitHub Release steps can still complete.
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "$(npm view "tc39-mcp@$version" version 2>/dev/null)" = "$version" ]; then
+            echo "tc39-mcp@$version already published — skipping npm publish."
+          else
+            npm publish --provenance --access public
+          fi
 
       - name: Post-publish smoke (install from registry + MCP roundtrip)
         id: post_publish_smoke
@@ -177,6 +187,10 @@ jobs:
           PKG_VERSION: ${{ github.ref_name }}
         run: |
           version="${PKG_VERSION#v}"
+          if gh release view "$PKG_VERSION" >/dev/null 2>&1; then
+            echo "GitHub release $PKG_VERSION already exists — skipping."
+            exit 0
+          fi
           # Extract this version's section from CHANGELOG (between this
           # ## [X.Y.Z] heading and the next ## heading or EOF).
           notes=$(awk -v ver="$version" '
