@@ -67,7 +67,7 @@ testing.
    Zod schema, document the change in `CHANGELOG.md` under "Breaking"
    or "Tools".
 5. **Spec- and edition-aware code goes through `src/editions.ts`.**
-   Don't hardcode `es2026` or `"262"` anywhere; use
+   Don't hardcode a specific edition (`esYYYY`) or spec (`"262"`) anywhere; use
    `resolveEdition(spec, e)` + `loadSpec(spec, edition)`.
 
 ## Testing

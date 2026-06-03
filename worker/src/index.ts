@@ -71,7 +71,7 @@ const TOOL_REGISTRY: {
         at: {
           type: "string",
           description:
-            "Optional historical SHA pin (hex, 4-40 chars). Only valid when edition='main'; released editions are served at a single pinned snapshot.",
+            "Optional historical SHA pin (hex, 4-40 chars). Only valid when edition='main'; released editions have no per-SHA history to address.",
         },
       },
       required: ["id"],

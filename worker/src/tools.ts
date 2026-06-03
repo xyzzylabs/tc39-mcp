@@ -89,12 +89,12 @@ async function getSpec(
   }
   if (at) {
     // SHA addressing only applies to `main`, the one moving edition we
-    // keep per-SHA history for. Released editions are served at a single
-    // pinned snapshot (no SHA-suffixed keys), so rejecting `at` there
+    // keep per-SHA history for. Released editions are served from a
+    // single key with no SHA-suffixed history, so rejecting `at` there
     // avoids generating R2 keys nobody uploads.
     if (resolved !== "main") {
       throw new Error(
-        `\`at\` is only valid for the 'main' edition. ${spec}/${resolved} is a pinned release served at a single snapshot; omit \`at\` to query it.`,
+        `\`at\` is only valid for the 'main' edition. ${spec}/${resolved} is served from a single snapshot key with no per-SHA history; omit \`at\` to query it.`,
       );
     }
     if (!/^[a-f0-9]{4,40}$/.test(at)) {

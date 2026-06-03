@@ -37,8 +37,8 @@ Historical pinning. \`main\` moves. Pass \`at: "<sha>"\` to query a
 specific historical snapshot (4-40 hex chars, prefix-matched). The
 hosted Worker retains every \`main\` SHA it has deployed since
 launch; the live snapshot is \`at\`-less. Released editions like
-\`es2026\` are served at a single pinned snapshot, so \`at\` doesn't
-apply — it only addresses \`main\`.
+\`es2026\` have no per-SHA history, so \`at\` doesn't apply — it only
+addresses \`main\`.
 
 Missing data is never an error. Tools return null, empty arrays, or
 a \`hint:\` field. \`source: "none"\` on \`proposal.list\` means the
