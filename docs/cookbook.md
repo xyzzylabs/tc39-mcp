@@ -134,7 +134,7 @@ spec.sdo_index({ by: "production", filter: "BindingIdentifier" })
 clause.get({ id: <sdo_index.groups[<production>][0].id> })
 ```
 
-The intersection tells you which SDOs every productions of the
+The intersection tells you which SDOs every production of the
 non-terminal participates in (Evaluation, BoundNames,
 LexicallyDeclaredNames, …). Useful for spotting an SDO that's
 missing a production case.

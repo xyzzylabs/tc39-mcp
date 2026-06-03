@@ -271,11 +271,12 @@ chain is:
 ```
 upstream tc39/* main moves
         ↓
-refresh.yml runs every 4 hours
+refresh.yml runs every ~4 hours
    diffs upstream SHAs vs .last-refresh.json
-   bumps PATCH + tags vX.Y.Z+1 + pushes
+   on movement → dispatches deploy-worker.yml (R2 refresh, no npm)
+   monthly (≥30 d since last publish) → ALSO tags vX.Y.Z+1
         ↓
-        tag push triggers (in parallel)
+        the monthly tag fans out (in parallel) to:
         ↓
    ┌────────────────────┬─────────────────────────┐
    │  release.yml       │  deploy-worker.yml      │
@@ -308,7 +309,7 @@ immutable copy:
 
 Storage cost is modest: 50 MB × 6 refreshes/day × 30 days ≈ 9 GB,
 which at R2's $0.015/GB/month is ~$0.14/month even if no cleanup
-runs. Cleanup (delete pins older than N days) is a v0.2 add — the
+runs. Cleanup (delete pins older than N days) is a planned add — the
 naming convention makes it trivial: `wrangler r2 object delete`
 anything matching `spec-*-main-*.json` with `last-modified <
 T-30d`.

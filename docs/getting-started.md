@@ -32,8 +32,8 @@ entry away.
 |---|---|---|
 | Setup cost | `npx tc39-mcp` runs immediately | zero — point your client at a URL |
 | Latency | local subprocess, fast | one network hop per call |
-| Data freshness | whatever the installed version baked in | live, auto-refreshed every ~4 h |
-| Rate limit | none | 100 req / min / IP |
+| Data freshness | live from the Worker on first use, then cached + revalidated ~4 h (bundled subset offline) | live, auto-refreshed every ~4 h |
+| Rate limit | none | 30 req / min / IP |
 | Offline use | ✓ for bundled editions (latest + main); fetched-on-first-use otherwise | ✗ |
 
 Most users want **stdio** for personal local use. Pick HTTP when
