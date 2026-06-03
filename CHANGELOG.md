@@ -5,15 +5,16 @@ All notable changes to `tc39-mcp` are recorded here. Versions follow
 changes that aren't backward-compatible bump the major; new tools or
 optional schema fields bump the minor; internal fixes bump the patch.
 
-## A note on auto-refresh PATCH versions
+## A note on data-refresh versions
 
-This file only records **code changes** — new tools, schema tweaks,
-internal fixes. The `refresh.yml` workflow also publishes PATCH bumps
-every few hours when upstream `tc39/ecma262`, `tc39/ecma402`,
-`tc39/test262`, or `tc39/proposals` move. Those releases ship identical
-code with a refreshed spec-data payload and **do not get an entry
-here** — otherwise the file would balloon by dozens of entries per
-month, all saying "spec moved."
+This file records **code changes** — new tools, schema tweaks,
+internal fixes. As of 0.2.0, spec-data freshness no longer rides the
+npm version: the hosted Worker's R2 data refreshes every ~4 hours and
+the stdio server fetches from it on a cold or stale cache (see the
+0.2.0 entry below). The npm bundle — the offline fallback — is re-baked
+on a slow cadence (at most monthly, or immediately when a new edition
+ships). Those PATCH releases carry identical code with a refreshed data
+payload and **do not get an entry here**.
 
 To see which SHA a given published version is pinned to:
 
@@ -25,6 +26,60 @@ To see which SHA a given published version is pinned to:
 - **Historical** — the hosted Cloudflare Worker accepts `at: "<sha>"` to
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
+
+## [Unreleased]
+
+Staged for the v0.2.0 release (not yet cut). The data model moves
+from "ship every snapshot in the tarball" to
+"cache on first use, fetch from the hosted Worker, fall back to a
+bundled subset." The npm version stops tracking spec data and starts
+meaning code again.
+
+### Added
+
+- **ECMA-402 reaches edition parity with ECMA-262.** 402 publishes
+  each annual edition as an `esYYYY` *branch* (not a tag); the catalog
+  now exposes the full `es2016` – `es2025` range plus `main`, where it
+  previously had only `es2025-candidate` + `main`. `spec.diff`,
+  `spec.history`, and edition-pinned `clause.get` now work across the
+  402 annual line.
+- **ECMA-402 proposals are indexed.** `proposal.list` / `proposal.get`
+  now cover the `ecma402/` proposal set (~32 proposals that were
+  entirely missing), and `proposal.list` gains a `spec` filter
+  (`{ spec: "402" }`). Every proposal row carries a `spec` tag.
+
+### Changed
+
+- **Snapshots are sourced through a cache → hosted Worker → bundled
+  fallback chain** (`loadSnapshot`). The stdio server caches each
+  snapshot under `~/.cache/tc39-mcp/` on first network fetch and serves
+  it from disk thereafter, revalidating against the Worker only after a
+  ~4-hour freshness window (conditional `If-None-Match`).
+- **`latest` on ECMA-402 now resolves to `es2025`** (the newest annual
+  edition), matching 262's "latest = newest stable" semantics. Use
+  `main` / `draft` / `next` for the working draft.
+- **The npm tarball shrinks ~70%.** It now bundles only the offline
+  fallback — `spec-262-es2025`, `spec-262-main`, `spec-402-es2025`,
+  `spec-402-main`, and the proposals + test262 indexes — instead of
+  every parsed edition. All other editions are fetched from the Worker
+  on demand.
+- **Refresh decouples from the npm version.** `refresh.yml` updates R2
+  every ~4 hours (live freshness for networked users) and re-bakes the
+  npm bundle at most monthly, ending the ~2000-PATCH-bumps-per-year
+  flood. A new annual edition still publishes immediately via the
+  normal code-release path.
+- `@tc39/ecma262-biblio` is pinned to an exact version (per its
+  README's "pin a precise version" guidance), so the parse metadata
+  layer is reproducible alongside the SHA-pinned spec HTML.
+
+### Notes
+
+- **stdio now makes HTTPS requests** to source non-cached snapshots
+  (by default the hosted Worker; override with `TC39_MCP_BASE_URL` to
+  self-host or air-gap). Tool arguments and clause ids never leave the
+  process — see [`docs/privacy.md`](docs/privacy.md).
+- v0.1.x installs are unaffected; this is a backward-compatible minor
+  at the tool/protocol level.
 
 ## [0.1.6] — 2026-06-02
 
