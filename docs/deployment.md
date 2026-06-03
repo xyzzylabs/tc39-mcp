@@ -61,29 +61,45 @@ terminal" is small. If you want one, file an issue.
 
 ## Freshness model
 
-When you publish v0.1.0, the parsed JSON artifacts in `build/` are
-**baked into the npm tarball** at the SHAs upstream had on publish
-day. Until a new version is published, `npx tc39-mcp` always sees the
-same SHAs.
+Live data lives in **R2**, not in the npm version. The stdio server
+sources each snapshot through `loadSnapshot` (local cache → hosted
+Worker R2 → bundled fallback) and re-checks live keys against R2 every
+4 hours (`POINTER_TTL_MS`); the hosted Worker reads R2 directly. So
+anything reachable over the network is at most ~4 hours stale. The
+npm tarball ships a **bundled subset** (latest stable + `main`
+editions, plus the proposals and test262 indexes) purely as an
+offline cold-start fallback.
 
-`tc39-mcp` ships **two automatic refresh paths** so the deployed
-state doesn't go stale:
+Two refresh cadences keep that picture current:
 
-1. **Scheduled npm republish** (`.github/workflows/refresh.yml`).
-   Runs **every 4 hours**. Fetches upstream tc39/* mains, diffs SHAs
-   against `.last-refresh.json`, and if any upstream changed, bumps
-   PATCH + tags + publishes. Net effect: `npx tc39-mcp@latest`
-   reflects upstream `main` within ~4 hours.
+1. **R2 refresh — every 4 hours** (`.github/workflows/refresh.yml`).
+   Fetches upstream tc39/* mains, diffs SHAs against
+   `.last-refresh.json`, and on any movement commits the new sentinel
+   and dispatches `deploy-worker.yml` — which re-parses and uploads
+   fresh snapshots to R2. No npm release. This is the live-freshness
+   path for everyone with a network.
 
-2. **R2 live updates + docs rebuild** (hosted Worker). The tag push
-   from refresh.yml triggers `deploy-worker.yml`, which uploads new
-   parsed JSONs to R2 *and* rebuilds the docs site (the `/snapshots`
-   page is regenerated from those same JSONs) and redeploys the
-   Worker. Hosted API and hosted docs always reflect the same SHAs.
+2. **npm bundle re-bake — at most monthly.** The bundle is only the
+   offline fallback, so the refresh job re-publishes it on a slow
+   cadence: when ≥ 30 days have passed since the last data publish
+   (tracked in `.last-refresh.json`'s `last_npm_publish`), a refresh
+   run additionally bumps PATCH + tags, and the tag drives the npm
+   publish via `release.yml`. Net: ~12 data publishes/year instead of
+   ~2000, and the npm changelog regains meaning — PATCH = a monthly
+   data refresh, MINOR/MAJOR = code.
+
+A **new annual edition** doesn't wait for the monthly tick: adding it
+is a deliberate catalog change (`src/editions.ts`) — i.e. a code
+release — which publishes immediately and re-bakes the bundle with it.
+The refresh job only *detects* a new upstream `esYYYY` not yet in the
+catalog and surfaces a nudge; it never adds an edition on its own
+(each one needs a parser check).
 
 Callers can check what they're looking at with the `spec.about`
 tool. It returns per-snapshot `pin` metadata — `sha`, `fetched_at`,
-`biblio_commit`, `clause_count`. The freshness contract is in-band.
+`biblio_commit`, `clause_count` — and `spec.about`'s `source` tag
+(`cache` / `network` / `bundle`) says which layer served it. The
+freshness contract is in-band.
 
 ## Hosted HTTP (Cloudflare Worker)
 
