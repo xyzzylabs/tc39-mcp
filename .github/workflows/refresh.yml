@@ -195,13 +195,13 @@ jobs:
           PREV: ${{ steps.decide.outputs.prev_402_latest }}
           CURR: ${{ steps.decide.outputs.curr_402_latest }}
         run: |
-          gh label create tc39-drift --color FBCA04 \
-            --description "Upstream TC39 release branch drifted from its pin" 2>/dev/null || true
+          gh label create ecma402-drift --color FBCA04 \
+            --description "ECMA-402 release branch drifted from its pin" 2>/dev/null || true
           short_prev=$(printf '%s' "$PREV" | cut -c1-10)
           short_curr=$(printf '%s' "$CURR" | cut -c1-10)
-          if gh issue list --state open --label tc39-drift --json title --jq '.[].title' \
+          if gh issue list --state open --label ecma402-drift --json title --jq '.[].title' \
                | grep -qF "$short_curr"; then
-            echo "An open tc39-drift issue already references $short_curr; not filing another."
+            echo "An open ecma402-drift issue already references $short_curr; not filing another."
             exit 0
           fi
           body=$(printf '%s\n' \
@@ -215,10 +215,10 @@ jobs:
             "" \
             "402 publishes annual editions as branches (not 262's immutable tags), so the current one can take editorial commits after it is cut. R2 has already been refreshed to the new SHA by this run; no action is required unless the change is unexpected. Close once reviewed.")
           gh issue create \
-            --label tc39-drift \
+            --label ecma402-drift \
             --title "ECMA-402 $EDITION_402_LATEST release branch moved ($short_prev -> $short_curr)" \
             --body "$body"
-          echo "Filed a tc39-drift issue for $EDITION_402_LATEST $short_prev -> $short_curr."
+          echo "Filed an ecma402-drift issue for $EDITION_402_LATEST $short_prev -> $short_curr."
 
       - name: Bump PATCH version (only when re-baking the bundle)
         # The decider already wrote the sentinel (incl. the advanced
