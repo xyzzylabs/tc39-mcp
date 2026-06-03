@@ -8,6 +8,22 @@
 | **Local CLI / npm package** | `npx tc39-mcp` | ✅ shipped |
 | **Hosted HTTP** (Cloudflare Worker) | Public endpoint for unaffiliated agents | ✅ shipped |
 
+Those three shapes build from **one source tree, two published
+artifacts**:
+
+| Artifact | Package | Ships via | How you reach it |
+|---|---|---|---|
+| stdio server (and the CLI) | `tc39-mcp` (npm) | `npm publish` | `npx tc39-mcp` · `npm i -g tc39-mcp` |
+| HTTP worker | `tc39-mcp-worker` | `wrangler deploy` → Cloudflare | the hosted endpoint URL |
+
+`worker/` is a separate, **private** package. A Cloudflare Worker is a
+deployment, not a library, so it is never published to npm: you reach it
+over HTTP at the hosted URL, or self-host by cloning the repo and running
+`wrangler deploy` yourself. Both artifacts read the same parsed snapshots
+and differ only in transport (stdio vs HTTP) and tool surface (all 19
+tools vs the 6 core ones). The Worker keeps its own `package.json` +
+lockfile so its bundle never pulls in the Node-shaped source tree.
+
 ## Local stdio (the default)
 
 Used when an agent on the same machine wants to consult the spec.
