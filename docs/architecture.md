@@ -111,7 +111,7 @@ is **spec-aware** because the two specs tag releases differently:
                           spec === "262"          spec === "402"
                           ──────────────          ──────────────
    "latest"  ──┐
-               ├──► resolveEdition(spec, ed)  ──► LATEST_262_RELEASE  │  main
+               ├──► resolveEdition(spec, ed)  ──► LATEST_262_RELEASE  │  LATEST_402_RELEASE
    "draft"   ──┤                                  main                │  main
                │                                  main                │  main
    "next"    ──┘
@@ -126,9 +126,11 @@ When tc39 cuts the next ECMA-262 release, you bump
 on `spec: "262"` automatically points at the new release. See
 [`editions.md`](editions.md) for the full recipe.
 
-ECMA-402 has no annual release tagging — only candidates and `main`.
-`latest` on `spec: "402"` therefore resolves to `main`, which is the
-honest answer when no stable annual tag exists.
+ECMA-402 publishes each annual edition as an `esYYYY` *branch* rather
+than a tag (ECMA-262 uses tags), but `git clone --branch` resolves
+either, so the catalog shape is identical across the two specs.
+`latest` on `spec: "402"` resolves to `LATEST_402_RELEASE` (`es2025`
+today), symmetric with 262 — not to `main`.
 
 ## Cross-reference index
 

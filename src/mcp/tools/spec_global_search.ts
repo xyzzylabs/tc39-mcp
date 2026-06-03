@@ -21,7 +21,7 @@ export const specGlobalSearchSchema = {
     .describe(
       "Search text. Matched against clause id, aoid, and title across both specs (and step text when search_steps is true).",
     ),
-  /** `latest` per-spec resolution: 262 → es2025; 402 → main. */
+  /** `latest` per-spec resolution: both specs → current stable (es2025). */
   search_steps: z
     .boolean()
     .default(false)

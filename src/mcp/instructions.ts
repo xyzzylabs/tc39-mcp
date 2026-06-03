@@ -29,9 +29,10 @@ Common workflow:
 
 Edition semantics. \`latest\` is spec-aware:
   - On 262, \`latest\` → current stable release (es2025 today).
-  - On 402, \`latest\` → main (402 has no annual release tags).
+  - On 402, \`latest\` → current stable release (es2025 today).
   - \`main\` is always the working draft.
-  - 262 supports es2016 … es2025 + main; 402 supports es2025-candidate + main.
+  - Both specs support es2016 … es2025 + main; 402 also keeps the
+    legacy \`es2025-candidate\` pin.
 
 Cross-spec discovery is opt-in. By default everything stays within
 one spec. Pass \`include_cross_spec: true\` to \`spec.crossrefs\` to
