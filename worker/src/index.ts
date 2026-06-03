@@ -316,11 +316,15 @@ async function serveR2Object(
     return new Response("Not found", { status: 404, headers: corsHeaders });
   }
   // Honor conditional revalidation: the stdio loader re-checks live keys
-  // with `If-None-Match` once past its freshness window. When the etag
-  // still matches, return a bodyless 304 so a revalidation doesn't
-  // re-download the full (tens-of-MB) snapshot.
+  // with `If-None-Match` once past its freshness window. It sends the
+  // canonical etag (weak `W/` prefix + surrounding quotes stripped),
+  // while standard HTTP clients send it quoted — so normalize both sides
+  // before comparing. On a match, return a bodyless 304 so a revalidation
+  // doesn't re-download the full (tens-of-MB) snapshot.
+  const canonicalEtag = (e: string) =>
+    e.replace(/^W\//, "").replace(/^"(.*)"$/, "$1");
   const ifNoneMatch = request.headers.get("if-none-match");
-  if (obj.etag && ifNoneMatch === `"${obj.etag}"`) {
+  if (obj.etag && ifNoneMatch && canonicalEtag(ifNoneMatch) === canonicalEtag(obj.etag)) {
     return new Response(null, {
       status: 304,
       headers: {

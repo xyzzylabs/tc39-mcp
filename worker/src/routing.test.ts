@@ -256,7 +256,27 @@ describe("routing", () => {
       expect(await r.text()).toBe('{"pin":{"sha":"abc"}}');
     });
 
-    it("returns 304 (no body) when If-None-Match matches the object etag", async () => {
+    it("returns 304 (no body) for the canonical (unquoted) If-None-Match the stdio loader sends", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      // fakeR2 sets etag = `etag-<key>`. The stdio loader canonicalizes
+      // etags (strips `W/` + quotes) before persisting + re-sending them,
+      // so the production If-None-Match value is unquoted.
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json", {
+          headers: { "if-none-match": "etag-spec-262-main.json" },
+        }),
+        env,
+      );
+      expect(r.status).toBe(304);
+      expect(r.headers.get("etag")).toBe('"etag-spec-262-main.json"');
+      expect(await r.text()).toBe("");
+    });
+
+    it("also returns 304 for a quoted If-None-Match (standard HTTP clients)", async () => {
       const env = {
         SPECS: createFakeR2({
           contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
@@ -264,14 +284,11 @@ describe("routing", () => {
       };
       const r = await worker.fetch(
         new Request("https://example.com/r2/spec-262-main.json", {
-          // fakeR2 sets etag = `etag-<key>`; the loader echoes it back quoted.
           headers: { "if-none-match": '"etag-spec-262-main.json"' },
         }),
         env,
       );
       expect(r.status).toBe(304);
-      expect(r.headers.get("etag")).toBe('"etag-spec-262-main.json"');
-      expect(await r.text()).toBe("");
     });
 
     it("serves 200 + body when If-None-Match does not match", async () => {
