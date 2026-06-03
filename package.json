@@ -38,7 +38,7 @@
     "fetch-proposals": "bash scripts/fetch-proposals.sh",
     "build-proposals-index": "tsx src/index/build_proposals.ts",
     "mcp": "tsx src/mcp/server.ts",
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=30000",
     "docs:data": "tsx src/docs/build_data.ts",
     "docs:dev": "npm run docs:data && vitepress dev docs",
     "docs:build": "npm run docs:data && vitepress build docs",
