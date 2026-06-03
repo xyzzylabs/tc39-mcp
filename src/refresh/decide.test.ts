@@ -4,6 +4,7 @@ import { bumpPatch, decideRefresh } from "./decide.js";
 const UPSTREAM = {
   spec_262_main: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   spec_402_main: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  spec_402_latest: "9999999999999999999999999999999999999999",
   test262: "cccccccccccccccccccccccccccccccccccccccc",
   proposals: "dddddddddddddddddddddddddddddddddddddddd",
 };
@@ -24,6 +25,7 @@ function matchingSentinel(lastPublishAt?: string) {
     specs: {
       "262/main": UPSTREAM.spec_262_main,
       "402/main": UPSTREAM.spec_402_main,
+      "402/latest": UPSTREAM.spec_402_latest,
     },
     test262: UPSTREAM.test262,
     proposals: UPSTREAM.proposals,
@@ -61,6 +63,7 @@ describe("decideRefresh — fresh-start (no sentinel)", () => {
     expect(d.moved).toEqual({
       spec_262_main: true,
       spec_402_main: true,
+      spec_402_latest: true,
       test262: true,
       proposals: true,
     });
@@ -73,6 +76,7 @@ describe("decideRefresh — fresh-start (no sentinel)", () => {
     expect(d.new_sentinel.specs).toEqual({
       "262/main": UPSTREAM.spec_262_main,
       "402/main": UPSTREAM.spec_402_main,
+      "402/latest": UPSTREAM.spec_402_latest,
     });
   });
 });
@@ -94,6 +98,34 @@ describe("decideRefresh — nothing moved", () => {
   });
 });
 
+describe("decideRefresh — current 402 release branch drifts", () => {
+  it("refreshes when only 402/latest moved (the branch took editorial commits)", () => {
+    const d = decideRefresh({
+      upstream: UPSTREAM,
+      last: {
+        last_npm_publish: { version: "0.1.5", at: RECENT_PUBLISH },
+        specs: {
+          "262/main": UPSTREAM.spec_262_main,
+          "402/main": UPSTREAM.spec_402_main,
+          "402/latest": "0000000000000000000000000000000000000000", // moved
+        },
+        test262: UPSTREAM.test262,
+        proposals: UPSTREAM.proposals,
+      },
+      current_version: "0.1.5",
+      now: FIXED_NOW,
+    });
+    expect(d.needs_refresh).toBe(true);
+    expect(d.moved.spec_402_latest).toBe(true);
+    expect(d.moved.spec_262_main).toBe(false);
+    expect(d.moved.spec_402_main).toBe(false);
+    // R2 refreshes, but a branch tweak alone doesn't re-bake the npm
+    // bundle inside the monthly window.
+    expect(d.should_publish).toBe(false);
+    expect(d.new_sentinel.specs!["402/latest"]).toBe(UPSTREAM.spec_402_latest);
+  });
+});
+
 describe("decideRefresh — moved, but published recently (< 30 days)", () => {
   it("refreshes R2 but does NOT re-bake the npm bundle", () => {
     const d = decideRefresh({
@@ -103,6 +135,7 @@ describe("decideRefresh — moved, but published recently (< 30 days)", () => {
         specs: {
           "262/main": "ffffffffffffffffffffffffffffffffffffffff", // moved
           "402/main": UPSTREAM.spec_402_main,
+          "402/latest": UPSTREAM.spec_402_latest,
         },
         test262: UPSTREAM.test262,
         proposals: UPSTREAM.proposals,
@@ -132,6 +165,7 @@ describe("decideRefresh — moved, last publish is stale (≥ 30 days)", () => {
         specs: {
           "262/main": "ffffffffffffffffffffffffffffffffffffffff",
           "402/main": UPSTREAM.spec_402_main,
+          "402/latest": UPSTREAM.spec_402_latest,
         },
         test262: UPSTREAM.test262,
         proposals: UPSTREAM.proposals,
@@ -154,7 +188,7 @@ describe("decideRefresh — moved, last publish is stale (≥ 30 days)", () => {
       upstream: UPSTREAM,
       last: {
         last_npm_publish: { version: "0.1.5", at: thirtyDaysAgo },
-        specs: { "262/main": "moved", "402/main": UPSTREAM.spec_402_main },
+        specs: { "262/main": "moved", "402/main": UPSTREAM.spec_402_main, "402/latest": UPSTREAM.spec_402_latest },
         test262: UPSTREAM.test262,
         proposals: UPSTREAM.proposals,
       },
@@ -174,6 +208,7 @@ describe("decideRefresh — multiple SHAs moved", () => {
         specs: {
           "262/main": "ffffffffffffffffffffffffffffffffffffffff",
           "402/main": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "402/latest": "7777777777777777777777777777777777777777",
         },
         test262: "1111111111111111111111111111111111111111",
         proposals: "2222222222222222222222222222222222222222",
@@ -185,6 +220,7 @@ describe("decideRefresh — multiple SHAs moved", () => {
     expect(d.moved).toEqual({
       spec_262_main: true,
       spec_402_main: true,
+      spec_402_latest: true,
       test262: true,
       proposals: true,
     });
@@ -199,7 +235,7 @@ describe("decideRefresh — sentinel write", () => {
       upstream: UPSTREAM,
       last: {
         last_npm_publish: { version: "0.1.5", at: STALE_PUBLISH },
-        specs: { "262/main": "old-262", "402/main": "old-402" },
+        specs: { "262/main": "old-262", "402/main": "old-402", "402/latest": "old-402-latest" },
         test262: "old-test262",
         proposals: "old-proposals",
       },
@@ -207,6 +243,7 @@ describe("decideRefresh — sentinel write", () => {
       now: FIXED_NOW,
     });
     expect(d.new_sentinel.specs!["262/main"]).toBe(UPSTREAM.spec_262_main);
+    expect(d.new_sentinel.specs!["402/latest"]).toBe(UPSTREAM.spec_402_latest);
     expect(d.new_sentinel.test262).toBe(UPSTREAM.test262);
   });
 

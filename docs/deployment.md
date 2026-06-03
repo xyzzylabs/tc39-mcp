@@ -89,11 +89,14 @@ offline cold-start fallback.
 Two refresh cadences keep that picture current:
 
 1. **R2 refresh — every 4 hours** (`.github/workflows/refresh.yml`).
-   Fetches upstream tc39/* mains, diffs SHAs against
-   `.last-refresh.json`, and on any movement commits the new sentinel
-   and dispatches `deploy-worker.yml` — which re-parses and uploads
-   fresh snapshots to R2. No npm release. This is the live-freshness
-   path for everyone with a network.
+   Fetches upstream and diffs SHAs against `.last-refresh.json` — both
+   specs' `main`, test262, proposals, plus the current ECMA-402
+   release branch (402 publishes editions as branches that can still
+   take editorial commits after they're cut; 262's are immutable
+   tags). On any movement it commits the new sentinel and dispatches
+   `deploy-worker.yml` — which re-parses and uploads fresh snapshots
+   to R2. No npm release. This is the live-freshness path for everyone
+   with a network.
 
 2. **npm bundle re-bake — at most monthly.** The bundle is only the
    offline fallback, so the refresh job re-publishes it on a slow

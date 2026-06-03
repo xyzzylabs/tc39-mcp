@@ -18,6 +18,13 @@
 export interface UpstreamSnapshot {
   spec_262_main: string;
   spec_402_main: string;
+  /** HEAD of the current ECMA-402 release branch (LATEST_402_RELEASE).
+   *  402 ships editions as branches; unlike 262's immutable release
+   *  tags, the current one can still take editorial commits after the
+   *  edition is cut. Tracking it makes that drift trigger a refresh on
+   *  its own, not just incidentally on the next 402/main move. (262's
+   *  latest is a tag, so there's nothing to watch there.) */
+  spec_402_latest: string;
   test262: string;
   proposals: string;
 }
@@ -29,7 +36,7 @@ export interface LastRefresh {
   /** When the npm bundle was last re-baked + published. The monthly
    *  cadence gates on this; data-only R2 refreshes don't advance it. */
   last_npm_publish?: { version: string; at: string };
-  specs?: { "262/main"?: string; "402/main"?: string };
+  specs?: { "262/main"?: string; "402/main"?: string; "402/latest"?: string };
   test262?: string;
   proposals?: string;
 }
@@ -42,6 +49,7 @@ export interface RefreshDecision {
   moved: {
     spec_262_main: boolean;
     spec_402_main: boolean;
+    spec_402_latest: boolean;
     test262: boolean;
     proposals: boolean;
   };
@@ -96,6 +104,7 @@ export function decideRefresh(args: {
   const moved = {
     spec_262_main: args.upstream.spec_262_main !== (lastSpecs["262/main"] ?? "none"),
     spec_402_main: args.upstream.spec_402_main !== (lastSpecs["402/main"] ?? "none"),
+    spec_402_latest: args.upstream.spec_402_latest !== (lastSpecs["402/latest"] ?? "none"),
     test262: args.upstream.test262 !== (last.test262 ?? "none"),
     proposals: args.upstream.proposals !== (last.proposals ?? "none"),
   };
@@ -134,6 +143,7 @@ export function decideRefresh(args: {
       specs: {
         "262/main": args.upstream.spec_262_main,
         "402/main": args.upstream.spec_402_main,
+        "402/latest": args.upstream.spec_402_latest,
       },
       test262: args.upstream.test262,
       proposals: args.upstream.proposals,

@@ -33,6 +33,7 @@ function reqEnv(name: string): string {
 const upstream = {
   spec_262_main: reqEnv("UPSTREAM_262_MAIN"),
   spec_402_main: reqEnv("UPSTREAM_402_MAIN"),
+  spec_402_latest: reqEnv("UPSTREAM_402_LATEST"),
   test262: reqEnv("UPSTREAM_TEST262"),
   proposals: reqEnv("UPSTREAM_PROPOSALS"),
 };

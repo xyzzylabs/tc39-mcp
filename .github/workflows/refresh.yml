@@ -88,12 +88,18 @@ jobs:
           npm run fetch-proposals
 
       - name: Read upstream SHAs into env
-        # Capture the upstream-main SHAs for both specs + test262 +
-        # proposals. We compare these against what last shipped.
+        # Capture the SHAs we diff against what last shipped: both specs'
+        # main + test262 + proposals, plus the current ECMA-402 release
+        # branch. 402 ships editions as branches (not 262's immutable
+        # tags), so the current one can still take editorial commits
+        # after it's cut — track it so that drift triggers a refresh on
+        # its own, not just incidentally on the next 402/main move.
         run: |
+          latest_402=$(npx tsx -e "import {LATEST_402_RELEASE} from './src/editions.ts'; process.stdout.write(LATEST_402_RELEASE)")
           {
             echo "UPSTREAM_262_MAIN=$(git -C vendor/ecma262-main rev-parse HEAD)"
             echo "UPSTREAM_402_MAIN=$(git -C vendor/ecma402-main rev-parse HEAD)"
+            echo "UPSTREAM_402_LATEST=$(git -C "vendor/ecma402-$latest_402" rev-parse HEAD)"
             echo "UPSTREAM_TEST262=$(git -C vendor/test262 rev-parse HEAD)"
             echo "UPSTREAM_PROPOSALS=$(git -C vendor/proposals rev-parse HEAD)"
           } >> "$GITHUB_ENV"
