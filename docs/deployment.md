@@ -96,7 +96,9 @@ Two refresh cadences keep that picture current:
    tags). On any movement it commits the new sentinel and dispatches
    `deploy-worker.yml` — which re-parses and uploads fresh snapshots
    to R2. No npm release. This is the live-freshness path for everyone
-   with a network.
+   with a network. When the **402 release branch** itself is what
+   moved, the run also raises a notice and opens a `tc39-drift` issue
+   so the post-publication change gets a human review.
 
 2. **npm bundle re-bake — at most monthly.** The bundle is only the
    offline fallback, so the refresh job re-publishes it on a slow
