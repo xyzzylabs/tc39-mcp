@@ -8,12 +8,12 @@
     "url": "https://github.com/xyzzylabs/tc39-mcp",
     "source": "github"
   },
-  "version": "0.1.9",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "tc39-mcp",
-      "version": "0.1.9",
+      "version": "0.2.0",
       "transport": {
         "type": "stdio"
       }

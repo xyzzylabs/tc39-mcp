@@ -27,9 +27,9 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
-## [Unreleased]
+## [0.2.0] — 2026-06-03
 
-Staged for the v0.2.0 release (not yet cut). The data model moves
+The data model moves
 from "ship every snapshot in the tarball" to
 "cache on first use, fetch from the hosted Worker, fall back to a
 bundled subset." The npm version stops tracking spec data and starts
