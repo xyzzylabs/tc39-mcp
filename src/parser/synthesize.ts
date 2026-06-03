@@ -26,7 +26,8 @@ export function computeSectionNumbers($: CheerioAPI): Map<string, string> {
   const tops = $(rootSel).filter((_, el) => {
     return $(el).parents("emu-clause, emu-annex, emu-intro").length === 0;
   });
-  // Separate intro / regular clauses / annexes; numbering rules differ.
+  // Regular clauses are numbered (1, 2, 3 …); annexes are lettered (A, B,
+  // C …). Intro sections (<emu-intro>) were excluded above — unnumbered.
   let clauseCounter = 0;
   let annexCounter = 0; // A, B, C …
   const assignChildren = (parentSel: ReturnType<CheerioAPI>, prefix: string): void => {

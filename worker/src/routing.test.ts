@@ -291,6 +291,36 @@ describe("routing", () => {
       expect(r.status).toBe(304);
     });
 
+    it("returns 304 for `If-None-Match: *` (resource exists)", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json", {
+          headers: { "if-none-match": "*" },
+        }),
+        env,
+      );
+      expect(r.status).toBe(304);
+    });
+
+    it("returns 304 when one of a comma-separated If-None-Match list matches", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json", {
+          headers: { "if-none-match": '"other-thing", "etag-spec-262-main.json"' },
+        }),
+        env,
+      );
+      expect(r.status).toBe(304);
+    });
+
     it("serves 200 + body when If-None-Match does not match", async () => {
       const env = {
         SPECS: createFakeR2({

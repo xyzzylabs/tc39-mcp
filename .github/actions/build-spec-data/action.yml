@@ -55,7 +55,7 @@ runs:
       uses: actions/cache@v5
       with:
         path: build
-        key: build-v1-${{ hashFiles('.last-refresh.json', 'src/parser/**', 'src/test262/**', 'src/proposals/**') }}
+        key: build-v1-${{ hashFiles('.last-refresh.json', 'src/parser/**', 'src/index/**') }}
         restore-keys: |
           build-v1-
 

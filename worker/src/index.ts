@@ -287,6 +287,19 @@ function r2CacheControl(key: string): string {
     : "public, max-age=300";
 }
 
+/** Whether an `If-None-Match` header value satisfies a 304 for `etag`.
+ *  Handles the spec's `*`, comma-separated validator lists, and the `W/`
+ *  weak prefix + surrounding quotes — the stdio loader canonicalizes
+ *  etags and re-sends them unquoted, while standard HTTP clients send
+ *  them quoted. */
+function ifNoneMatchMatches(header: string | null, etag: string): boolean {
+  if (!header) return false;
+  if (header.trim() === "*") return true;
+  const canon = (e: string) =>
+    e.trim().replace(/^W\//, "").replace(/^"(.*)"$/, "$1");
+  return header.split(",").some((tag) => canon(tag) === canon(etag));
+}
+
 /** Handler for GET/HEAD /r2/<key>. Fetches the key from the bound R2
  *  bucket, applies the allowlist, returns the bytes with cache-control
  *  + CORS so stdio clients can read directly. */
@@ -316,15 +329,10 @@ async function serveR2Object(
     return new Response("Not found", { status: 404, headers: corsHeaders });
   }
   // Honor conditional revalidation: the stdio loader re-checks live keys
-  // with `If-None-Match` once past its freshness window. It sends the
-  // canonical etag (weak `W/` prefix + surrounding quotes stripped),
-  // while standard HTTP clients send it quoted — so normalize both sides
-  // before comparing. On a match, return a bodyless 304 so a revalidation
-  // doesn't re-download the full (tens-of-MB) snapshot.
-  const canonicalEtag = (e: string) =>
-    e.replace(/^W\//, "").replace(/^"(.*)"$/, "$1");
-  const ifNoneMatch = request.headers.get("if-none-match");
-  if (obj.etag && ifNoneMatch && canonicalEtag(ifNoneMatch) === canonicalEtag(obj.etag)) {
+  // with `If-None-Match` once past its freshness window. On a match,
+  // return a bodyless 304 so a revalidation doesn't re-download the full
+  // (tens-of-MB) snapshot.
+  if (obj.etag && ifNoneMatchMatches(request.headers.get("if-none-match"), obj.etag)) {
     return new Response(null, {
       status: 304,
       headers: {
