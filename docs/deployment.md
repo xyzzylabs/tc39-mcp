@@ -362,25 +362,21 @@ environment.
 
 R2 uploads happen in a deliberate order — historical pins + side
 indices first, **live mains last** (`worker/scripts/upload-r2.ts`
-+ `classify.ts`). A reader hitting the Worker mid-deploy either sees
-the old live state or the new one, with a short window (2-5 s)
-where they could see a new historical pin while the live mains are
-still old. The previous "all uploads in parallel" model had a much
-longer (60-90 s) inconsistency window. True manifest-swap atomicity
-is a possible future enhancement.
++ `classify.ts`). A reader hitting the Worker mid-deploy sees either
+the fully-old or fully-new live state, with only a short window
+(2-5 s) where a new historical pin is visible while the live mains
+are still old.
 
-### Known limitations of the R2 update model
+### R2 update model — operational notes
 
-| Limitation | Impact | Possible improvement |
-|---|---|---|
-| Full re-upload every deploy (~50 MB) | ~60-90 s deploy time; R2 egress cost | Compare local SHA vs R2 ETag; skip unchanged objects |
-| Inconsistency window during upload (2-5 s) | Worker might briefly serve mixed-version data | Upload to versioned keys, swap a manifest atomically last |
-| No Cache-Control headers on tool responses | Cloudflare CDN doesn't cache JSON-RPC POSTs | Switch to GET-cacheable HTTP variants of the read tools |
-| No active purge of stale isolates | Stale isolates serve old R2 reads from in-memory cache for their lifetime | Cloudflare's isolate recycling handles it (minutes); acceptable |
+The model favors simplicity; these are tradeoffs, not correctness gaps:
 
-These are optimizations, not correctness gaps. The current design is
-correct end-to-end; a future iteration could make it faster and more
-atomic.
+- Each deploy re-uploads the full snapshot set (~50 MB, ~60-90 s).
+- A brief window (2-5 s) during upload can serve mixed-version data.
+- Tool responses carry no `Cache-Control`, so Cloudflare's CDN doesn't
+  cache JSON-RPC POSTs.
+- Stale isolates serve old R2 reads from their in-memory cache until
+  Cloudflare recycles them (minutes).
 
 ### Why only 6 tools in the hosted Worker?
 
@@ -391,12 +387,7 @@ fall into three buckets:
 |---|---|
 | `spec.history` | Shells out to `git log` against a vendored checkout; no FS or subprocess on Workers. |
 | `test262.get` | Reads files from `vendor/test262/`; Workers have no FS. |
-| `spec.crossrefs`, `spec.sdo_index`, `spec.global_search`, `spec.symbol_resolve`, `spec.well_known_intrinsics`, `spec.tables`, `spec.grammar`, `clause.outline`, `spec.diff`, `spec.snapshots`, `test262.search` | Pure functions over R2-backed data — portable to the Worker, but kept stdio-only for now to keep the hosted surface small. |
-
-The hosted Worker is **deliberately minimal** — it proves the
-architecture and ships the highest-traffic tools. The remaining
-read-only tools are portable (all pure over R2 data) and could be
-added if demand warrants it.
+| `spec.crossrefs`, `spec.sdo_index`, `spec.global_search`, `spec.symbol_resolve`, `spec.well_known_intrinsics`, `spec.tables`, `spec.grammar`, `clause.outline`, `spec.diff`, `spec.snapshots`, `test262.search` | Pure functions over R2-backed data, but run stdio-only — the Worker serves the highest-traffic read tools and keeps its hosted surface small. |
 
 ### Performance baseline
 
