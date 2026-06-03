@@ -35,18 +35,12 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { load, type CheerioAPI } from "cheerio";
-import type { AnyNode } from "domhandler";
+import { load } from "cheerio";
 import { extractClause } from "./clause.js";
 import { extractTables } from "./tables.js";
 import { extractGrammar } from "./grammar.js";
-import type {
-  Clause,
-  ClauseKind,
-  ClauseMeta,
-  ParsedSpec,
-  SpecPin,
-} from "./schema.js";
+import { computeSectionNumbers, metaFromElement } from "./synthesize.js";
+import type { Clause, ParsedSpec, SpecPin } from "./schema.js";
 
 /** Recursively inline `<emu-import href="…">` in HTML rooted at
  *  `rootHtmlPath`, returning one combined HTML blob. */
@@ -64,82 +58,6 @@ function inlineImports(rootHtmlPath: string): string {
     );
   };
   return walk(rootHtmlPath);
-}
-
-/** Compute section numbers by walking `<emu-clause>` / `<emu-annex>` in
- *  document order. Top-level clauses are 1, 2, 3, …; their children
- *  are 1.1, 1.2, 2.1, …; annexes are A, B, C, …
- *
- *  Returns a map keyed on clause id → section number string. */
-function computeSectionNumbers($: CheerioAPI): Map<string, string> {
-  const numbers = new Map<string, string>();
-  // Find the outermost containers — anything that's an emu-clause /
-  // emu-annex with no ancestor of the same tag.
-  const rootSel = "emu-clause, emu-annex";
-  const tops = $(rootSel).filter((_, el) => {
-    return $(el).parents("emu-clause, emu-annex, emu-intro").length === 0;
-  });
-  // Separate intro / regular clauses / annexes; numbering rules differ.
-  let clauseCounter = 0;
-  let annexCounter = 0; // A, B, C …
-  const assignChildren = (parentSel: ReturnType<CheerioAPI>, prefix: string): void => {
-    let sub = 0;
-    parentSel.children("emu-clause, emu-annex").each((_, child) => {
-      sub++;
-      const id = $(child).attr("id");
-      const num = `${prefix}.${sub}`;
-      if (id) numbers.set(id, num);
-      assignChildren($(child), num);
-    });
-  };
-  tops.each((_, el) => {
-    const $el = $(el);
-    const id = $el.attr("id");
-    const tag = (el as { tagName?: string }).tagName?.toLowerCase();
-    let num: string;
-    if (tag === "emu-annex") {
-      num = String.fromCharCode("A".charCodeAt(0) + annexCounter++);
-    } else {
-      clauseCounter++;
-      num = String(clauseCounter);
-    }
-    if (id) numbers.set(id, num);
-    assignChildren($el, num);
-  });
-  return numbers;
-}
-
-/** Synthesize biblio-style metadata from an `<emu-clause>` element.
- *
- *  ECMA-402 (unlike ECMA-262) almost never sets the `aoid` attribute on
- *  `<emu-clause>` — instead the operation name is the leading token of
- *  the `<h1>` title (e.g. `<h1>SetNumberFormatUnitOptions ( nf, options
- *  )</h1>`). For clauses whose id starts with `sec-` and whose title
- *  matches `<Name>( ... )`, we synthesize an AOID from the title. This
- *  is what makes cross-spec AOID matching work between 262 ↔ 402. */
-function metaFromElement(
-  $: CheerioAPI,
-  el: AnyNode,
-  sectionNumber: string,
-): ClauseMeta | null {
-  const $el = $(el);
-  const id = $el.attr("id");
-  if (!id) return null;
-  const title = $el.children("h1").first().text().replace(/\s+/g, " ").trim();
-  let aoid = $el.attr("aoid") ?? null;
-  if (!aoid) {
-    // Pattern: "Name ( args )" or "Name ( )". Anchor with a leading
-    // identifier and require the open paren to avoid pulling out the
-    // first word of prose-style titles ("NumberFormat Objects").
-    const m = /^([A-Z][A-Za-z0-9_$]*)\s*\(/.exec(title);
-    if (m) aoid = m[1]!;
-  }
-  // Heuristic kind: aoid presence → "op"; "[[…]]" in title → internal
-  // method; otherwise generic "clause". Same shape as biblio's taxonomy.
-  let kind: ClauseKind = "clause";
-  if (aoid) kind = "op";
-  else if (/^\[\[[^\]]+\]\]/.test(title)) kind = "internal method";
-  return { id, aoid, title, number: sectionNumber, kind };
 }
 
 export function parseSpec402(rootSpecPath: string, pin: SpecPin): ParsedSpec {

@@ -71,6 +71,12 @@ meaning code again.
 - `@tc39/ecma262-biblio` is pinned to an exact version (per its
   README's "pin a precise version" guidance), so the parse metadata
   layer is reproducible alongside the SHA-pinned spec HTML.
+- The 262 parser gained an **HTML-discovery fallback**: since the
+  pinned biblio is a snapshot of `main`, it can lag the HTML being
+  parsed (a newer `main`, or an older edition carrying clauses since
+  dropped). Any `<emu-clause>` the biblio doesn't list is now still
+  captured, with metadata synthesized from the element — so a stale or
+  mismatched biblio can no longer silently drop a clause.
 
 ### Notes
 
