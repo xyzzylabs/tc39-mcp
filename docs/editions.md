@@ -179,4 +179,4 @@ parses are bit-identical run-to-run. 402 publishes releases as
 its parse may change between fetches — the refresh job tracks that (see
 [deployment.md](deployment.md)). `spec-262-main.json` and
 `spec-402-main.json` always reflect whatever's upstream at fetch time.
-Pin a SHA explicitly if you need reproducibility against a moving ref.
+Pin `main` explicitly (via `at: "<sha>"`) if you need reproducibility against a moving ref; released editions have no per-SHA history to address.
