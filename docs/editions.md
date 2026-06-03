@@ -28,33 +28,34 @@ share one in-memory copy.
 
 ## ECMA-402 editions
 
-tc39/ecma402 doesn't tag annual releases the way tc39/ecma262 does.
-The only refs the upstream repo publishes are a small set of
-`esYYYY-candidate-*` tags (release candidates that go to ECMA GA) plus
-`main`. We expose the most recent candidate plus `main`; the rest of
-the time the right answer is `main`, which tracks the current draft.
+tc39/ecma402 publishes each annual edition as an `esYYYY` **branch**
+rather than a tag — that's the only structural difference from
+tc39/ecma262, which uses `esYYYY` tags. The fetch step resolves a
+branch or a tag interchangeably (`git clone --branch` accepts either),
+so 402 coverage matches 262: every annual edition `es2016` – `es2025`
+plus `main`. The repo also tags `esYYYY-candidate` release candidates;
+the `es2025-candidate` pin is kept for callers that referenced it
+before the final `es2025` branch existed.
 
 | Edition | tc39/ecma402 ref | Notes |
 |---|---|---|
-| `es2025-candidate` | tag `es2025-candidate-2025-04-01` | 12th-edition release candidate |
+| `es2016` … `es2024` | branch `esYYYY` | annual editions |
+| `es2025` | branch `es2025` | current stable (12th edition) |
+| `es2025-candidate` | tag `es2025-candidate-2025-04-01` | legacy candidate pin; prefer `es2025` |
 | `main` | branch `main` | rolling draft |
-
-The asymmetry vs ECMA-262 is honest: upstream simply doesn't publish
-annual `esYYYY` final tags for 402. If you need a specific pinned
-revision, use the candidate; otherwise stay on `main`.
 
 ## Aliases
 
 | Alias | Resolves to (262) | Resolves to (402) | Stability |
 |---|---|---|---|
-| `latest` | current stable release (`es2025`) | `main` | rebinds when next ES tags (262); stable on 402 |
+| `latest` | current stable release (`es2025`) | current stable release (`es2025`) | rebinds when either spec cuts its next edition |
 | `draft` | `main` | `main` | tracks upstream HEAD |
 | `next` | `main` | `main` | synonym for `draft` |
 
 Aliases are resolved by `resolveEdition(spec, e)` in `src/editions.ts`.
-`latest` is **spec-aware**: on 262 it points at the most recent stable
-annual release, on 402 it points at `main` because there is no annual
-final tag.
+`latest` is **spec-aware**: on each spec it points at that spec's most
+recent stable annual release (`es2025` today). `draft` / `next` point
+at `main` on both specs.
 
 ## Why the 262 floor is `es2016`
 
@@ -108,32 +109,36 @@ For deployment, ship the new `build/spec-262-es2026.json` to wherever
 your deployment reads from (R2, KV, baked-in, etc.) and the hosted
 server serves it without code change.
 
-## Adding a new ECMA-402 candidate
+## Adding the next ES release (ECMA-402)
 
-When tc39/ecma402 cuts a new `esYYYY-candidate-*` tag:
+When tc39/ecma402 cuts the next annual edition branch (e.g. `es2026`):
 
 ```ts
 // src/editions.ts
 
 export const RELEASED_402_EDITIONS = [
   ...existing...,
-  "es2026-candidate",                  // ← add
+  "es2026",                            // ← add the branch name
 ] as const;
 
-// also list it in CONCRETE_EDITIONS below
+export const LATEST_402_RELEASE: Released402Edition = "es2026"; // ← bump
 ```
 
 Then:
 
 ```sh
-npm run fetch-spec           # picks up the new candidate via $EDITIONS_402
-npm run parse                # writes build/spec-402-es2026-candidate.json
+npm run fetch-spec           # picks up the new edition via $EDITIONS_402
+npm run parse                # writes build/spec-402-es2026.json
 npm test
 ```
 
-`fetch-spec.sh` maps each upstream `esYYYY-candidate-*` tag to a short
-local name (`esYYYY-candidate`); if upstream cuts multiple candidates
-for one edition you'll want to pick which one your short name maps to.
+`fetch-spec.sh` resolves a branch or a tag interchangeably, so the
+recipe is identical to ECMA-262 — only the ref naming differs upstream
+(402 uses branches, 262 uses tags). The `esYYYY-candidate` tags are
+release candidates; the short-name mapping in `fetch-spec.sh`
+(`esYYYY-candidate-DATE` → `esYYYY-candidate`) keeps a legacy pin
+addressable, but new editions should be added as their final `esYYYY`
+branch.
 
 ## Tracking specific SHAs
 

@@ -4,6 +4,7 @@ import {
   CONCRETE_EDITIONS,
   EDITION_VALUES,
   LATEST_262_RELEASE,
+  LATEST_402_RELEASE,
   RELEASED_262_EDITIONS,
   RELEASED_402_EDITIONS,
   SPEC_VALUES,
@@ -47,8 +48,8 @@ describe("resolveEdition is spec-aware", () => {
     expect(resolveEdition("262", "latest")).toBe(LATEST_262_RELEASE);
   });
 
-  it("'latest' on ECMA-402 → main (no annual release tags upstream)", () => {
-    expect(resolveEdition("402", "latest")).toBe("main");
+  it("'latest' on ECMA-402 → LATEST_402_RELEASE", () => {
+    expect(resolveEdition("402", "latest")).toBe(LATEST_402_RELEASE);
   });
 
   it("'draft' / 'next' always → main regardless of spec", () => {
@@ -78,14 +79,17 @@ describe("isSupported", () => {
     expect(isSupported("262", "es2025-candidate")).toBe(false);
   });
 
-  it("402 supports main + es2025-candidate only", () => {
-    expect(isSupported("402", "main")).toBe(true);
+  it("402 supports every released 402 edition + candidate + main", () => {
+    for (const ed of RELEASED_402_EDITIONS) {
+      expect(isSupported("402", ed)).toBe(true);
+    }
     expect(isSupported("402", "es2025-candidate")).toBe(true);
+    expect(isSupported("402", "main")).toBe(true);
   });
 
-  it("402 does NOT support 262 annual releases", () => {
-    expect(isSupported("402", "es2024")).toBe(false);
-    expect(isSupported("402", "es2025")).toBe(false);
+  it("402 now supports the annual editions (published as esYYYY branches)", () => {
+    expect(isSupported("402", "es2024")).toBe(true);
+    expect(isSupported("402", "es2025")).toBe(true);
   });
 });
 
@@ -156,6 +160,28 @@ describe("ECMA-402 tooling", () => {
     const c = await tryClauseGet("402", "sec-intl.numberformat", "main");
     if (c === undefined) return;
     expect(c).not.toBeNull();
+  });
+
+  it("clauseGet resolves sec-intl.numberformat in every released 402 edition", async () => {
+    for (const ed of RELEASED_402_EDITIONS) {
+      const c = await tryClauseGet("402", "sec-intl.numberformat", ed);
+      if (c === undefined) continue;
+      expect(c, `sec-intl.numberformat in ${ed}`).not.toBeNull();
+    }
+  });
+
+  it("clause counts grow monotonically across 402 editions", async () => {
+    const counts: number[] = [];
+    for (const ed of RELEASED_402_EDITIONS) {
+      try {
+        counts.push((await clauseList({ spec: "402", edition: ed, limit: 2500 })).length);
+      } catch {
+        // Missing parsed JSON — skip this edition.
+      }
+    }
+    for (let i = 1; i < counts.length; i++) {
+      expect(counts[i]).toBeGreaterThanOrEqual(counts[i - 1]!);
+    }
   });
 
   it("clauseList on 402 returns Intl-flavored clauses", async () => {
