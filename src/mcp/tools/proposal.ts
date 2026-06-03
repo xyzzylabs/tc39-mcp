@@ -41,7 +41,13 @@ async function loadIndex(): Promise<IndexFile | null> {
   const outcome = await loadSnapshot("proposals-index.json");
   if (outcome.kind === "missing") return null;
   try {
-    cache = JSON.parse(outcome.body) as IndexFile;
+    const parsed = JSON.parse(outcome.body) as IndexFile;
+    // A legacy v1 index (still served from R2 until v0.2.0 redeploys)
+    // has no per-row `spec`. v1 only ever held ECMA-262 proposals, so
+    // default missing tags to "262" — every row stays spec-tagged as
+    // ProposalEntry documents, and the `spec` filter stays sound.
+    for (const p of parsed.proposals) p.spec ??= "262";
+    cache = parsed;
     return cache;
   } catch {
     return null;
