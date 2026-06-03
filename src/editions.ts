@@ -109,12 +109,11 @@ export const EDITION_VALUES = [
 ] as const;
 export type Edition = (typeof EDITION_VALUES)[number];
 
-/** Resolve aliases + spec context to a concrete edition. `latest`
- *  rebinds depending on which spec you're querying because the two
- *  specs have different release-tagging conventions:
- *    - For ECMA-262, `latest` → `LATEST_262_RELEASE` (es2025 today).
- *    - For ECMA-402, `latest` → `main` (no annual final-release tag
- *      exists upstream). */
+/** Resolve aliases + spec context to a concrete edition. `latest` is
+ *  spec-aware — it points at each spec's newest annual edition:
+ *    - ECMA-262 → `LATEST_262_RELEASE` (es2025 today).
+ *    - ECMA-402 → `LATEST_402_RELEASE` (es2025 today).
+ *  `draft` / `next` → `main` on both. */
 export function resolveEdition(spec: Spec, e: Edition): ConcreteEdition {
   if (e === "latest") {
     return spec === "262" ? LATEST_262_RELEASE : LATEST_402_RELEASE;
