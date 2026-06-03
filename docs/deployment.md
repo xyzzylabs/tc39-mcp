@@ -306,7 +306,8 @@ immutable copy:
 |---|---|---|
 | `spec-262-main.json` | Mutable; overwritten each deploy | Live current state |
 | `spec-262-main-{sha10}.json` | Immutable per-SHA | Historical pin for `at: "<sha>"` queries |
-| `spec-262-es2026.json` | Mutable but stable (tagged release) | Live current state of a pinned edition |
+| `spec-262-es2026.json` | Re-uploaded each deploy; content fixed (262 releases are immutable tags) | Live state of a pinned 262 edition |
+| `spec-402-es2026.json` | Re-uploaded each deploy; content may change (402 releases are branches that can drift post-cut) | Live state of the current 402 edition |
 | `spec-402-main.json` | Mutable | Live |
 | `spec-402-main-{sha10}.json` | Immutable per-SHA | Historical |
 | `test262-index.json` | Mutable | Live |
@@ -320,8 +321,12 @@ indefinitely** rather than pruned: deleting an old one would break
 `at:` reproducibility for that SHA, which is the whole reason they
 exist.
 
-Pinned editions (`es2026`) get no historical copies — their live key
-already represents a single SHA forever.
+Released editions (`es2026`) get no SHA-suffixed history — just the
+live key. For 262 that key is fixed forever (releases are immutable
+tags); for 402 it tracks the release *branch*, which can take
+post-publication editorial commits, so the refresh job detects that
+drift (see *Freshness model* above) and overwrites the key. Either
+way there's no per-SHA history to address with `at`.
 
 Inside the Worker, each isolate caches parsed JSONs in memory (see
 `worker/src/r2.ts`'s `specCache` / `test262Cache` / `proposalsCache`).

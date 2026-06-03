@@ -232,7 +232,7 @@ describe("clauseGet", () => {
     expect(c).not.toBeNull();
   });
 
-  it("rejects `at` on non-main editions (already SHA-stable)", async () => {
+  it("rejects `at` on non-main editions (served at a single snapshot)", async () => {
     const env = { SPECS: createFakeR2() };
     await expect(
       clauseGet(env, {

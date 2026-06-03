@@ -172,9 +172,11 @@ ecma402 main       SHA: <upstream HEAD at fetch time>
 
 ## Drift between fetches
 
-The `main` branches move; everything else is stable. If you fetch and
-re-parse periodically, the `es2016` – `es2026` parses (both specs)
-will be bit-identical run-to-run, but
-`spec-262-main.json` and `spec-402-main.json` will reflect whatever's
-upstream at fetch time. Pin `main`'s SHA explicitly if you need
-reproducibility against the draft.
+The `main` branches move. 262 releases are immutable tags, so their
+parses are bit-identical run-to-run. 402 publishes releases as
+*branches*: older editions are effectively frozen, but the current
+402 release branch can still take editorial commits after it's cut, so
+its parse may change between fetches — the refresh job tracks that (see
+[deployment.md](deployment.md)). `spec-262-main.json` and
+`spec-402-main.json` always reflect whatever's upstream at fetch time.
+Pin a SHA explicitly if you need reproducibility against a moving ref.

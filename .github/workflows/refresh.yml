@@ -101,7 +101,7 @@ jobs:
           {
             echo "UPSTREAM_262_MAIN=$(git -C vendor/ecma262-main rev-parse HEAD)"
             echo "UPSTREAM_402_MAIN=$(git -C vendor/ecma402-main rev-parse HEAD)"
-            echo "UPSTREAM_402_LATEST=$(git -C "vendor/ecma402-$latest_402" rev-parse HEAD)"
+            echo "UPSTREAM_402_LATEST=$(git -C vendor/ecma402-$latest_402 rev-parse HEAD)"
             echo "EDITION_402_LATEST=$latest_402"
             echo "UPSTREAM_TEST262=$(git -C vendor/test262 rev-parse HEAD)"
             echo "UPSTREAM_PROPOSALS=$(git -C vendor/proposals rev-parse HEAD)"
