@@ -472,7 +472,7 @@ Returns `SpecGrammarResult`.
 
 ## `test262.search`
 
-Search tc39/test262 for tests matching a free-text query and/or an esid (clause id, prefix-matched). test262 covers both ECMA-262 and ECMA-402. Served entirely from a local index (build/test262-index.json); if the index hasn't been built the result is empty + a hint explaining the one-time setup. No auth, no network, no subprocess.
+Search tc39/test262 for tests matching a free-text query and/or an esid (clause id, prefix-matched). test262 covers both ECMA-262 and ECMA-402. Served from a parsed test262 index sourced via the loader chain (local cache → hosted Worker → bundled fallback); the index is fetched on first use and cached locally. If no layer can produce the index the result is empty + a hint explaining the one-time local build. No auth, no subprocess.
 
 ### What it answers
 
@@ -535,17 +535,19 @@ Returns `Test262GetResult`.
 
 ## `proposal.list`
 
-List TC39 proposals from a static index built once from tc39/proposals. Filter by `stage` ('0'|'1'|'2'|'2.7'|'3'|'finished'|'inactive'|'active'), `champion` (substring), or `contains` (name/slug substring). Returns lightweight rows; follow up with `proposal.get`. Index-only: no auth, no network.
+List TC39 proposals from a parsed proposals index sourced via the loader chain (local cache → hosted Worker → bundled fallback); the index is fetched on first use and cached locally. Filter by `stage` ('0'|'1'|'2'|'2.7'|'3'|'finished'|'inactive'|'active'), `champion` (substring), or `contains` (name/slug substring). Returns lightweight rows; follow up with `proposal.get`. No auth, no subprocess.
 
 ### What it answers
 
 - **Proposals currently at Stage 3** — `{"stage":"3"}`
 - **Active proposals (stages 2 / 2.7 / 3)** — `{"stage":"active"}`
+- **Finished ECMA-402 (Intl) proposals** — `{"spec":"402","stage":"finished"}`
 
 ### Input
 
 | Field | Type | Default | Description |
 |---|---|---|---|
+| `spec` | `"262"` \| `"402"` (optional) | — | Filter to one spec's proposals: '262' (core language) or '402' (Intl). tc39/proposals tracks the two in parallel — omit to list both. |
 | `stage` | string (optional) | — | Filter to one stage: '0', '1', '2', '2.7', '3', 'finished', 'inactive', or 'active' (anything in the active README — stages 2/2.7/3). |
 | `champion` | string (optional) | — | Case-insensitive substring filter on the champion list. |
 | `contains` | string (optional) | — | Case-insensitive substring filter applied to the proposal name + slug. |

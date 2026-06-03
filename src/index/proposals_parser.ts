@@ -2,6 +2,8 @@
 // separate from `build_proposals.ts` (the CLI script) so tests can
 // import without triggering the index build's filesystem side effects.
 
+import type { Spec } from "../editions.js";
+
 export interface ProposalEntry {
   /** Markdown link slug — the canonical id. */
   slug: string;
@@ -12,6 +14,11 @@ export interface ProposalEntry {
   /** Stage as labeled in the source heading (e.g. "0", "1", "2", "2.7",
    *  "3", "finished", "inactive"). */
   stage: string;
+  /** Which TC39 spec the proposal targets: "262" (core language) or
+   *  "402" (Intl). tc39/proposals tracks the two in parallel file sets
+   *  — the root markdown files for ECMA-262, an `ecma402/` subdirectory
+   *  for ECMA-402. */
+  spec: Spec;
   authors: string[];
   champions: string[];
   test262_flag?: string;
@@ -53,11 +60,15 @@ export function splitPeople(cell: string): string[] {
     .filter((s) => s.length > 0);
 }
 
-/** Parse one source markdown file's text into ProposalEntry rows. */
+/** Parse one source markdown file's text into ProposalEntry rows.
+ *  `spec` tags every row, since the file's location (root vs the
+ *  `ecma402/` subdirectory) is what distinguishes the two proposal
+ *  tracks — the table shape is identical. */
 export function parseProposalsMarkdown(
   text: string,
   sourceFile: string,
   defaultStage: string,
+  spec: Spec,
 ): ProposalEntry[] {
   const slugs = buildSlugMap(text);
   const rows: ProposalEntry[] = [];
@@ -112,6 +123,7 @@ export function parseProposalsMarkdown(
         slug,
         name,
         stage: currentStage,
+        spec,
         authors: [],
         champions: [],
         source_file: sourceFile,

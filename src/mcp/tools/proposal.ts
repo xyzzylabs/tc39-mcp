@@ -1,13 +1,12 @@
 // MCP tools: proposal.list / proposal.get — TC39 proposal index.
 //
 // The index is a flat list of every proposal across every stage file
-// in tc39/proposals:
+// in tc39/proposals, for both specs (each row carries a `spec` tag):
 //
-//   README.md                — Stages 2 / 2.7 / 3 (active)
-//   stage-1-proposals.md     — Stage 1
-//   stage-0-proposals.md     — Stage 0
-//   finished-proposals.md    — Stage 4 (advanced)
-//   inactive-proposals.md    — withdrawn / rejected
+//   ECMA-262 (root):   README.md (Stages 2 / 2.7 / 3), stage-1-,
+//                      stage-0-, finished-, inactive-proposals.md
+//   ECMA-402 (ecma402/): README.md (active), finished-, stage-0-,
+//                      inactive-proposals.md
 //
 // Sourced via `loadSnapshot` (cache → hosted Worker → bundled fallback);
 // also producible locally via `npm run build-proposals-index` from a
@@ -16,6 +15,7 @@
 
 import { z } from "zod";
 import { loadSnapshot } from "../../data/loader.js";
+import { SPEC_VALUES } from "../../editions.js";
 import type { ProposalEntry } from "../../index/proposals_parser.js";
 
 // Re-export so historical callers can keep importing `ProposalEntry`
@@ -55,6 +55,12 @@ const NO_INDEX_HINT =
 // ─── proposal.list ─────────────────────────────────────────────────
 
 export const proposalListSchema = {
+  spec: z
+    .enum(SPEC_VALUES)
+    .optional()
+    .describe(
+      "Filter to one spec's proposals: '262' (core language) or '402' (Intl). tc39/proposals tracks the two in parallel — omit to list both.",
+    ),
   stage: z
     .string()
     .optional()
@@ -89,6 +95,10 @@ export const proposalListExamples = [
     q: "Active proposals (stages 2 / 2.7 / 3)",
     input: { stage: "active" },
   },
+  {
+    q: "Finished ECMA-402 (Intl) proposals",
+    input: { spec: "402", stage: "finished" },
+  },
 ] as const;
 
 /** Output of `proposal.list`: filtered slice of the TC39 proposals
@@ -109,6 +119,7 @@ export interface ProposalListResult {
 }
 
 export async function proposalList(args: {
+  spec?: "262" | "402";
   stage?: string;
   champion?: string;
   contains?: string;
@@ -124,6 +135,7 @@ export async function proposalList(args: {
   const contains = args.contains?.toLowerCase();
 
   let matches = idx.proposals;
+  if (args.spec) matches = matches.filter((p) => p.spec === args.spec);
   if (stage) matches = matches.filter((p) => p.stage === stage);
   if (champion) {
     matches = matches.filter((p) =>

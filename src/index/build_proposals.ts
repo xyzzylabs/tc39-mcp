@@ -1,20 +1,27 @@
 #!/usr/bin/env node
 // Build build/proposals-index.json from vendor/proposals/.
 //
-// The tc39/proposals repo organizes proposals across several markdown
-// files:
+// The tc39/proposals repo tracks ECMA-262 and ECMA-402 proposals in
+// two parallel file sets with identical markdown-table shapes:
 //
-//   README.md                — Stages 2 / 2.7 / 3 (active)
-//   stage-1-proposals.md     — Stage 1
-//   stage-0-proposals.md     — Stage 0
-//   finished-proposals.md    — Stage 4 (advanced into the spec)
-//   inactive-proposals.md    — withdrawn / rejected
+//   ECMA-262 (root):
+//     README.md                — Stages 2 / 2.7 / 3 (active)
+//     stage-1-proposals.md     — Stage 1
+//     stage-0-proposals.md     — Stage 0
+//     finished-proposals.md    — Stage 4 (advanced into the spec)
+//     inactive-proposals.md    — withdrawn / rejected
 //
-// Each file uses the same markdown-table shape — `### Stage N` followed
-// by a table with rows like `| [Name][slug] | Author<br />... | ... |`
-// — and the file's link references `[slug]: <url>` near the bottom.
-// We extract every row across every file, resolve the slug to a URL,
-// and write a compact index.
+//   ECMA-402 (ecma402/ subdirectory):
+//     ecma402/README.md            — active (Stages 1 / 2 / 2.7 / 3)
+//     ecma402/finished-proposals.md
+//     ecma402/stage-0-proposals.md
+//     ecma402/inactive-proposals.md
+//
+// Each file uses the same shape — `### Stage N` followed by a table
+// with rows like `| [Name][slug] | Author<br />... | ... |` — and the
+// file's link references `[slug]: <url>` near the bottom. We extract
+// every row across every file, tag it with the spec it targets,
+// resolve the slug to a URL, and write a compact index.
 
 import {
   existsSync,
@@ -30,6 +37,7 @@ import {
   parseProposalsMarkdown,
   type ProposalEntry,
 } from "./proposals_parser.js";
+import type { Spec } from "../editions.js";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const ROOT = resolve(HERE, "..", "..");
@@ -51,14 +59,21 @@ interface IndexFile {
   proposals: ProposalEntry[];
 }
 
-/** Source files + their default stage labels (per-table headings can
- *  override, but the file establishes the broad category). */
-const SOURCES: { file: string; defaultStage: string }[] = [
-  { file: "README.md", defaultStage: "active" },
-  { file: "stage-1-proposals.md", defaultStage: "1" },
-  { file: "stage-0-proposals.md", defaultStage: "0" },
-  { file: "finished-proposals.md", defaultStage: "finished" },
-  { file: "inactive-proposals.md", defaultStage: "inactive" },
+/** Source files + their default stage labels + the spec they belong
+ *  to (per-table headings can override the stage, but the file
+ *  establishes the broad category and the spec). Root files are
+ *  ECMA-262; the `ecma402/` subdirectory mirrors the same structure
+ *  for ECMA-402. */
+const SOURCES: { file: string; defaultStage: string; spec: Spec }[] = [
+  { file: "README.md", defaultStage: "active", spec: "262" },
+  { file: "stage-1-proposals.md", defaultStage: "1", spec: "262" },
+  { file: "stage-0-proposals.md", defaultStage: "0", spec: "262" },
+  { file: "finished-proposals.md", defaultStage: "finished", spec: "262" },
+  { file: "inactive-proposals.md", defaultStage: "inactive", spec: "262" },
+  { file: "ecma402/README.md", defaultStage: "active", spec: "402" },
+  { file: "ecma402/finished-proposals.md", defaultStage: "finished", spec: "402" },
+  { file: "ecma402/stage-0-proposals.md", defaultStage: "0", spec: "402" },
+  { file: "ecma402/inactive-proposals.md", defaultStage: "inactive", spec: "402" },
 ];
 
 const t0 = performance.now();
@@ -68,10 +83,12 @@ for (const src of SOURCES) {
   const path = join(VENDOR, src.file);
   if (!existsSync(path)) continue;
   const text = readFileSync(path, "utf8");
-  for (const row of parseProposalsMarkdown(text, src.file, src.defaultStage)) {
-    // Dedupe by slug — a proposal occasionally appears in both the
-    // active README and a stage-specific file.
-    const key = `${row.slug}@${row.stage}`;
+  for (const row of parseProposalsMarkdown(text, src.file, src.defaultStage, src.spec)) {
+    // Dedupe by (spec, slug, stage) — a proposal occasionally appears
+    // in both the active README and a stage-specific file. Keying on
+    // spec too keeps a 262 and 402 slug collision (unlikely, but cheap
+    // to guard) from clobbering each other.
+    const key = `${row.spec}:${row.slug}@${row.stage}`;
     if (seen.has(key)) continue;
     seen.add(key);
     proposals.push(row);
@@ -85,7 +102,7 @@ const sha = execFileSync("git", ["rev-parse", "HEAD"], {
 
 mkdirSync(join(ROOT, "build"), { recursive: true });
 const payload: IndexFile = {
-  version: 1,
+  version: 2,
   proposals_sha: sha,
   generated_at: new Date().toISOString(),
   proposals,

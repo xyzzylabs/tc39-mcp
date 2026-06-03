@@ -121,7 +121,8 @@ tc39-mcp                     # reads stdio
   `sec-tonumber-applied-to-the-string-type` in one call.
 - **Mapping proposals to the spec.** `proposal.list` /
   `proposal.get` from a structured index of `tc39/proposals`,
-  refreshed on the same 4-hour cadence as the specs.
+  covering both ECMA-262 and ECMA-402 (Intl) proposals — filter by
+  `spec`. Refreshed on the same 4-hour cadence as the specs.
 - **Running entirely offline (stdio).** Once `npx tc39-mcp` has
   installed, every tool call is served from on-disk snapshots —
   no network round-trip per query, no leakage of which clause
