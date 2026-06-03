@@ -16,9 +16,9 @@ describe("specAbout", () => {
 
   it("lists every supported (spec, edition) snapshot slot", async () => {
     const r = await specAbout();
-    // 11 for ECMA-262 (es2016-es2025 + main) + 11 for ECMA-402
-    // (es2016-es2025 + main) = 22 supported pairs.
-    expect(r.snapshots.length).toBe(22);
+    // 12 for ECMA-262 (es2016-es2026 + main) + 12 for ECMA-402
+    // (es2016-es2026 + main) = 24 supported pairs.
+    expect(r.snapshots.length).toBe(24);
     for (const s of r.snapshots) {
       expect(["262", "402"]).toContain(s.spec);
       expect(typeof s.present).toBe("boolean");

@@ -33,6 +33,7 @@ function reqEnv(name: string): string {
 const upstream = {
   spec_262_main: reqEnv("UPSTREAM_262_MAIN"),
   spec_402_main: reqEnv("UPSTREAM_402_MAIN"),
+  spec_402_latest: reqEnv("UPSTREAM_402_LATEST"),
   test262: reqEnv("UPSTREAM_TEST262"),
   proposals: reqEnv("UPSTREAM_PROPOSALS"),
 };
@@ -62,7 +63,14 @@ if (ghOutput) {
     ghOutput,
     `needs_refresh=${decision.needs_refresh}\n` +
       `should_publish=${decision.should_publish}\n` +
-      `next_version=${decision.next_version}\n`,
+      `next_version=${decision.next_version}\n` +
+      // Surface a moved 402 release branch (402 ships editions as
+      // branches, which — unlike 262's tags — can drift post-cut) so
+      // the workflow can call it out. prev/curr are raw inputs, not a
+      // decision, so they live here in the IO glue.
+      `moved_402_latest=${decision.moved.spec_402_latest}\n` +
+      `prev_402_latest=${last?.specs?.["402/latest"] ?? "none"}\n` +
+      `curr_402_latest=${upstream.spec_402_latest}\n`,
   );
 }
 

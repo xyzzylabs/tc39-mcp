@@ -25,6 +25,8 @@ jobs:
       # `gh workflow run deploy-worker.yml` needs actions:write when it
       # falls back to GITHUB_TOKEN (the App token uses the App's grants).
       actions: write
+      # `gh issue create` for a 402 release-branch drift (step below).
+      issues: write
 
     steps:
       - name: Mint GitHub App installation token
@@ -88,12 +90,19 @@ jobs:
           npm run fetch-proposals
 
       - name: Read upstream SHAs into env
-        # Capture the upstream-main SHAs for both specs + test262 +
-        # proposals. We compare these against what last shipped.
+        # Capture the SHAs we diff against what last shipped: both specs'
+        # main + test262 + proposals, plus the current ECMA-402 release
+        # branch. 402 ships editions as branches (not 262's immutable
+        # tags), so the current one can still take editorial commits
+        # after it's cut — track it so that drift triggers a refresh on
+        # its own, not just incidentally on the next 402/main move.
         run: |
+          latest_402=$(npx tsx -e "import {LATEST_402_RELEASE} from './src/editions.ts'; process.stdout.write(LATEST_402_RELEASE)")
           {
             echo "UPSTREAM_262_MAIN=$(git -C vendor/ecma262-main rev-parse HEAD)"
             echo "UPSTREAM_402_MAIN=$(git -C vendor/ecma402-main rev-parse HEAD)"
+            echo "UPSTREAM_402_LATEST=$(git -C vendor/ecma402-$latest_402 rev-parse HEAD)"
+            echo "EDITION_402_LATEST=$latest_402"
             echo "UPSTREAM_TEST262=$(git -C vendor/test262 rev-parse HEAD)"
             echo "UPSTREAM_PROPOSALS=$(git -C vendor/proposals rev-parse HEAD)"
           } >> "$GITHUB_ENV"
@@ -150,6 +159,66 @@ jobs:
               echo "\`${list}\` — add to \`src/editions.ts\`, bump \`LATEST_*\`, verify the parser, cut a release."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Surface a 402 release-branch move
+        # 402 ships editions as branches, so the current release branch
+        # can take editorial commits after it's cut (262's editions are
+        # immutable tags). The data refresh below already handles the
+        # drift; this just makes the move visible in the run summary
+        # instead of leaving it in the decide step's log.
+        if: steps.decide.outputs.moved_402_latest == 'true'
+        env:
+          PREV: ${{ steps.decide.outputs.prev_402_latest }}
+          CURR: ${{ steps.decide.outputs.curr_402_latest }}
+        run: |
+          echo "::notice title=ECMA-402 release branch moved::$EDITION_402_LATEST branch $PREV -> $CURR"
+          {
+            echo "### ECMA-402 \`$EDITION_402_LATEST\` release branch moved"
+            echo
+            echo "The current 402 release branch took new upstream commits since the last refresh:"
+            echo
+            echo "- \`$PREV\` → \`$CURR\`"
+            echo
+            echo "402 publishes editions as branches (not 262's immutable tags), so this is expected post-publication editorial drift. The new SHA reaches R2 via the deploy this run triggers."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: File a tracking issue for the 402 branch move
+        # A passing scheduled run notifies no one, so also open a GitHub
+        # issue when the current 402 release branch drifts — a durable
+        # signal that reaches repo watchers. Deduped on the new SHA so a
+        # manual re-run before the sentinel commit lands won't double-
+        # file. The new SHA reaches R2 via the deploy this run triggers;
+        # the issue is purely a prompt to review the upstream change.
+        if: steps.decide.outputs.moved_402_latest == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREV: ${{ steps.decide.outputs.prev_402_latest }}
+          CURR: ${{ steps.decide.outputs.curr_402_latest }}
+        run: |
+          gh label create ecma402-drift --color FBCA04 \
+            --description "ECMA-402 release branch drifted from its pin" 2>/dev/null || true
+          short_prev=$(printf '%s' "$PREV" | cut -c1-10)
+          short_curr=$(printf '%s' "$CURR" | cut -c1-10)
+          if gh issue list --state open --label ecma402-drift --json title --jq '.[].title' \
+               | grep -qF "$short_curr"; then
+            echo "An open ecma402-drift issue already references $short_curr; not filing another."
+            exit 0
+          fi
+          body=$(printf '%s\n' \
+            "The current ECMA-402 release branch ($EDITION_402_LATEST) took new upstream commits since the last refresh." \
+            "" \
+            "- **Spec:** ECMA-402" \
+            "- **Edition:** $EDITION_402_LATEST (current latest)" \
+            "- **Previous SHA:** $PREV" \
+            "- **New SHA:** $CURR" \
+            "- **Compare:** https://github.com/tc39/ecma402/compare/$PREV...$CURR" \
+            "" \
+            "402 publishes annual editions as branches (not 262's immutable tags), so the current one can take editorial commits after it is cut. The new SHA reaches R2 via the deploy this run triggers; no action is required unless the change is unexpected. Close once reviewed.")
+          gh issue create \
+            --label ecma402-drift \
+            --title "ECMA-402 $EDITION_402_LATEST release branch moved ($short_prev -> $short_curr)" \
+            --body "$body"
+          echo "Filed an ecma402-drift issue for $EDITION_402_LATEST $short_prev -> $short_curr."
 
       - name: Bump PATCH version (only when re-baking the bundle)
         # The decider already wrote the sentinel (incl. the advanced

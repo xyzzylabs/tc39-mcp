@@ -131,7 +131,7 @@ is **spec-aware** because the two specs tag releases differently:
 ```
 
 `loadSpec(spec, edition)` caches on the concrete pair, so two requests —
-one using `latest`, one using `es2025` — share a single parse in
+one using `latest`, one using `es2026` — share a single parse in
 memory when they refer to the same data.
 
 When tc39 cuts the next ECMA-262 release, you bump
@@ -142,7 +142,7 @@ on `spec: "262"` automatically points at the new release. See
 ECMA-402 publishes each annual edition as an `esYYYY` *branch* rather
 than a tag (ECMA-262 uses tags), but `git clone --branch` resolves
 either, so the catalog shape is identical across the two specs.
-`latest` on `spec: "402"` resolves to `LATEST_402_RELEASE` (`es2025`
+`latest` on `spec: "402"` resolves to `LATEST_402_RELEASE` (`es2026`
 today), symmetric with 262 — not to `main`.
 
 ## Cross-reference index
@@ -185,7 +185,7 @@ Per pair memory cost:
 
 | Spec / edition | Parsed JSON on disk | Roughly in memory |
 |---|---|---|
-| 262 / es2025 | ~7 MB | ~25 MB |
+| 262 / es2026 | ~7 MB | ~25 MB |
 | 262 / main | ~7 MB | ~25 MB |
 | 262 / es2016 | ~3 MB | ~10 MB |
 | 402 / main | ~0.6 MB | ~3 MB |

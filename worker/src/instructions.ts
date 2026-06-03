@@ -29,15 +29,16 @@ Common workflow:
   3. \`clause.get { id, spec?, edition? }\` — full structured clause.
 
 Edition semantics. \`latest\` is spec-aware:
-  - On 262, \`latest\` → current stable release (es2025 today).
-  - On 402, \`latest\` → current stable release (es2025 today).
+  - On 262, \`latest\` → current stable release (es2026 today).
+  - On 402, \`latest\` → current stable release (es2026 today).
   - \`main\` is always the working draft.
 
 Historical pinning. \`main\` moves. Pass \`at: "<sha>"\` to query a
 specific historical snapshot (4-40 hex chars, prefix-matched). The
 hosted Worker retains every \`main\` SHA it has deployed since
-launch; the live snapshot is \`at\`-less. Pinned editions like
-\`es2025\` are already SHA-stable — \`at\` is invalid there.
+launch; the live snapshot is \`at\`-less. Released editions like
+\`es2026\` have no per-SHA history, so \`at\` doesn't apply — it only
+addresses \`main\`.
 
 Missing data is never an error. Tools return null, empty arrays, or
 a \`hint:\` field. \`source: "none"\` on \`proposal.list\` means the

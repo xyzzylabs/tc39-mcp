@@ -41,12 +41,12 @@ describe("specAbout", () => {
     expect(r.backed_by).toBe("cloudflare-r2");
   });
 
-  it("enumerates 22 snapshot slots (11×262 + 11×402)", async () => {
+  it("enumerates 24 snapshot slots (12×262 + 12×402)", async () => {
     const env = { SPECS: createFakeR2() };
     const r = (await specAbout(env, "0.1.0")) as {
       snapshots: { present: boolean }[];
     };
-    expect(r.snapshots.length).toBe(22);
+    expect(r.snapshots.length).toBe(24);
   });
 
   it("marks snapshots present:false when R2 doesn't have them", async () => {
@@ -112,9 +112,9 @@ describe("clauseGet", () => {
     const env = {
       SPECS: createFakeR2({
         contents: {
-          "spec-262-es2025.json": fakeSpecJson({
+          "spec-262-es2026.json": fakeSpecJson({
             spec: "262",
-            edition: "es2025",
+            edition: "es2026",
             clauses: { "sec-tonumber": { id: "sec-tonumber", aoid: "ToNumber", title: "ToNumber ( argument )" } },
           }),
         },
@@ -130,7 +130,7 @@ describe("clauseGet", () => {
     const env = {
       SPECS: createFakeR2({
         contents: {
-          "spec-262-es2025.json": fakeSpecJson({ spec: "262", edition: "es2025" }),
+          "spec-262-es2026.json": fakeSpecJson({ spec: "262", edition: "es2026" }),
         },
       }),
     };
@@ -139,13 +139,13 @@ describe("clauseGet", () => {
   });
 
   it("defaults spec=262 and edition=latest", async () => {
-    // latest on 262 → es2025
+    // latest on 262 → es2026
     const env = {
       SPECS: createFakeR2({
         contents: {
-          "spec-262-es2025.json": fakeSpecJson({
+          "spec-262-es2026.json": fakeSpecJson({
             spec: "262",
-            edition: "es2025",
+            edition: "es2026",
             clauses: { "sec-x": { id: "sec-x" } },
           }),
         },
@@ -155,13 +155,13 @@ describe("clauseGet", () => {
     expect(c).not.toBeNull();
   });
 
-  it("resolves edition='latest' to es2025 on spec=402", async () => {
+  it("resolves edition='latest' to es2026 on spec=402", async () => {
     const env = {
       SPECS: createFakeR2({
         contents: {
-          "spec-402-es2025.json": fakeSpecJson({
+          "spec-402-es2026.json": fakeSpecJson({
             spec: "402",
-            edition: "es2025",
+            edition: "es2026",
             clauses: { "sec-intl": { id: "sec-intl" } },
           }),
         },
@@ -232,13 +232,13 @@ describe("clauseGet", () => {
     expect(c).not.toBeNull();
   });
 
-  it("rejects `at` on non-main editions (already SHA-stable)", async () => {
+  it("rejects `at` on non-main editions (served at a single snapshot)", async () => {
     const env = { SPECS: createFakeR2() };
     await expect(
       clauseGet(env, {
         id: "sec-x",
         spec: "262",
-        edition: "es2025",
+        edition: "es2026",
         at: "abc1234567",
       }),
     ).rejects.toThrow(/only valid for the 'main' edition/);
@@ -266,9 +266,9 @@ describe("clauseList", () => {
     const env = {
       SPECS: createFakeR2({
         contents: {
-          "spec-262-es2025.json": fakeSpecJson({
+          "spec-262-es2026.json": fakeSpecJson({
             spec: "262",
-            edition: "es2025",
+            edition: "es2026",
             clauses: {
               "sec-a": { id: "sec-a" },
               "sec-b": { id: "sec-b" },
@@ -286,9 +286,9 @@ describe("clauseList", () => {
     const env = {
       SPECS: createFakeR2({
         contents: {
-          "spec-262-es2025.json": fakeSpecJson({
+          "spec-262-es2026.json": fakeSpecJson({
             spec: "262",
-            edition: "es2025",
+            edition: "es2026",
             clauses: Object.fromEntries(
               Array.from({ length: 10 }, (_, i) => [`sec-${i}`, { id: `sec-${i}` }]),
             ),
@@ -307,9 +307,9 @@ describe("specSearch", () => {
   const env = () => ({
     SPECS: createFakeR2({
       contents: {
-        "spec-262-es2025.json": fakeSpecJson({
+        "spec-262-es2026.json": fakeSpecJson({
           spec: "262",
-          edition: "es2025",
+          edition: "es2026",
           clauses: {
             "sec-tonumber": { id: "sec-tonumber", aoid: "ToNumber", title: "ToNumber ( argument )" },
             "sec-tonumeric": { id: "sec-tonumeric", aoid: "ToNumeric", title: "ToNumeric ( value )" },

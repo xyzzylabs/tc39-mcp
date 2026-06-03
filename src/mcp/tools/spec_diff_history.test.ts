@@ -48,7 +48,7 @@ describe("specHistory", () => {
   it("returns a structured result for a real clause id", () => {
     const r = specHistory({ id: "sec-tonumber", limit: 5 });
     expect(r.id).toBe("sec-tonumber");
-    expect(r.edition).toBe("es2025");
+    expect(r.edition).toBe("es2026");
     expect(typeof r.vendor_present).toBe("boolean");
     expect(typeof r.shallow).toBe("boolean");
     if (r.vendor_present && r.shallow) {

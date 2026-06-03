@@ -25,12 +25,12 @@ import {
 
 const RELEASED_262 = [
   "es2016", "es2017", "es2018", "es2019", "es2020",
-  "es2021", "es2022", "es2023", "es2024", "es2025",
+  "es2021", "es2022", "es2023", "es2024", "es2025", "es2026",
 ] as const;
-const LATEST_262 = "es2025";
-// ECMA-402 publishes the same annual range as ECMA-262 (es2016 … es2025)
+const LATEST_262 = "es2026";
+// ECMA-402 publishes the same annual range as ECMA-262 (es2016 … es2026)
 // and resolves `latest` to the newest stable the same way.
-const LATEST_402 = "es2025";
+const LATEST_402 = "es2026";
 
 function resolveEdition(spec: string, e: string): string {
   if (e === "latest") return spec === "262" ? LATEST_262 : LATEST_402;
@@ -40,7 +40,7 @@ function resolveEdition(spec: string, e: string): string {
 
 function isSupported(spec: string, ed: string): boolean {
   if (ed === "main") return true;
-  // Both specs cover es2016 … es2025 (RELEASED_262 doubles as the 402 list).
+  // Both specs cover es2016 … es2026 (RELEASED_262 doubles as the 402 list).
   return (RELEASED_262 as readonly string[]).includes(ed);
 }
 
@@ -88,12 +88,13 @@ async function getSpec(
     throw new Error(`Unsupported (spec, edition): ${spec}/${ed} → ${resolved}`);
   }
   if (at) {
-    // SHA addressing only applies to moving editions (main). Pinned
-    // editions are already SHA-stable by definition; rejecting `at`
-    // there avoids generating R2 keys nobody uploads.
+    // SHA addressing only applies to `main`, the one moving edition we
+    // keep per-SHA history for. Released editions are served from a
+    // single key with no SHA-suffixed history, so rejecting `at` there
+    // avoids generating R2 keys nobody uploads.
     if (resolved !== "main") {
       throw new Error(
-        `\`at\` is only valid for the 'main' edition. ${spec}/${resolved} is already SHA-stable; omit \`at\` to query it.`,
+        `\`at\` is only valid for the 'main' edition. ${spec}/${resolved} is served from a single snapshot key with no per-SHA history; omit \`at\` to query it.`,
       );
     }
     if (!/^[a-f0-9]{4,40}$/.test(at)) {

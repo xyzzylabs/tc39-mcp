@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { specSearch } from "./spec_search.js";
 
-// These run against build/spec-262-es2025.json (the same parse clause.get
+// These run against build/spec-262-es2026.json (the same parse clause.get
 // reads). They lock in the search behavior that's the entry point for
 // "I don't know the exact id" queries.
 

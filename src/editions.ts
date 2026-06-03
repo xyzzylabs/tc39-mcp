@@ -41,13 +41,14 @@ export const RELEASED_262_EDITIONS = [
   "es2023",
   "es2024",
   "es2025",
+  "es2026",
 ] as const;
 export type Released262Edition = (typeof RELEASED_262_EDITIONS)[number];
 
 /** Floor is es2016: tc39/ecma262 has no earlier release tag. ES5/ES5.1
  *  predate the GitHub repo entirely; ES2015/ES6 was authored there but
  *  never tagged. */
-export const LATEST_262_RELEASE: Released262Edition = "es2025";
+export const LATEST_262_RELEASE: Released262Edition = "es2026";
 
 // ─── ECMA-402 editions ─────────────────────────────────────────────
 
@@ -68,12 +69,13 @@ export const RELEASED_402_EDITIONS = [
   "es2023",
   "es2024",
   "es2025",
+  "es2026",
 ] as const;
 export type Released402Edition = (typeof RELEASED_402_EDITIONS)[number];
 
 /** Newest ECMA-402 annual edition. `latest` on 402 resolves here, the
  *  same way it resolves to `LATEST_262_RELEASE` on 262. */
-export const LATEST_402_RELEASE: Released402Edition = "es2025";
+export const LATEST_402_RELEASE: Released402Edition = "es2026";
 
 // ─── joint catalog ─────────────────────────────────────────────────
 
@@ -104,8 +106,8 @@ export type Edition = (typeof EDITION_VALUES)[number];
 
 /** Resolve aliases + spec context to a concrete edition. `latest` is
  *  spec-aware — it points at each spec's newest annual edition:
- *    - ECMA-262 → `LATEST_262_RELEASE` (es2025 today).
- *    - ECMA-402 → `LATEST_402_RELEASE` (es2025 today).
+ *    - ECMA-262 → `LATEST_262_RELEASE` (es2026 today).
+ *    - ECMA-402 → `LATEST_402_RELEASE` (es2026 today).
  *  `draft` / `next` → `main` on both. */
 export function resolveEdition(spec: Spec, e: Edition): ConcreteEdition {
   if (e === "latest") {
@@ -116,7 +118,7 @@ export function resolveEdition(spec: Spec, e: Edition): ConcreteEdition {
 }
 
 /** True if (spec, concrete edition) is a supported combination. Both
- *  specs cover the same annual range (es2016 … es2025) + `main`, so every
+ *  specs cover the same annual range (es2016 … es2026) + `main`, so every
  *  concrete edition is currently valid on both; the check stays as a
  *  guard against future per-spec divergence. */
 export function isSupported(spec: Spec, concrete: ConcreteEdition): boolean {

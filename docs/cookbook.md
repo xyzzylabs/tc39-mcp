@@ -52,8 +52,8 @@ Track the prose-level history of one clause across upstream commits.
 spec.history({ id: "sec-tonumber", limit: 50 })
 
 // 2. For each adjacent pair of editions you care about, diff the clause:
-spec.diff({ id: "sec-tonumber", from: "es2024", to: "es2025" })
-spec.diff({ id: "sec-tonumber", from: "es2025", to: "main" })
+spec.diff({ id: "sec-tonumber", from: "es2025", to: "es2026" })
+spec.diff({ id: "sec-tonumber", from: "es2026", to: "main" })
 ```
 
 `spec.history` gives commit SHAs + dates that touched the
