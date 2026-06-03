@@ -100,6 +100,7 @@ jobs:
             echo "UPSTREAM_262_MAIN=$(git -C vendor/ecma262-main rev-parse HEAD)"
             echo "UPSTREAM_402_MAIN=$(git -C vendor/ecma402-main rev-parse HEAD)"
             echo "UPSTREAM_402_LATEST=$(git -C "vendor/ecma402-$latest_402" rev-parse HEAD)"
+            echo "EDITION_402_LATEST=$latest_402"
             echo "UPSTREAM_TEST262=$(git -C vendor/test262 rev-parse HEAD)"
             echo "UPSTREAM_PROPOSALS=$(git -C vendor/proposals rev-parse HEAD)"
           } >> "$GITHUB_ENV"
@@ -156,6 +157,28 @@ jobs:
               echo "\`${list}\` — add to \`src/editions.ts\`, bump \`LATEST_*\`, verify the parser, cut a release."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Surface a 402 release-branch move
+        # 402 ships editions as branches, so the current release branch
+        # can take editorial commits after it's cut (262's editions are
+        # immutable tags). The data refresh below already handles the
+        # drift; this just makes the move visible in the run summary
+        # instead of leaving it in the decide step's log.
+        if: steps.decide.outputs.moved_402_latest == 'true'
+        env:
+          PREV: ${{ steps.decide.outputs.prev_402_latest }}
+          CURR: ${{ steps.decide.outputs.curr_402_latest }}
+        run: |
+          echo "::notice title=ECMA-402 release branch moved::$EDITION_402_LATEST branch $PREV -> $CURR"
+          {
+            echo "### ECMA-402 \`$EDITION_402_LATEST\` release branch moved"
+            echo
+            echo "The current 402 release branch took new upstream commits since the last refresh:"
+            echo
+            echo "- \`$PREV\` → \`$CURR\`"
+            echo
+            echo "402 publishes editions as branches (not 262's immutable tags), so this is expected post-publication editorial drift. R2 has been refreshed to the new SHA."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Bump PATCH version (only when re-baking the bundle)
         # The decider already wrote the sentinel (incl. the advanced
