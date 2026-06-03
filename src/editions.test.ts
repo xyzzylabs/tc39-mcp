@@ -185,8 +185,8 @@ describe("ECMA-402 tooling", () => {
       }
     }
     if (counts.length === 0) return; // no parsed data in this environment
-    // 402 is far smaller than 262 (≈112 clauses in es2016 → ≈360 in
-    // es2025); a catastrophic parse failure would collapse this.
+    // 402 is far smaller than 262 (≈112 clauses in es2016 → ≈381 in
+    // es2026); a catastrophic parse failure would collapse this.
     for (const { ed, n } of counts) {
       expect(n, `402 ${ed} clause count`).toBeGreaterThan(50);
     }

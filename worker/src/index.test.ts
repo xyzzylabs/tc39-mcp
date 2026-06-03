@@ -117,9 +117,9 @@ describe("dispatch — tools/call routing", () => {
     const env = {
       SPECS: createFakeR2({
         contents: {
-          "spec-262-es2025.json": fakeSpecJson({
+          "spec-262-es2026.json": fakeSpecJson({
             spec: "262",
-            edition: "es2025",
+            edition: "es2026",
             clauses: { "sec-tonumber": { id: "sec-tonumber", aoid: "ToNumber" } },
           }),
         },

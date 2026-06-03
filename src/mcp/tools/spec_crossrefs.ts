@@ -39,7 +39,7 @@ export const specCrossrefsSchema = {
     .enum(EDITION_VALUES)
     .default("latest")
     .describe(
-      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main. Aliases: latest, draft, next.",
+      "Edition within the chosen spec. ECMA-262: es2016 … es2026, main. ECMA-402: es2016 … es2026, main. Aliases: latest, draft, next.",
     ),
   direction: z
     .enum(["in", "out", "both"])
@@ -191,7 +191,7 @@ function hit(spec: Spec, parsed: ParsedSpec, id: string): CrossrefHit | null {
 
 /** Cross-spec outgoing refs: scan the source clause's text for AOID
  *  mentions that resolve into the OTHER spec. The other spec is read
- *  at its `latest` (which is spec-aware: es2025 for 262, main for 402). */
+ *  at its `latest` (which is spec-aware: es2026 for both specs). */
 async function crossSpecOutgoing(
   sourceSpec: Spec,
   sourceParsed: ParsedSpec,

@@ -27,6 +27,28 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
+## [0.3.0] — 2026-06-03
+
+The `es2026` edition lands on both specs.
+
+### Added
+
+- **ECMA-262 and ECMA-402 add the `es2026` edition.** Both specs now
+  cover `es2016` – `es2026` plus `main`. tc39/ecma262 tags `es2026`;
+  tc39/ecma402 publishes it as an `esYYYY` branch. `clause.get`,
+  `spec.search`, `spec.diff`, `spec.history`, and the rest of the
+  edition-aware surface resolve `es2026` on both specs.
+
+### Changed
+
+- **`latest` now resolves to `es2026`** on both ECMA-262 and ECMA-402
+  (previously `es2025`). `main` / `draft` / `next` continue to address
+  the working draft.
+- **The npm bundle tracks the new stable.** The offline fallback now
+  ships `spec-262-es2026` + `spec-402-es2026` (replacing the `es2025`
+  pair); every other edition is fetched from the hosted Worker on
+  demand.
+
 ## [0.2.0] — 2026-06-03
 
 The data model moves

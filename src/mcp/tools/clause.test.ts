@@ -124,10 +124,10 @@ describe("loadSpec caching", () => {
   });
 
   it("aliases share the cache with their concrete resolution", async () => {
-    // latest on 262 resolves to es2025; the cache key is the concrete
+    // latest on 262 resolves to es2026; the cache key is the concrete
     // edition, so both calls should hit the same in-memory parse.
     const a = await loadSpec("262", "latest");
-    const b = await loadSpec("262", "es2025");
+    const b = await loadSpec("262", "es2026");
     expect(a).toBe(b);
   });
 

@@ -28,10 +28,10 @@ Common workflow:
      signature, numbered steps, notes, crossrefs.
 
 Edition semantics. \`latest\` is spec-aware:
-  - On 262, \`latest\` → current stable release (es2025 today).
-  - On 402, \`latest\` → current stable release (es2025 today).
+  - On 262, \`latest\` → current stable release (es2026 today).
+  - On 402, \`latest\` → current stable release (es2026 today).
   - \`main\` is always the working draft.
-  - Both specs support es2016 … es2025 + main.
+  - Both specs support es2016 … es2026 + main.
 
 Cross-spec discovery is opt-in. By default everything stays within
 one spec. Pass \`include_cross_spec: true\` to \`spec.crossrefs\` to

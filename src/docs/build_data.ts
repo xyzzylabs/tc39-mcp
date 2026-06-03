@@ -79,7 +79,7 @@ export function readSnapshots(buildDir: string): SnapshotRow[] {
 }
 
 /** Stable ordering: 262 before 402, then concrete editions ascending
- *  (es2016 → es2025), `main` always last per spec. Keeps the table
+ *  (es2016 → es2026), `main` always last per spec. Keeps the table
  *  predictable. */
 function sortSnapshots(rows: SnapshotRow[]): SnapshotRow[] {
   return rows.slice().sort((a, b) => {

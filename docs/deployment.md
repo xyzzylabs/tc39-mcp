@@ -301,7 +301,7 @@ immutable copy:
 |---|---|---|
 | `spec-262-main.json` | Mutable; overwritten each deploy | Live current state |
 | `spec-262-main-{sha10}.json` | Immutable per-SHA | Historical pin for `at: "<sha>"` queries |
-| `spec-262-es2025.json` | Mutable but stable (tagged release) | Live current state of a pinned edition |
+| `spec-262-es2026.json` | Mutable but stable (tagged release) | Live current state of a pinned edition |
 | `spec-402-main.json` | Mutable | Live |
 | `spec-402-main-{sha10}.json` | Immutable per-SHA | Historical |
 | `test262-index.json` | Mutable | Live |
@@ -315,7 +315,7 @@ indefinitely** rather than pruned: deleting an old one would break
 `at:` reproducibility for that SHA, which is the whole reason they
 exist.
 
-Pinned editions (`es2025`) get no historical copies — their live key
+Pinned editions (`es2026`) get no historical copies — their live key
 already represents a single SHA forever.
 
 Inside the Worker, each isolate caches parsed JSONs in memory (see
