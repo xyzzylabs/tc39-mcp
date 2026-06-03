@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Fetch the TC39 specs we cover:
 #
-#   ECMA-262 (core language) — every annual release tag (esYYYY) +
-#     the main branch.
-#   ECMA-402 (Intl)          — the few candidate tags it publishes +
-#     the main branch. ECMA-402 doesn't use the same esYYYY final-
-#     release tagging that ECMA-262 does, so the coverage is thinner.
+#   ECMA-262 (core language) — every annual release (esYYYY) + the
+#     main branch.
+#   ECMA-402 (Intl)          — every annual release (esYYYY) + the
+#     main branch, plus the legacy es2025-candidate pin. ECMA-402
+#     publishes each annual edition as an `esYYYY` *branch* rather
+#     than a tag, but `git clone --branch` resolves a branch or a tag
+#     interchangeably, so coverage matches ECMA-262.
 #
 # Defaults can be overridden via $EDITIONS_262 / $EDITIONS_402 /
 # $MAIN_BRANCH (space-separated).
@@ -14,7 +16,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 EDITIONS_262="${EDITIONS_262:-es2016 es2017 es2018 es2019 es2020 es2021 es2022 es2023 es2024 es2025}"
-EDITIONS_402="${EDITIONS_402:-es2025-candidate-2025-04-01}"
+EDITIONS_402="${EDITIONS_402:-es2016 es2017 es2018 es2019 es2020 es2021 es2022 es2023 es2024 es2025 es2025-candidate-2025-04-01}"
 MAIN_BRANCH="${MAIN_BRANCH:-main}"
 REPO_262="${REPO_262:-https://github.com/tc39/ecma262}"
 REPO_402="${REPO_402:-https://github.com/tc39/ecma402}"

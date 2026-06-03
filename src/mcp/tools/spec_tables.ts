@@ -46,7 +46,7 @@ export const specTablesSchema = {
     .enum(EDITION_VALUES)
     .default("latest")
     .describe(
-      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next.",
+      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next.",
     ),
   limit: z
     .number()

@@ -96,7 +96,7 @@ Fetch a parsed TC39 clause as structured JSON: metadata, signature, algorithm st
 |---|---|---|---|
 | `id` | string | — | Spec clause id, e.g. 'sec-tonumber' (262) or 'sec-intl.numberformat' (402). |
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 
 ### Output
 
@@ -116,7 +116,7 @@ List parsed spec clauses with optional filters (kind, section prefix, has_algori
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 | `kind` | string (optional) | — | Filter by clause kind (e.g. 'op', 'sdo', 'built-in function', 'concrete method'). |
 | `section` | string (optional) | — | Filter to clauses whose section number starts with this prefix, e.g. '22.2' for RegExp or '15' for the Locale-aware operations in ECMA-402. |
 | `has_algorithm` | boolean (optional) | — | If true, return only clauses with at least one `<emu-alg>`. |
@@ -151,7 +151,7 @@ Return the section tree (table of contents) for a parsed (spec, edition). `depth
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 | `depth` | number (int, 1–10) (optional) | — | Max tree depth to return. 1 = top-level only; 2 = first two levels; omitted = full tree. |
 | `under` | string (optional) | — | Optional clause id. If set, return only descendants of this clause. |
 
@@ -184,7 +184,7 @@ Search the parsed spec by clause id / aoid / title (and step text when search_st
 |---|---|---|---|
 | `query` | string | — | Search text. Matched against clause id, aoid, and title (and step text when search_steps is true). |
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 | `limit` | number (int, 1–100) | 20 | Max ranked hits returned. |
 | `search_steps` | boolean | false | Also match against algorithm step text. Slower + noisier; off by default. |
 
@@ -221,7 +221,7 @@ For a clause id, return its outgoing references (clauses it cites) and/or incomi
 |---|---|---|---|
 | `id` | string | — | Spec clause id, e.g. 'sec-tonumber' (262) or 'sec-intl.numberformat' (402). |
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 | `direction` | `"in"` \| `"out"` \| `"both"` | "both" | 'in' = clauses that reference this one (back-refs); 'out' = clauses this one references; 'both' = both. |
 | `include_cross_spec` | boolean | false | If true, outgoing references also include AOIDs that resolve to the *other* TC39 spec (262 ↔ 402). Useful for queries like 'every 262 op that calls into Intl'. Off by default because it requires loading both specs. |
 | `limit` | number (int, 1–500) | 100 | Max hits returned in each direction (incoming and outgoing are limited independently). |
@@ -279,7 +279,7 @@ Recent commits in the vendored spec checkout that touched a clause's `id="..."` 
 |---|---|---|---|
 | `id` | string | — | Spec clause id. |
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 | `limit` | number (int, 1–100) | 20 | Max commits returned from the vendored spec checkout's git log. |
 
 ### Output
@@ -317,7 +317,7 @@ Resolve spec notation like `[[Prototype]]` (internal slot), `%Object.prototype%`
 |---|---|---|---|
 | `notation` | string | — | Spec notation like `[[Prototype]]` (internal slot), `%Object.prototype%` (well-known intrinsic), or `~number~` (sigil enum). |
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 | `limit` | number (int, 1–50) | 10 | Max candidate clauses returned, ranked by relevance score. |
 
 ### Output
@@ -347,7 +347,7 @@ Index Syntax-Directed Operations by the grammar production they handle. SDOs are
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 | `by` | `"production"` \| `"sdo"` | "production" | Index direction. 'production' (default) groups SDO definitions by the production they handle. 'sdo' groups productions by which SDO defines them. |
 | `filter` | string (optional) | — | Optional filter: substring match on the production text or SDO title. Returns only entries whose key contains this string (case-insensitive). |
 | `limit` | number (int, 1–500) | 50 | Cap the number of groups returned. Each group can still hold many entries. |
@@ -406,7 +406,7 @@ Enumerate the well-known intrinsics (`%X%` notations) used in the spec, with eac
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 | `filter` | string (optional) | — | Case-insensitive substring filter on the intrinsic name (bare, e.g. 'object.prototype'). |
 | `limit` | number (int, 1–500) | 100 | Max well-known intrinsics returned. |
 
@@ -439,7 +439,7 @@ List or fetch parsed `<emu-table>` content. Pass `id` to get one table with full
 | `id` | string (optional) | — | If set, return exactly this table (full columns + rows). If omitted, list tables (lightweight rows). |
 | `filter` | string (optional) | — | Case-insensitive substring filter on the caption or id (list mode only). |
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 | `limit` | number (int, 1–500) | 50 | Max table summaries returned in list mode (ignored when 'id' is set). |
 
 ### Output
@@ -463,7 +463,7 @@ Query standalone `<emu-grammar>` productions from the spec's lexical / syntactic
 | `contains` | string (optional) | — | Filter to productions whose RHS lines or non-terminal name contain this substring (case-insensitive). |
 | `include_sdo` | boolean | false | If true, also include productions captured as SDO algorithm headers. Off by default — most callers want the standalone lexical/syntactic grammar definitions. |
 | `spec` | `"262"` \| `"402"` | "262" | Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API). |
-| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: main, es2025-candidate. Aliases: latest, draft, next. |
+| `edition` | EDITION_VALUES | "latest" | Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next. |
 | `limit` | number (int, 1–500) | 100 | Max productions (or non-terminal groups in list mode) returned. |
 
 ### Output
@@ -472,7 +472,7 @@ Returns `SpecGrammarResult`.
 
 ## `test262.search`
 
-Search tc39/test262 for tests matching a free-text query and/or an esid (clause id, prefix-matched). test262 covers both ECMA-262 and ECMA-402. Served entirely from a local index (build/test262-index.json); if the index hasn't been built the result is empty + a hint explaining the one-time setup. No auth, no network, no subprocess.
+Search tc39/test262 for tests matching a free-text query and/or an esid (clause id, prefix-matched). test262 covers both ECMA-262 and ECMA-402. Served from a parsed test262 index sourced via the loader chain (local cache → hosted Worker → bundled fallback); the index is fetched on first use and cached locally. If no layer can produce the index the result is empty + a hint explaining the one-time local build. No auth, no subprocess.
 
 ### What it answers
 
@@ -535,7 +535,7 @@ Returns `Test262GetResult`.
 
 ## `proposal.list`
 
-List TC39 proposals from a static index built once from tc39/proposals. Filter by `stage` ('0'|'1'|'2'|'2.7'|'3'|'finished'|'inactive'|'active'), `champion` (substring), or `contains` (name/slug substring). Returns lightweight rows; follow up with `proposal.get`. Index-only: no auth, no network.
+List TC39 proposals from a parsed proposals index sourced via the loader chain (local cache → hosted Worker → bundled fallback); the index is fetched on first use and cached locally. Filter by `stage` ('0'|'1'|'2'|'2.7'|'3'|'finished'|'inactive'|'active'), `champion` (substring), or `contains` (name/slug substring). Returns lightweight rows; follow up with `proposal.get`. No auth, no subprocess.
 
 ### What it answers
 
