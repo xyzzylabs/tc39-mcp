@@ -307,12 +307,13 @@ immutable copy:
 | `test262-index.json` | Mutable | Live |
 | `proposals-index.json` | Mutable | Live |
 
-Storage cost is modest: 50 MB × 6 refreshes/day × 30 days ≈ 9 GB,
-which at R2's $0.015/GB/month is ~$0.14/month even if no cleanup
-runs. Cleanup (delete pins older than N days) is a planned add — the
-naming convention makes it trivial: `wrangler r2 object delete`
-anything matching `spec-*-main-*.json` with `last-modified <
-T-30d`.
+A new pin appears only when `main`'s SHA actually changes — a deploy
+for an unchanged SHA overwrites the same key — so pins accrue at the
+rate upstream `main` moves, on the order of a gigabyte a year. At
+R2's $0.015/GB/month that's a few cents, so pins are **kept
+indefinitely** rather than pruned: deleting an old one would break
+`at:` reproducibility for that SHA, which is the whole reason they
+exist.
 
 Pinned editions (`es2025`) get no historical copies — their live key
 already represents a single SHA forever.
