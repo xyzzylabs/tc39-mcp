@@ -9,7 +9,6 @@
 // Cheap to call: scans on-disk parsed JSONs for their `pin` field
 // only, without loading the full clause tree.
 
-import { z } from "zod";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import {
@@ -180,15 +179,17 @@ async function proposalsIndexInfo(): Promise<AboutResult["proposals_index"]> {
 }
 
 export async function specAbout(): Promise<AboutResult> {
-  const snapshotPromises: Promise<SnapshotInfo>[] = [];
+  // Spec snapshots are processed sequentially so we never hold more
+  // than one parsed snapshot (~25-50 MB on the heap) at a time. The
+  // two index headers are tiny by comparison and run concurrently.
+  const snapshots: SnapshotInfo[] = [];
   for (const spec of SPEC_VALUES) {
     for (const edition of CONCRETE_EDITIONS) {
       if (!isSupported(spec, edition)) continue;
-      snapshotPromises.push(snapshotInfo(spec, edition));
+      snapshots.push(await snapshotInfo(spec, edition));
     }
   }
-  const [snapshots, t262, props] = await Promise.all([
-    Promise.all(snapshotPromises),
+  const [t262, props] = await Promise.all([
     test262IndexInfo(),
     proposalsIndexInfo(),
   ]);

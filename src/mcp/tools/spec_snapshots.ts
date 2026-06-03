@@ -79,8 +79,10 @@ interface SnapshotJsonHeader {
   };
 }
 
-/** Read just the `pin` block out of a parsed-spec snapshot body. Skip
- *  the full clauses tree to keep the listing cheap. */
+/** Parse the snapshot body to extract just its `pin` block. The
+ *  parse still walks the full JSON (we don't have a streaming JSON
+ *  parser here), but the resulting object goes straight out of scope
+ *  so it never enters the hot `loadSpec` LRU. */
 function readPin(body: string): {
   sha?: string;
   fetched_at?: string;
@@ -98,32 +100,31 @@ export async function specSnapshots(args: {
   spec?: Spec;
   edition?: string;
 }): Promise<SnapshotsResult> {
-  const probes: Promise<SnapshotRow | null>[] = [];
+  // Probes run sequentially so peak memory stays bounded to one
+  // parsed snapshot body at a time (~25-50 MB). Parallelizing across
+  // ~13 supported pairs would spike memory by 13×; this tool is
+  // introspection, not a hot path, so the lower latency isn't worth
+  // the spike.
+  const out: SnapshotRow[] = [];
   for (const spec of SPEC_VALUES) {
     if (args.spec && args.spec !== spec) continue;
     for (const edition of CONCRETE_EDITIONS) {
       if (!isSupported(spec, edition)) continue;
       if (args.edition && args.edition !== edition) continue;
-      probes.push(
-        (async (): Promise<SnapshotRow | null> => {
-          const outcome = await loadSnapshot(`spec-${spec}-${edition}.json`);
-          if (outcome.kind === "missing") return null;
-          const pin = readPin(outcome.body);
-          if (!pin?.sha) return null;
-          return {
-            spec,
-            edition,
-            sha: pin.sha,
-            live: true,
-            ...(pin.fetched_at ? { fetched_at: pin.fetched_at } : {}),
-            ...(pin.biblio_commit ? { biblio_commit: pin.biblio_commit } : {}),
-          };
-        })(),
-      );
+      const outcome = await loadSnapshot(`spec-${spec}-${edition}.json`);
+      if (outcome.kind === "missing") continue;
+      const pin = readPin(outcome.body);
+      if (!pin?.sha) continue;
+      out.push({
+        spec,
+        edition,
+        sha: pin.sha,
+        live: true,
+        ...(pin.fetched_at ? { fetched_at: pin.fetched_at } : {}),
+        ...(pin.biblio_commit ? { biblio_commit: pin.biblio_commit } : {}),
+      });
     }
   }
-  const rows = await Promise.all(probes);
-  const out: SnapshotRow[] = rows.filter((r): r is SnapshotRow => r !== null);
   // Sort: spec → edition → sha for deterministic output.
   out.sort(
     (a, b) =>

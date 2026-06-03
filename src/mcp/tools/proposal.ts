@@ -1,8 +1,7 @@
 // MCP tools: proposal.list / proposal.get — TC39 proposal index.
 //
-// The index is built once by `npm run build-proposals-index` from a
-// vendored tc39/proposals checkout. It's a flat list of every proposal
-// across every stage file in that repo:
+// The index is a flat list of every proposal across every stage file
+// in tc39/proposals:
 //
 //   README.md                — Stages 2 / 2.7 / 3 (active)
 //   stage-1-proposals.md     — Stage 1
@@ -10,9 +9,10 @@
 //   finished-proposals.md    — Stage 4 (advanced)
 //   inactive-proposals.md    — withdrawn / rejected
 //
-// Same offline-only contract as test262.search: served from a static
-// JSON file on disk; no auth, no network, no subprocess. If the index
-// hasn't been built, the tools return source: "none" + a hint.
+// Sourced via `loadSnapshot` (cache → hosted Worker → bundled fallback);
+// also producible locally via `npm run build-proposals-index` from a
+// vendored checkout. No auth, no subprocess. If no layer in the chain
+// can produce the index, the tools return source: "none" + a hint.
 
 import { z } from "zod";
 import { loadSnapshot } from "../../data/loader.js";
@@ -32,11 +32,12 @@ interface IndexFile {
 }
 
 let cache: IndexFile | null = null;
-let attempted = false;
 async function loadIndex(): Promise<IndexFile | null> {
   if (cache) return cache;
-  if (attempted) return null;
-  attempted = true;
+  // No negative caching: a transient network failure on the first
+  // call must not poison the result for the rest of the process.
+  // The loader has its own cache + pointer logic, so retrying here
+  // is cheap when the on-disk cache exists.
   const outcome = await loadSnapshot("proposals-index.json");
   if (outcome.kind === "missing") return null;
   try {
