@@ -63,6 +63,13 @@ meaning code again.
   `spec-402-main`, and the proposals + test262 indexes — instead of
   every parsed edition. All other editions are fetched from the Worker
   on demand.
+- **`cheerio` and `@tc39/ecma262-biblio` move to `devDependencies`.**
+  They're only used by the parser at build time (`npm run parse`); the
+  running server reads pre-parsed JSON and never imports them. A
+  consumer install no longer pulls cheerio's ~20-package HTML-parsing
+  tree (~2.4 MB). The published tarball also drops `dist/docs` and
+  `dist/refresh` (build/CI-only code that runs from `src/` via tsx,
+  never at runtime).
 - **Refresh decouples from the npm version.** `refresh.yml` updates R2
   every ~4 hours (live freshness for networked users) and re-bakes the
   npm bundle at most monthly, ending the ~2000-PATCH-bumps-per-year
