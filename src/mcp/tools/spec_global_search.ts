@@ -21,7 +21,6 @@ export const specGlobalSearchSchema = {
     .describe(
       "Search text. Matched against clause id, aoid, and title across both specs (and step text when search_steps is true).",
     ),
-  /** `latest` per-spec resolution: 262 → es2025; 402 → main. */
   search_steps: z
     .boolean()
     .default(false)
@@ -60,7 +59,7 @@ export async function specGlobalSearch(args: {
   const all: GlobalSearchHit[] = [];
 
   // Per-spec searches use each spec's `latest` resolution (which is
-  // spec-aware: es2025 for 262, main for 402). Limit per-spec to
+  // spec-aware: es2025 for both specs). Limit per-spec to
   // `limit` so an over-saturated 262 can't shut 402 out completely;
   // we re-trim after interleaving. The two specs are loaded in
   // parallel so the cold path doesn't pay 2× the snapshot latency.

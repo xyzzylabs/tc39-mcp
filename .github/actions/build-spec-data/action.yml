@@ -23,7 +23,7 @@ runs:
   steps:
     - name: Cache node_modules
       id: cache-node-modules
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: node_modules
         key: nm-v1-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
@@ -35,7 +35,7 @@ runs:
 
     - name: Cache vendor/
       id: cache-vendor
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: vendor
         key: vendor-v1-${{ hashFiles('.last-refresh.json') }}
@@ -52,10 +52,10 @@ runs:
 
     - name: Cache build/
       id: cache-build
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build
-        key: build-v1-${{ hashFiles('.last-refresh.json', 'src/parser/**', 'src/test262/**', 'src/proposals/**') }}
+        key: build-v1-${{ hashFiles('.last-refresh.json', 'src/parser/**', 'src/index/**') }}
         restore-keys: |
           build-v1-
 

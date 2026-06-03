@@ -22,6 +22,9 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: write
+      # `gh workflow run deploy-worker.yml` needs actions:write when it
+      # falls back to GITHUB_TOKEN (the App token uses the App's grants).
+      actions: write
 
     steps:
       - name: Mint GitHub App installation token
@@ -95,95 +98,111 @@ jobs:
             echo "UPSTREAM_PROPOSALS=$(git -C vendor/proposals rev-parse HEAD)"
           } >> "$GITHUB_ENV"
 
-      - name: Read last-shipped SHAs from the registry
-        # Pull the metadata of the currently-published latest version
-        # and extract the SHAs it baked in. If the package isn't
-        # published yet, treat everything as "needs refresh".
+      - name: Decide refresh + publish
+        id: decide
+        # Single source of truth: src/refresh/decide.ts (unit-tested in
+        # decide.test.ts), invoked through the thin run-decide.ts wrapper.
+        # It diffs the UPSTREAM_* env above against ./.last-refresh.json,
+        # applies the monthly bundle-re-bake gate, and emits
+        # needs_refresh / should_publish / next_version — and rewrites the
+        # sentinel (only when something moved). No decision logic in bash.
+        run: npx tsx src/refresh/run-decide.ts
+
+      # ── From v0.2.0: data freshness rides R2, not the npm version ──
+      #
+      # The 4 h cadence still detects upstream movement, but the two
+      # data consumers update on different clocks:
+      #
+      #   • R2 (the live data stdio fetches + the Worker serves) is
+      #     refreshed on EVERY run that sees movement, by dispatching
+      #     deploy-worker.yml — but only AFTER the new sentinel is pushed
+      #     (see that step for why). Networked users stay ≤ 4 h fresh.
+      #
+      #   • The npm bundle (the cold-start fallback for OFFLINE users)
+      #     is re-baked at most monthly. A new annual edition re-bakes
+      #     it sooner — but a new edition is a *code* change to the
+      #     catalog, so that publish rides the normal release path; the
+      #     refresh job only detects it and nudges (below).
+      #
+      # Net: ~12 data publishes/year instead of ~2000, with no loss of
+      # live freshness. See docs/deployment.md → "Freshness model".
+
+      - name: Nudge on a new upstream edition not yet in the catalog
+        # A new annual edition (e.g. es2026) can't be picked up
+        # automatically — it needs a deliberate catalog change in
+        # src/editions.ts plus a parser check — but it should prompt a
+        # release the day it lands (offline users get it via that code
+        # release). Detect and surface it; don't act on it.
+        continue-on-error: true
         run: |
-          if npm view tc39-mcp version >/dev/null 2>&1; then
-            published_version=$(npm view tc39-mcp version)
-            # The published tarball isn't trivially fetchable from a
-            # workflow, so we compare against a sentinel file in main
-            # that records what the last refresh job published.
-            if [ -f .last-refresh.json ]; then
-              echo "LAST_262_MAIN=$(node -p "require('./.last-refresh.json').specs['262/main'] || 'none'")"  >> "$GITHUB_ENV"
-              echo "LAST_402_MAIN=$(node -p "require('./.last-refresh.json').specs['402/main'] || 'none'")"  >> "$GITHUB_ENV"
-              echo "LAST_TEST262=$(node -p "require('./.last-refresh.json').test262 || 'none'")"             >> "$GITHUB_ENV"
-              echo "LAST_PROPOSALS=$(node -p "require('./.last-refresh.json').proposals || 'none'")"         >> "$GITHUB_ENV"
-              echo "LAST_VERSION=$published_version" >> "$GITHUB_ENV"
-            else
-              {
-                echo "LAST_262_MAIN=none"
-                echo "LAST_402_MAIN=none"
-                echo "LAST_TEST262=none"
-                echo "LAST_PROPOSALS=none"
-                echo "LAST_VERSION=$published_version"
-              } >> "$GITHUB_ENV"
-            fi
-          else
+          catalog=$(npx tsx -e "import {RELEASED_262_EDITIONS, RELEASED_402_EDITIONS} from './src/editions.ts'; console.log([...RELEASED_262_EDITIONS, ...RELEASED_402_EDITIONS].join('\n'))" | grep -oE 'es20[0-9]{2}' | sort -u)
+          upstream=$(
+            { git ls-remote --tags  https://github.com/tc39/ecma262 'refs/tags/es20*'  ;
+              git ls-remote --heads https://github.com/tc39/ecma402 'refs/heads/es20*' ; } \
+            | grep -oE 'es20[0-9]{2}' | sort -u)
+          new=$(comm -13 <(printf '%s\n' "$catalog") <(printf '%s\n' "$upstream") || true)
+          if [ -n "$new" ]; then
+            list=$(echo "$new" | tr '\n' ' ')
+            echo "::warning title=New TC39 edition upstream::Not in the catalog yet: ${list}. Add to src/editions.ts (+ LATEST_*), verify the parser, cut a release."
             {
-              echo "LAST_262_MAIN=none"
-              echo "LAST_402_MAIN=none"
-              echo "LAST_TEST262=none"
-              echo "LAST_PROPOSALS=none"
-              echo "LAST_VERSION=0.0.0"
-            } >> "$GITHUB_ENV"
+              echo "### ⚠️ New upstream edition(s) not in the catalog"
+              echo
+              echo "\`${list}\` — add to \`src/editions.ts\`, bump \`LATEST_*\`, verify the parser, cut a release."
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Decide whether refresh is needed
-        # If any upstream SHA differs from last-shipped, set NEEDS_REFRESH=true.
-        run: |
-          changed=false
-          [ "$UPSTREAM_262_MAIN"  != "$LAST_262_MAIN"  ] && changed=true && echo "262/main moved: $LAST_262_MAIN → $UPSTREAM_262_MAIN"
-          [ "$UPSTREAM_402_MAIN"  != "$LAST_402_MAIN"  ] && changed=true && echo "402/main moved: $LAST_402_MAIN → $UPSTREAM_402_MAIN"
-          [ "$UPSTREAM_TEST262"   != "$LAST_TEST262"   ] && changed=true && echo "test262 moved: $LAST_TEST262 → $UPSTREAM_TEST262"
-          [ "$UPSTREAM_PROPOSALS" != "$LAST_PROPOSALS" ] && changed=true && echo "proposals moved: $LAST_PROPOSALS → $UPSTREAM_PROPOSALS"
-          echo "NEEDS_REFRESH=$changed" >> "$GITHUB_ENV"
-
-      - name: Bump PATCH version
-        if: env.NEEDS_REFRESH == 'true'
-        run: |
-          current=$(node -p "require('./package.json').version")
-          # Parse semver MAJOR.MINOR.PATCH; bump PATCH.
-          IFS='.' read -r maj min pat <<<"$current"
-          new="$maj.$min.$((pat + 1))"
-          npm version "$new" --no-git-tag-version --no-commit-hooks
-          echo "NEW_VERSION=$new" >> "$GITHUB_ENV"
-          echo "Bumped $current → $new"
-
-      - name: Write the .last-refresh.json sentinel
-        if: env.NEEDS_REFRESH == 'true'
-        run: |
-          cat > .last-refresh.json <<EOF
-          {
-            "version": "$NEW_VERSION",
-            "refreshed_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "specs": {
-              "262/main": "$UPSTREAM_262_MAIN",
-              "402/main": "$UPSTREAM_402_MAIN"
-            },
-            "test262": "$UPSTREAM_TEST262",
-            "proposals": "$UPSTREAM_PROPOSALS"
-          }
-          EOF
+      - name: Bump PATCH version (only when re-baking the bundle)
+        # The decider already wrote the sentinel (incl. the advanced
+        # last_npm_publish); this just bumps package.json + the lockfile
+        # to the version it chose, so the commit + tag below match.
+        if: steps.decide.outputs.needs_refresh == 'true' && steps.decide.outputs.should_publish == 'true'
+        env:
+          NEXT_VERSION: ${{ steps.decide.outputs.next_version }}
+        run: npm version "$NEXT_VERSION" --no-git-tag-version --no-commit-hooks
 
       - name: Configure git
-        if: env.NEEDS_REFRESH == 'true'
+        if: steps.decide.outputs.needs_refresh == 'true'
         run: |
           git config user.name "tc39-mcp-bot"
           git config user.email "tc39-mcp-bot@users.noreply.github.com"
 
-      - name: Commit + tag
-        if: env.NEEDS_REFRESH == 'true'
+      - name: Commit the refreshed sentinel (+ tag only when publishing)
+        if: steps.decide.outputs.needs_refresh == 'true'
+        # Data-only refresh: commit the sentinel to main, no tag — R2 is
+        # already current (dispatched below) and npm is left alone. A
+        # monthly bundle re-bake additionally bumps + tags; the tag fires
+        # release.yml (npm publish), the same path a code release uses.
         env:
-          NEW_VERSION: ${{ env.NEW_VERSION }}
+          SHOULD_PUBLISH: ${{ steps.decide.outputs.should_publish }}
+          NEXT_VERSION: ${{ steps.decide.outputs.next_version }}
         run: |
-          git add package.json package-lock.json .last-refresh.json
-          git commit -m "refresh: v$NEW_VERSION"
-          git tag "v$NEW_VERSION"
-          git push origin HEAD:main
-          git push origin "v$NEW_VERSION"
+          if [ "$SHOULD_PUBLISH" = "true" ]; then
+            git add package.json package-lock.json .last-refresh.json
+            git commit -m "refresh: v$NEXT_VERSION (monthly data bundle)"
+            git tag "v$NEXT_VERSION"
+            git push origin HEAD:main
+            git push origin "v$NEXT_VERSION"
+          else
+            git add .last-refresh.json
+            git commit -m "chore(data): refresh upstream snapshot pointers"
+            git push origin HEAD:main
+          fi
+
+      - name: Refresh R2 (data-only runs, after the sentinel is pushed)
+        # Ordering is load-bearing: deploy-worker's build-spec-data
+        # caches vendor/ + build/ keyed on hashFiles('.last-refresh.json').
+        # It only re-fetches + re-parses (→ uploads fresh data to R2)
+        # once main carries the new SHAs — so we must push the sentinel
+        # BEFORE dispatching. On a publishing run we skip this entirely:
+        # the v* tag pushed above already triggers deploy-worker the same
+        # way, and double-firing would just redeploy the Worker twice.
+        if: steps.decide.outputs.needs_refresh == 'true' && steps.decide.outputs.should_publish != 'true'
+        env:
+          # Only the App token / PAT can trigger another workflow;
+          # GITHUB_TOKEN cannot.
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.WORKFLOW_PAT || secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy-worker.yml --ref main
 
       - name: No-op summary
-        if: env.NEEDS_REFRESH != 'true'
+        if: steps.decide.outputs.needs_refresh != 'true'
         run: echo "No upstream changes since last refresh; skipping."

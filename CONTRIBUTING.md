@@ -12,7 +12,7 @@ constraint is deliberate — it's what makes hosting the same code
 safe — so changes that introduce execution should have a very strong
 rationale.
 
-The codebase is small (~10 source files, ~30 tests). One file per tool,
+The codebase is compact (~50 source files, ~390 tests). One file per tool,
 shared infrastructure in `src/editions.ts` / `src/paths.ts`, parser
 under `src/parser/`.
 
@@ -22,7 +22,7 @@ under `src/parser/`.
 npm install
 npm run fetch-spec       # ~2 min — clones both specs at every supported edition
 npm run parse            # ~60s — produces build/spec-<spec>-<edition>.json
-npm test                 # < 2 seconds
+npm test                 # ~10 seconds
 ```
 
 If you're going to iterate on tool code, leave a shell open with:
@@ -41,7 +41,7 @@ testing.
 | **Parser fixes** | Older spec.html (es2016 → es2020) sometimes parses with mild distortions. Reproductions and fixes against real clauses are gold. |
 | **Search ranking improvements** | The aoid-exact > aoid > title > id > steps order is heuristic. PRs with eval cases (input → expected top hit) make these reviewable. |
 | **New lookup tools** | If they're (a) read-only, (b) pure over the parsed data, and (c) useful for a real query you can describe, very welcome. Open an issue first so the surface stays small. |
-| **Editions** | When tc39/ecma262 cuts the next ES release tag (or tc39/ecma402 cuts a new candidate), the recipe in [`docs/editions.md`](docs/editions.md) walks the bump. |
+| **Editions** | When tc39/ecma262 cuts the next ES release tag (or tc39/ecma402 cuts a new annual edition), the recipe in [`docs/editions.md`](docs/editions.md) walks the bump. |
 | **Doc improvements** | Especially: examples in [`docs/tools.md`](docs/tools.md) for queries that surprised you. |
 
 ## What kinds of changes are unlikely to land
@@ -153,18 +153,24 @@ In both cases the workflow run ends in failure, so you get an email
 + a red mark in the Actions tab. Investigate the failing smoke,
 ship a fixed PATCH.
 
-### Auto-refresh PATCH releases
+### Auto-refresh: R2 every ~4 h, npm monthly
 
-The above manual flow is only for **code changes**. PATCH versions that
-only carry refreshed upstream spec data are handled automatically by
-`.github/workflows/refresh.yml`:
+The above manual flow is only for **code changes**. Refreshed upstream
+spec data is handled automatically by `.github/workflows/refresh.yml` on
+two cadences:
 
-- Runs every 4 hours; SHA-diffs upstream `tc39/ecma262`,
-  `tc39/ecma402`, `tc39/test262`, `tc39/proposals` against the last
-  published.
-- If anything moved, bumps PATCH, tags `vX.Y.Z`, pushes. That tag
-  triggers `release.yml` (npm publish) and `deploy-worker.yml`
-  (R2 + Worker redeploy).
+- **R2 — every ~4 hours.** SHA-diffs upstream `tc39/ecma262`,
+  `tc39/ecma402`, `tc39/test262`, `tc39/proposals` against
+  `.last-refresh.json`. On any movement it commits the new sentinel and
+  dispatches `deploy-worker.yml`, which re-parses and uploads fresh
+  snapshots to R2 — no version bump, no npm publish. This is the
+  live-freshness path for networked clients.
+- **npm bundle — at most monthly.** The bundle is only the offline
+  fallback, so when ≥ 30 days have passed since the last data publish
+  (tracked in `.last-refresh.json`'s `last_npm_publish`) a refresh run
+  additionally bumps PATCH + tags `vX.Y.Z`; that tag drives the npm
+  publish via `release.yml` and the Worker redeploy via
+  `deploy-worker.yml`. Net: ~12 data publishes/year instead of ~2000.
 
 **Do not add a `CHANGELOG.md` entry for these releases** — they ship
 identical code with a fresher spec payload, and recording every refresh
@@ -181,7 +187,7 @@ When tc39/ecma262 cuts the next annual release (e.g. `es2026`):
 
 1. Update `src/editions.ts` — add `es2026` to `RELEASED_262_EDITIONS`,
    bump `LATEST_262_RELEASE`.
-2. Update `RELEASED_402_EDITIONS` if a new candidate also lands.
+2. Update `RELEASED_402_EDITIONS` + `LATEST_402_RELEASE` if a new 402 annual edition also lands.
 3. Update `vendor/PINNED.txt` references in `docs/editions.md`.
 4. Update the editions table in `README.md` + `CHANGELOG.md`.
 5. Bump the MINOR version. Run the release workflow.

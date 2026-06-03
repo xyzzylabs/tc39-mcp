@@ -138,9 +138,9 @@ describe("docs build_data", () => {
         edition: "es2016",
         sha: "1616",
       });
-      writeSpecFile(buildDir, "spec-402-es2025-candidate.json", {
+      writeSpecFile(buildDir, "spec-402-es2024.json", {
         spec: "402",
-        edition: "es2025-candidate",
+        edition: "es2024",
         sha: "402c",
       });
       const rows = readSnapshots(buildDir);
@@ -148,7 +148,7 @@ describe("docs build_data", () => {
         "262/es2016",
         "262/es2017",
         "262/main",
-        "402/es2025-candidate",
+        "402/es2024",
         "402/main",
       ]);
     });

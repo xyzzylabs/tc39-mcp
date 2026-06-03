@@ -9,8 +9,21 @@
     "tc39-mcp": "./dist/mcp/server.js"
   },
   "files": [
-    "dist/",
-    "build/",
+    "dist/data/",
+    "dist/index/",
+    "dist/mcp/",
+    "dist/parser/",
+    "dist/util/",
+    "dist/editions.js",
+    "dist/editions.d.ts",
+    "dist/paths.js",
+    "dist/paths.d.ts",
+    "build/spec-262-es2025.json",
+    "build/spec-262-main.json",
+    "build/spec-402-es2025.json",
+    "build/spec-402-main.json",
+    "build/proposals-index.json",
+    "build/test262-index.json",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
@@ -40,13 +53,13 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@tc39/ecma262-biblio": "^2.2.3000",
-    "cheerio": "^1.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@tc39/ecma262-biblio": "2.2.3087",
     "@types/node": "^25.9.1",
     "@typescript/native-preview": "^7.0.0-dev.20260527.2",
+    "cheerio": "^1.0.0",
     "tsx": "^4.19.2",
     "typescript": "^6.0.3",
     "vitepress": "^1.6.4",

@@ -8,6 +8,22 @@
 | **Local CLI / npm package** | `npx tc39-mcp` | ✅ shipped |
 | **Hosted HTTP** (Cloudflare Worker) | Public endpoint for unaffiliated agents | ✅ shipped |
 
+Those three shapes build from **one source tree, two published
+artifacts**:
+
+| Artifact | Package | Ships via | How you reach it |
+|---|---|---|---|
+| stdio server (and the CLI) | `tc39-mcp` (npm) | `npm publish` | `npx tc39-mcp` · `npm i -g tc39-mcp` |
+| HTTP worker | `tc39-mcp-worker` | `wrangler deploy` → Cloudflare | the hosted endpoint URL |
+
+`worker/` is a separate, **private** package. A Cloudflare Worker is a
+deployment, not a library, so it is never published to npm: you reach it
+over HTTP at the hosted URL, or self-host by cloning the repo and running
+`wrangler deploy` yourself. Both artifacts read the same parsed snapshots
+and differ only in transport (stdio vs HTTP) and tool surface (all 19
+tools vs the 6 core ones). The Worker keeps its own `package.json` +
+lockfile so its bundle never pulls in the Node-shaped source tree.
+
 ## Local stdio (the default)
 
 Used when an agent on the same machine wants to consult the spec.
@@ -61,29 +77,45 @@ terminal" is small. If you want one, file an issue.
 
 ## Freshness model
 
-When you publish v0.1.0, the parsed JSON artifacts in `build/` are
-**baked into the npm tarball** at the SHAs upstream had on publish
-day. Until a new version is published, `npx tc39-mcp` always sees the
-same SHAs.
+Live data lives in **R2**, not in the npm version. The stdio server
+sources each snapshot through `loadSnapshot` (local cache → hosted
+Worker R2 → bundled fallback) and re-checks live keys against R2 every
+4 hours (`POINTER_TTL_MS`); the hosted Worker reads R2 directly. So
+anything reachable over the network is at most ~4 hours stale. The
+npm tarball ships a **bundled subset** (latest stable + `main`
+editions, plus the proposals and test262 indexes) purely as an
+offline cold-start fallback.
 
-`tc39-mcp` ships **two automatic refresh paths** so the deployed
-state doesn't go stale:
+Two refresh cadences keep that picture current:
 
-1. **Scheduled npm republish** (`.github/workflows/refresh.yml`).
-   Runs **every 4 hours**. Fetches upstream tc39/* mains, diffs SHAs
-   against `.last-refresh.json`, and if any upstream changed, bumps
-   PATCH + tags + publishes. Net effect: `npx tc39-mcp@latest`
-   reflects upstream `main` within ~4 hours.
+1. **R2 refresh — every 4 hours** (`.github/workflows/refresh.yml`).
+   Fetches upstream tc39/* mains, diffs SHAs against
+   `.last-refresh.json`, and on any movement commits the new sentinel
+   and dispatches `deploy-worker.yml` — which re-parses and uploads
+   fresh snapshots to R2. No npm release. This is the live-freshness
+   path for everyone with a network.
 
-2. **R2 live updates + docs rebuild** (hosted Worker). The tag push
-   from refresh.yml triggers `deploy-worker.yml`, which uploads new
-   parsed JSONs to R2 *and* rebuilds the docs site (the `/snapshots`
-   page is regenerated from those same JSONs) and redeploys the
-   Worker. Hosted API and hosted docs always reflect the same SHAs.
+2. **npm bundle re-bake — at most monthly.** The bundle is only the
+   offline fallback, so the refresh job re-publishes it on a slow
+   cadence: when ≥ 30 days have passed since the last data publish
+   (tracked in `.last-refresh.json`'s `last_npm_publish`), a refresh
+   run additionally bumps PATCH + tags, and the tag drives the npm
+   publish via `release.yml`. Net: ~12 data publishes/year instead of
+   ~2000, and the npm changelog regains meaning — PATCH = a monthly
+   data refresh, MINOR/MAJOR = code.
+
+A **new annual edition** doesn't wait for the monthly tick: adding it
+is a deliberate catalog change (`src/editions.ts`) — i.e. a code
+release — which publishes immediately and re-bakes the bundle with it.
+The refresh job only *detects* a new upstream `esYYYY` not yet in the
+catalog and surfaces a nudge; it never adds an edition on its own
+(each one needs a parser check).
 
 Callers can check what they're looking at with the `spec.about`
 tool. It returns per-snapshot `pin` metadata — `sha`, `fetched_at`,
-`biblio_commit`, `clause_count`. The freshness contract is in-band.
+`biblio_commit`, `clause_count` — and `spec.about`'s `source` tag
+(`cache` / `network` / `bundle`) says which layer served it. The
+freshness contract is in-band.
 
 ## Hosted HTTP (Cloudflare Worker)
 
@@ -239,11 +271,12 @@ chain is:
 ```
 upstream tc39/* main moves
         ↓
-refresh.yml runs every 4 hours
+refresh.yml runs every ~4 hours
    diffs upstream SHAs vs .last-refresh.json
-   bumps PATCH + tags vX.Y.Z+1 + pushes
+   on movement → dispatches deploy-worker.yml (R2 refresh, no npm)
+   monthly (≥30 d since last publish) → ALSO tags vX.Y.Z+1
         ↓
-        tag push triggers (in parallel)
+        the monthly tag fans out (in parallel) to:
         ↓
    ┌────────────────────┬─────────────────────────┐
    │  release.yml       │  deploy-worker.yml      │
@@ -276,13 +309,13 @@ immutable copy:
 
 Storage cost is modest: 50 MB × 6 refreshes/day × 30 days ≈ 9 GB,
 which at R2's $0.015/GB/month is ~$0.14/month even if no cleanup
-runs. Cleanup (delete pins older than N days) is a v0.2 add — the
+runs. Cleanup (delete pins older than N days) is a planned add — the
 naming convention makes it trivial: `wrangler r2 object delete`
 anything matching `spec-*-main-*.json` with `last-modified <
 T-30d`.
 
-Pinned editions (`es2025`, `es2025-candidate`) get no historical
-copies — their live key already represents a single SHA forever.
+Pinned editions (`es2025`) get no historical copies — their live key
+already represents a single SHA forever.
 
 Inside the Worker, each isolate caches parsed JSONs in memory (see
 `worker/src/r2.ts`'s `specCache` / `test262Cache` / `proposalsCache`).

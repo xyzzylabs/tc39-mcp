@@ -256,6 +256,87 @@ describe("routing", () => {
       expect(await r.text()).toBe('{"pin":{"sha":"abc"}}');
     });
 
+    it("returns 304 (no body) for the canonical (unquoted) If-None-Match the stdio loader sends", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      // fakeR2 sets etag = `etag-<key>`. The stdio loader canonicalizes
+      // etags (strips `W/` + quotes) before persisting + re-sending them,
+      // so the production If-None-Match value is unquoted.
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json", {
+          headers: { "if-none-match": "etag-spec-262-main.json" },
+        }),
+        env,
+      );
+      expect(r.status).toBe(304);
+      expect(r.headers.get("etag")).toBe('"etag-spec-262-main.json"');
+      expect(await r.text()).toBe("");
+    });
+
+    it("also returns 304 for a quoted If-None-Match (standard HTTP clients)", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json", {
+          headers: { "if-none-match": '"etag-spec-262-main.json"' },
+        }),
+        env,
+      );
+      expect(r.status).toBe(304);
+    });
+
+    it("returns 304 for `If-None-Match: *` (resource exists)", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json", {
+          headers: { "if-none-match": "*" },
+        }),
+        env,
+      );
+      expect(r.status).toBe(304);
+    });
+
+    it("returns 304 when one of a comma-separated If-None-Match list matches", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json", {
+          headers: { "if-none-match": '"other-thing", "etag-spec-262-main.json"' },
+        }),
+        env,
+      );
+      expect(r.status).toBe(304);
+    });
+
+    it("serves 200 + body when If-None-Match does not match", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json", {
+          headers: { "if-none-match": '"stale-etag"' },
+        }),
+        env,
+      );
+      expect(r.status).toBe(200);
+      expect(await r.text()).toBe('{"pin":{"sha":"abc"}}');
+    });
+
     it("GET serves a per-SHA historical pin with immutable cache-control", async () => {
       const env = {
         SPECS: createFakeR2({

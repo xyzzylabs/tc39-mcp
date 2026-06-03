@@ -53,6 +53,19 @@ code deploys behind a Cloudflare Worker (see
 [`deployment.md`](deployment.md)) where steps 1–2 happen in CI and
 the parsed JSON is served from R2 directly.
 
+The 262 parse runs **two passes**: biblio-driven first
+(`@tc39/ecma262-biblio` supplies authoritative aoid + section
+metadata), then an **HTML-discovery fallback** that captures any
+`<emu-clause>` / `<emu-annex>` the pinned biblio didn't list,
+synthesizing metadata from the element. Because the biblio is pinned
+to one `main` snapshot it can lag the HTML being parsed (a newer
+`main`, or an older edition carrying since-removed clauses); the
+fallback guarantees a stale or mismatched biblio can never silently
+drop a clause. ECMA-402 has no biblio dependency at all — it
+synthesizes the same metadata directly from its multi-file
+`<emu-import>` walk (`src/parser/synthesize.ts` is shared by both
+paths).
+
 ## Parsed shape
 
 The parser writes one JSON file per (spec, edition) pair under `build/`.
@@ -111,7 +124,7 @@ is **spec-aware** because the two specs tag releases differently:
                           spec === "262"          spec === "402"
                           ──────────────          ──────────────
    "latest"  ──┐
-               ├──► resolveEdition(spec, ed)  ──► LATEST_262_RELEASE  │  main
+               ├──► resolveEdition(spec, ed)  ──► LATEST_262_RELEASE  │  LATEST_402_RELEASE
    "draft"   ──┤                                  main                │  main
                │                                  main                │  main
    "next"    ──┘
@@ -126,9 +139,11 @@ When tc39 cuts the next ECMA-262 release, you bump
 on `spec: "262"` automatically points at the new release. See
 [`editions.md`](editions.md) for the full recipe.
 
-ECMA-402 has no annual release tagging — only candidates and `main`.
-`latest` on `spec: "402"` therefore resolves to `main`, which is the
-honest answer when no stable annual tag exists.
+ECMA-402 publishes each annual edition as an `esYYYY` *branch* rather
+than a tag (ECMA-262 uses tags), but `git clone --branch` resolves
+either, so the catalog shape is identical across the two specs.
+`latest` on `spec: "402"` resolves to `LATEST_402_RELEASE` (`es2025`
+today), symmetric with 262 — not to `main`.
 
 ## Cross-reference index
 

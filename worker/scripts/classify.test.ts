@@ -15,7 +15,7 @@ describe("classify", () => {
   it("recognizes pinned-edition snapshots (262 + 402)", () => {
     expect(classify("spec-262-es2016.json")).toBe("pinned-edition");
     expect(classify("spec-262-es2025.json")).toBe("pinned-edition");
-    expect(classify("spec-402-es2025-candidate.json")).toBe("pinned-edition");
+    expect(classify("spec-402-es2024.json")).toBe("pinned-edition");
   });
 
   it("recognizes side indices", () => {
@@ -61,7 +61,7 @@ describe("bucketize", () => {
       "test262-index.json",
       "spec-402-main.json",
       "spec-402-main-deadbeef00.json",
-      "spec-402-es2025-candidate.json",
+      "spec-402-es2024.json",
       "proposals-index.json",
     ];
     const r = bucketize(names);
@@ -75,7 +75,7 @@ describe("bucketize", () => {
     ]);
     expect(r["pinned-edition"].sort()).toEqual([
       "spec-262-es2025.json",
-      "spec-402-es2025-candidate.json",
+      "spec-402-es2024.json",
     ]);
     expect(r["side-index"].sort()).toEqual([
       "proposals-index.json",

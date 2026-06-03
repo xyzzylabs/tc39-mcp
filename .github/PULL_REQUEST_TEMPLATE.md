@@ -26,7 +26,7 @@ The tool surface stays narrow. Tick what's still true with this PR.
 - [ ] Read-only (no tool mutates anything)
 - [ ] No execution (no `eval`, no spawning user-supplied code)
 - [ ] No auth (no tokens, headers, or login flows added)
-- [ ] No writes (no filesystem writes outside `build/.tmp`)
+- [ ] No writes (no filesystem writes outside `build/.tmp` and the local snapshot cache `~/.cache/tc39-mcp/`)
 - [ ] No subprocess fallbacks for hosted-incompatible code paths
 
 If you ticked anything off, please describe in the Summary why the

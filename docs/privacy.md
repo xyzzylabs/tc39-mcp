@@ -43,8 +43,7 @@ collects only the standard request metadata that any
 internet-reachable Cloudflare Worker receives:**
 
 - Source IP address — used solely for per-IP rate limiting
-  (100 requests per minute for free traffic) and discarded
-  shortly after.
+  (30 requests per minute) and discarded shortly after.
 - Request timestamp.
 - Request method, path, and headers as forwarded by the
   Cloudflare edge.
@@ -88,7 +87,7 @@ content is itself public.
   re-fetch on next use).
 - Hosted Worker:
   - Rate-limit counters expire on their natural Cloudflare bucket
-    schedule (within 60 seconds for free-tier counters).
+    schedule (within 60 seconds).
   - Standard Cloudflare access logs follow Cloudflare's retention
     policy.
 

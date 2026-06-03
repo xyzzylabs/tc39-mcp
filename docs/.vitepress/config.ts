@@ -4,9 +4,9 @@ import pkg from "../../package.json";
 // Docs site for tc39-mcp. Bundled into the Cloudflare Worker as
 // static assets (see `worker/wrangler.toml` `[assets]` block).
 // Rebuilt + redeployed by `.github/workflows/deploy-worker.yml` on
-// every tag push and on every `refresh.yml` PATCH bump — so the
-// auto-generated `/snapshots` page always reflects the currently-
-// deployed parsed JSONs.
+// every tag push and on every ~4-hour `refresh.yml` run that finds
+// upstream movement — so the auto-generated `/snapshots` page always
+// reflects the currently-deployed parsed JSONs.
 //
 // Source content: the existing markdown files in this directory,
 // plus three auto-generated pages produced by `npm run docs:data`:

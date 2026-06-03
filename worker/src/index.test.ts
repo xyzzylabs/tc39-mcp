@@ -166,10 +166,11 @@ describe("dispatch — tools/call routing", () => {
 
   it("returns -32603 when the handler throws", async () => {
     const env = { SPECS: createFakeR2() };
-    // clause.get throws for unsupported (spec, edition).
+    // clause.get throws for unsupported (spec, edition); es2015 is below
+    // the catalog floor (es2016).
     const r = await dispatch(env, rpc("tools/call", {
       name: "clause.get",
-      arguments: { id: "sec-x", spec: "402", edition: "es2024" },
+      arguments: { id: "sec-x", spec: "402", edition: "es2015" },
     }));
     expect(r.error).toBeDefined();
     expect(r.error!.code).toBe(-32603);

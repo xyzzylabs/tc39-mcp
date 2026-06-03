@@ -62,7 +62,7 @@ describe("resolveEdition is spec-aware", () => {
   it("concrete editions pass through unchanged", () => {
     expect(resolveEdition("262", "es2024")).toBe("es2024");
     expect(resolveEdition("262", "main")).toBe("main");
-    expect(resolveEdition("402", "es2025-candidate")).toBe("es2025-candidate");
+    expect(resolveEdition("402", "es2025")).toBe("es2025");
     expect(resolveEdition("402", "main")).toBe("main");
   });
 });
@@ -75,15 +75,10 @@ describe("isSupported", () => {
     expect(isSupported("262", "main")).toBe(true);
   });
 
-  it("262 does NOT support 402-only editions", () => {
-    expect(isSupported("262", "es2025-candidate")).toBe(false);
-  });
-
-  it("402 supports every released 402 edition + candidate + main", () => {
+  it("402 supports every released 402 edition + main", () => {
     for (const ed of RELEASED_402_EDITIONS) {
       expect(isSupported("402", ed)).toBe(true);
     }
-    expect(isSupported("402", "es2025-candidate")).toBe(true);
     expect(isSupported("402", "main")).toBe(true);
   });
 
@@ -129,18 +124,27 @@ describe("ECMA-262 multi-edition tools", () => {
     expect(a).toEqual(b);
   });
 
-  it("clause counts grow monotonically across 262 editions", async () => {
-    const counts: number[] = [];
+  it("every present 262 edition parses to a substantial clause set (newest ≥ oldest)", async () => {
+    const counts: { ed: string; n: number }[] = [];
     for (const ed of RELEASED_262_EDITIONS) {
       try {
-        counts.push((await clauseList({ spec: "262", edition: ed, limit: 2500 })).length);
+        const n = (await clauseList({ spec: "262", edition: ed, limit: 2500 })).length;
+        counts.push({ ed, n });
       } catch {
         // Missing parsed JSON — skip this edition.
       }
     }
-    for (let i = 1; i < counts.length; i++) {
-      expect(counts[i]).toBeGreaterThanOrEqual(counts[i - 1]!);
+    if (counts.length === 0) return; // no parsed data in this environment
+    // A catastrophic parse failure would collapse an edition's clause set.
+    for (const { ed, n } of counts) {
+      expect(n, `262 ${ed} clause count`).toBeGreaterThan(1000);
     }
+    // The spec grows over the long run, but raw clause counts are NOT
+    // strictly monotonic edition-to-edition: a release that consolidates
+    // sections or annex grammar dips the total (e.g. es2020's 2113 id'd
+    // clauses → es2021's 1988). Assert the durable invariant: newest ≥
+    // oldest.
+    expect(counts[counts.length - 1]!.n).toBeGreaterThanOrEqual(counts[0]!.n);
   });
 
   it("specSearch works in earlier 262 editions (es2022 has ToNumber)", async () => {
@@ -170,18 +174,26 @@ describe("ECMA-402 tooling", () => {
     }
   });
 
-  it("clause counts grow monotonically across 402 editions", async () => {
-    const counts: number[] = [];
+  it("every present 402 edition parses to a substantial clause set (newest ≥ oldest)", async () => {
+    const counts: { ed: string; n: number }[] = [];
     for (const ed of RELEASED_402_EDITIONS) {
       try {
-        counts.push((await clauseList({ spec: "402", edition: ed, limit: 2500 })).length);
+        const n = (await clauseList({ spec: "402", edition: ed, limit: 2500 })).length;
+        counts.push({ ed, n });
       } catch {
         // Missing parsed JSON — skip this edition.
       }
     }
-    for (let i = 1; i < counts.length; i++) {
-      expect(counts[i]).toBeGreaterThanOrEqual(counts[i - 1]!);
+    if (counts.length === 0) return; // no parsed data in this environment
+    // 402 is far smaller than 262 (≈112 clauses in es2016 → ≈360 in
+    // es2025); a catastrophic parse failure would collapse this.
+    for (const { ed, n } of counts) {
+      expect(n, `402 ${ed} clause count`).toBeGreaterThan(50);
     }
+    // Same caveat as 262: raw clause counts aren't guaranteed monotonic
+    // edition-to-edition (a consolidation can dip the total). Assert the
+    // durable invariant — newest ≥ oldest.
+    expect(counts[counts.length - 1]!.n).toBeGreaterThanOrEqual(counts[0]!.n);
   });
 
   it("clauseList on 402 returns Intl-flavored clauses", async () => {

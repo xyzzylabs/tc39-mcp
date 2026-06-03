@@ -30,7 +30,7 @@ Common workflow:
 
 Edition semantics. \`latest\` is spec-aware:
   - On 262, \`latest\` → current stable release (es2025 today).
-  - On 402, \`latest\` → main (402 has no annual release tags).
+  - On 402, \`latest\` → current stable release (es2025 today).
   - \`main\` is always the working draft.
 
 Historical pinning. \`main\` moves. Pass \`at: "<sha>"\` to query a

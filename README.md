@@ -169,10 +169,9 @@ Every spec-reading tool accepts `spec` (`"262"` or `"402"`, default
 
 - **ECMA-262**: `es2016` – `es2025`, `main`. (ES5 / ES5.1 / ES6
   have no upstream tags and aren't supported.)
-- **ECMA-402**: `es2016` – `es2025`, `main`, plus the legacy
-  `es2025-candidate` pin. (402 publishes each annual edition as an
-  `esYYYY` branch rather than a tag; the fetch step resolves a
-  branch or a tag the same way.)
+- **ECMA-402**: `es2016` – `es2025`, `main`. (402 publishes each
+  annual edition as an `esYYYY` branch rather than a tag; the fetch
+  step resolves a branch or a tag the same way.)
 - **Aliases**: `latest` is spec-aware (each spec → its current
   stable release, `es2025` today). `draft` / `next` → `main` on both.
 

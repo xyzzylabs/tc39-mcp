@@ -39,15 +39,12 @@ rather than a tag — that's the only structural difference from
 tc39/ecma262, which uses `esYYYY` tags. The fetch step resolves a
 branch or a tag interchangeably (`git clone --branch` accepts either),
 so 402 coverage matches 262: every annual edition `es2016` – `es2025`
-plus `main`. The repo also tags `esYYYY-candidate` release candidates;
-the `es2025-candidate` pin is kept for callers that referenced it
-before the final `es2025` branch existed.
+plus `main`.
 
 | Edition | tc39/ecma402 ref | Notes |
 |---|---|---|
 | `es2016` … `es2024` | branch `esYYYY` | annual editions |
 | `es2025` | branch `es2025` | current stable (12th edition) |
-| `es2025-candidate` | tag `es2025-candidate-2025-04-01` | legacy candidate pin; prefer `es2025` |
 | `main` | branch `main` | rolling draft |
 
 ## Aliases
@@ -140,11 +137,7 @@ npm test
 
 `fetch-spec.sh` resolves a branch or a tag interchangeably, so the
 recipe is identical to ECMA-262 — only the ref naming differs upstream
-(402 uses branches, 262 uses tags). The `esYYYY-candidate` tags are
-release candidates; the short-name mapping in `fetch-spec.sh`
-(`esYYYY-candidate-DATE` → `esYYYY-candidate`) keeps a legacy pin
-addressable, but new editions should be added as their final `esYYYY`
-branch.
+(402 uses branches, 262 uses tags).
 
 ## Tracking specific SHAs
 
@@ -169,8 +162,8 @@ ecma262 es2025     ref: es2025
 ecma262 es2025     SHA: 84b38ad852ff426795fa29cebc06949027336c64
 ecma262 main       ref: main
 ecma262 main       SHA: <upstream HEAD at fetch time>
-ecma402 es2025-candidate  ref: es2025-candidate-2025-04-01
-ecma402 es2025-candidate  SHA: <pinned candidate SHA>
+ecma402 es2025     ref: es2025
+ecma402 es2025     SHA: <pinned es2025 SHA>
 ecma402 main       ref: main
 ecma402 main       SHA: <upstream HEAD at fetch time>
 ```
@@ -178,8 +171,8 @@ ecma402 main       SHA: <upstream HEAD at fetch time>
 ## Drift between fetches
 
 The `main` branches move; everything else is stable. If you fetch and
-re-parse periodically, the `es2016` – `es2025` (262) and
-`es2025-candidate` (402) parses will be bit-identical run-to-run, but
+re-parse periodically, the `es2016` – `es2025` parses (both specs)
+will be bit-identical run-to-run, but
 `spec-262-main.json` and `spec-402-main.json` will reflect whatever's
 upstream at fetch time. Pin `main`'s SHA explicitly if you need
 reproducibility against the draft.

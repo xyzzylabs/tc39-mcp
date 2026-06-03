@@ -22,7 +22,7 @@ features:
     details: clause.get / list / outline · spec.about / snapshots / search / global_search / crossrefs / diff / history / symbol_resolve / tables / grammar / sdo_index / well_known_intrinsics · test262.search / get · proposal.list / get
   - icon: 📦
     title: Two specs, every released annual edition
-    details: ECMA-262 (es2016 → latest + main) and ECMA-402 (main + most recent candidate). Every clause carries its upstream SHA and fetched_at timestamp — full table on the Snapshots page.
+    details: ECMA-262 (es2016 → es2025 + main) and ECMA-402 (es2016 → es2025 + main). Every clause carries its upstream SHA and fetched_at timestamp — full table on the Snapshots page.
   - icon: ✈️
     title: Cached locally, offline-capable
     details: The stdio transport (`npx tc39-mcp`) serves snapshots from a local cache under `~/.cache/tc39-mcp/`, fetching from the hosted Worker on a cold cache and revalidating only after a ~4-hour freshness window; the bundled latest-stable + main editions (plus the proposals and test262 indexes) keep answering offline. Network requests carry R2 object keys, never clause ids. The hosted Worker is the HTTP alternative.
@@ -31,7 +31,7 @@ features:
     details: Local stdio via `npx tc39-mcp` (the default), a global CLI, or the hosted Cloudflare Worker over HTTP. Same MCP protocol, three transports.
   - icon: 🔄
     title: Auto-refreshing
-    details: A scheduled CI workflow checks upstream tc39/* mains every 4 hours, bumps PATCH + republishes whenever anything moved. Stay current without lifting a finger.
+    details: A scheduled CI workflow refreshes the hosted Worker from upstream tc39/* every ~4 hours; the npm package re-bakes its bundled snapshots at most monthly (new annual editions ship immediately). Stay current without lifting a finger.
   - icon: 🧪
     title: Deterministic over pinned data
     details: Every response is a function of static parsed JSONs. Same inputs → same bytes out, reproducible across server versions.

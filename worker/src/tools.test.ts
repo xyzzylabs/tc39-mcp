@@ -41,12 +41,12 @@ describe("specAbout", () => {
     expect(r.backed_by).toBe("cloudflare-r2");
   });
 
-  it("enumerates 13 snapshot slots (11×262 + 2×402)", async () => {
+  it("enumerates 22 snapshot slots (11×262 + 11×402)", async () => {
     const env = { SPECS: createFakeR2() };
     const r = (await specAbout(env, "0.1.0")) as {
       snapshots: { present: boolean }[];
     };
-    expect(r.snapshots.length).toBe(13);
+    expect(r.snapshots.length).toBe(22);
   });
 
   it("marks snapshots present:false when R2 doesn't have them", async () => {
@@ -155,13 +155,13 @@ describe("clauseGet", () => {
     expect(c).not.toBeNull();
   });
 
-  it("resolves edition='latest' to main on spec=402", async () => {
+  it("resolves edition='latest' to es2025 on spec=402", async () => {
     const env = {
       SPECS: createFakeR2({
         contents: {
-          "spec-402-main.json": fakeSpecJson({
+          "spec-402-es2025.json": fakeSpecJson({
             spec: "402",
-            edition: "main",
+            edition: "es2025",
             clauses: { "sec-intl": { id: "sec-intl" } },
           }),
         },
@@ -173,9 +173,9 @@ describe("clauseGet", () => {
 
   it("throws on unsupported (spec, edition) combo", async () => {
     const env = { SPECS: createFakeR2() };
-    // 402 doesn't support 262-style annual releases.
+    // es2015 predates the catalog floor (es2016) on both specs.
     await expect(
-      clauseGet(env, { id: "sec-x", spec: "402", edition: "es2024" }),
+      clauseGet(env, { id: "sec-x", spec: "402", edition: "es2015" }),
     ).rejects.toThrow(/Unsupported/);
   });
 

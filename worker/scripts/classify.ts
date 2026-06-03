@@ -5,13 +5,13 @@
 export type ArtifactKind =
   | "live-main"      // spec-{262|402}-main.json — moving live pointer
   | "historical-pin" // spec-{262|402}-main-{sha}.json — immutable
-  | "pinned-edition" // spec-{262|402}-{esYYYY|esYYYY-candidate}.json
+  | "pinned-edition" // spec-{262|402}-esYYYY.json
   | "side-index"     // test262-index.json | proposals-index.json
   | "unknown";
 
 const LIVE_MAIN_RE = /^spec-(?:262|402)-main\.json$/;
 const HIST_PIN_RE = /^spec-(?:262|402)-main-[a-f0-9]+\.json$/;
-const PINNED_EDITION_RE = /^spec-(?:262|402)-(?:es\d{4}|es\d{4}-candidate)\.json$/;
+const PINNED_EDITION_RE = /^spec-(?:262|402)-es\d{4}\.json$/;
 const SIDE_INDEX_RE = /^(?:test262|proposals)-index\.json$/;
 
 export function classify(name: string): ArtifactKind {

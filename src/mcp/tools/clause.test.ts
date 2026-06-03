@@ -47,12 +47,6 @@ describe("clauseGet", () => {
     if (!a || !b) return;
     expect(a).toEqual(b);
   });
-
-  it("throws a clear error for an unsupported (spec, edition) combo", async () => {
-    // 262 doesn't support the 402-only es2025-candidate pin.
-    await expect(clauseGet({ id: "anything", spec: "262", edition: "es2025-candidate" }))
-      .rejects.toThrowError(/doesn't support edition/i);
-  });
 });
 
 describe("clauseList", () => {

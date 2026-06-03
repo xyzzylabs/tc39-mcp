@@ -45,7 +45,7 @@ export async function loadSpec(spec: Spec, edition: Edition): Promise<ParsedSpec
     throw new Error(
       `ECMA-${spec} doesn't support edition '${concrete}'. ` +
         (spec === "402"
-          ? `Supported: es2016 … es2025, main, es2025-candidate. Aliases: latest / draft / next.`
+          ? `Supported: es2016 … es2025, main. Aliases: latest / draft / next.`
           : `Supported: es2016 … es2025, main.`),
     );
   }
@@ -77,7 +77,7 @@ export const clauseGetSchema = {
     .enum(EDITION_VALUES)
     .default("latest")
     .describe(
-      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next.",
+      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main. Aliases: latest, draft, next.",
     ),
 };
 
@@ -116,7 +116,7 @@ export const clauseListSchema = {
     .enum(EDITION_VALUES)
     .default("latest")
     .describe(
-      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main, es2025-candidate. Aliases: latest, draft, next.",
+      "Edition within the chosen spec. ECMA-262: es2016 … es2025, main. ECMA-402: es2016 … es2025, main. Aliases: latest, draft, next.",
     ),
   kind: z
     .string()
