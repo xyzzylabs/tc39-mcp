@@ -5,6 +5,9 @@ vendor/
 .DS_Store
 *.log
 
+# `npm pack` / release tarball output (e.g. tc39-mcp-X.Y.Z.tgz).
+*.tgz
+
 # Cloudflare Workers / Wrangler artifacts
 .wrangler/
 .wrangler-state/
