@@ -97,41 +97,48 @@ describe("parseProposalsMarkdown", () => {
 `;
 
   it("extracts rows from each stage table", () => {
-    const rows = parseProposalsMarkdown(sample, "README.md", "active");
+    const rows = parseProposalsMarkdown(sample, "README.md", "active", "262");
     expect(rows.length).toBe(3);
     const slugs = rows.map((r) => r.slug);
     expect(slugs).toEqual(["temporal", "spi", "decorators"]);
   });
 
   it("captures the stage from the `### Stage X` heading", () => {
-    const rows = parseProposalsMarkdown(sample, "README.md", "active");
+    const rows = parseProposalsMarkdown(sample, "README.md", "active", "262");
     expect(rows.find((r) => r.slug === "temporal")!.stage).toBe("3");
     expect(rows.find((r) => r.slug === "decorators")!.stage).toBe("2.7");
   });
 
   it("resolves URLs from the slug reference map", () => {
-    const rows = parseProposalsMarkdown(sample, "README.md", "active");
+    const rows = parseProposalsMarkdown(sample, "README.md", "active", "262");
     const temporal = rows.find((r) => r.slug === "temporal")!;
     expect(temporal.url).toBe("https://github.com/tc39/proposal-temporal");
   });
 
   it("captures authors and champions split on <br />", () => {
-    const rows = parseProposalsMarkdown(sample, "README.md", "active");
+    const rows = parseProposalsMarkdown(sample, "README.md", "active", "262");
     const temporal = rows.find((r) => r.slug === "temporal")!;
     expect(temporal.authors).toEqual(["Maggie Pint", "Philipp Dunkel"]);
     expect(temporal.champions).toEqual(["Maggie Pint"]);
   });
 
   it("captures the test262 feature flag column", () => {
-    const rows = parseProposalsMarkdown(sample, "README.md", "active");
+    const rows = parseProposalsMarkdown(sample, "README.md", "active", "262");
     const temporal = rows.find((r) => r.slug === "temporal")!;
     expect(temporal.test262_flag).toBeDefined();
     expect(temporal.test262_flag).toContain("Temporal");
   });
 
   it("tags each row with the source_file argument", () => {
-    const rows = parseProposalsMarkdown(sample, "stage-3-only.md", "3");
+    const rows = parseProposalsMarkdown(sample, "stage-3-only.md", "3", "262");
     for (const r of rows) expect(r.source_file).toBe("stage-3-only.md");
+  });
+
+  it("tags each row with the spec argument", () => {
+    const r262 = parseProposalsMarkdown(sample, "README.md", "active", "262");
+    for (const r of r262) expect(r.spec).toBe("262");
+    const r402 = parseProposalsMarkdown(sample, "ecma402/README.md", "active", "402");
+    for (const r of r402) expect(r.spec).toBe("402");
   });
 
   it("falls back to defaultStage when no `### Stage X` heading appears", () => {
@@ -142,14 +149,14 @@ describe("parseProposalsMarkdown", () => {
 
 [foo]: https://example.com
 `;
-    const rows = parseProposalsMarkdown(noHeading, "x.md", "finished");
+    const rows = parseProposalsMarkdown(noHeading, "x.md", "finished", "262");
     expect(rows[0]!.stage).toBe("finished");
   });
 
   it("stops table parsing at a `##` heading", () => {
     // The sample's `## Inactive content` line should terminate the
     // table; no rogue rows past it. The 3 expected rows + zero stragglers.
-    const rows = parseProposalsMarkdown(sample, "README.md", "active");
+    const rows = parseProposalsMarkdown(sample, "README.md", "active", "262");
     expect(rows.length).toBe(3);
   });
 });

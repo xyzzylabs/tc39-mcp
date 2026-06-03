@@ -55,6 +55,16 @@ describe("proposalList", () => {
     if (r.source === "none") return;
     expect(r.proposals.length).toBeLessThanOrEqual(5);
   });
+
+  it("spec filter only returns proposals for the requested spec", async () => {
+    // Soundness check that holds regardless of which index version the
+    // loader served (a pre-spec-field index simply yields an empty
+    // 402 set rather than mismatched rows). The parser unit test
+    // proves the field is populated from controlled input.
+    const r = await proposalList({ spec: "402", limit: 500 });
+    if (r.source === "none") return;
+    for (const p of r.proposals) expect(p.spec).toBe("402");
+  });
 });
 
 describe("proposalGet", () => {

@@ -541,11 +541,13 @@ List TC39 proposals from a parsed proposals index sourced via the loader chain (
 
 - **Proposals currently at Stage 3** — `{"stage":"3"}`
 - **Active proposals (stages 2 / 2.7 / 3)** — `{"stage":"active"}`
+- **Finished ECMA-402 (Intl) proposals** — `{"spec":"402","stage":"finished"}`
 
 ### Input
 
 | Field | Type | Default | Description |
 |---|---|---|---|
+| `spec` | `"262"` \| `"402"` (optional) | — | Filter to one spec's proposals: '262' (core language) or '402' (Intl). tc39/proposals tracks the two in parallel — omit to list both. |
 | `stage` | string (optional) | — | Filter to one stage: '0', '1', '2', '2.7', '3', 'finished', 'inactive', or 'active' (anything in the active README — stages 2/2.7/3). |
 | `champion` | string (optional) | — | Case-insensitive substring filter on the champion list. |
 | `contains` | string (optional) | — | Case-insensitive substring filter applied to the proposal name + slug. |
