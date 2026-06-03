@@ -94,10 +94,6 @@ if (files.length === 0) {
 // mid-deploy either sees the OLD live state (consistent with itself)
 // or the NEW live state (consistent with itself); the mixed window
 // is reduced to the duration of the final live-main puts (~2-5 s).
-//
-// True manifest-based atomic-swap is the v0.2 path: upload everything
-// to versioned keys, then atomically point a `manifest.json` at the
-// new version. Too much surface change for v0.1.
 
 interface UploadPlan {
   /** Files we already have on disk + their derived remote-key plan. */
