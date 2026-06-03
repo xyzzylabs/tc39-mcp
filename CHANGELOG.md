@@ -85,6 +85,15 @@ meaning code again.
   captured, with metadata synthesized from the element — so a stale or
   mismatched biblio can no longer silently drop a clause.
 
+### Fixed
+
+- **Conditional revalidation returns `304` from the hosted Worker.** The
+  stdio loader sends `If-None-Match` when re-checking a live snapshot
+  past its ~4-hour freshness window; the `/r2/` proxy previously ignored
+  it and re-sent the full body. It now returns a bodyless `304` on an
+  etag match, so a revalidation costs a header round-trip instead of a
+  tens-of-MB re-download.
+
 ### Notes
 
 - **stdio now makes HTTPS requests** to source non-cached snapshots

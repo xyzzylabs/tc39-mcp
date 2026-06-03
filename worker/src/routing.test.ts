@@ -256,6 +256,40 @@ describe("routing", () => {
       expect(await r.text()).toBe('{"pin":{"sha":"abc"}}');
     });
 
+    it("returns 304 (no body) when If-None-Match matches the object etag", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json", {
+          // fakeR2 sets etag = `etag-<key>`; the loader echoes it back quoted.
+          headers: { "if-none-match": '"etag-spec-262-main.json"' },
+        }),
+        env,
+      );
+      expect(r.status).toBe(304);
+      expect(r.headers.get("etag")).toBe('"etag-spec-262-main.json"');
+      expect(await r.text()).toBe("");
+    });
+
+    it("serves 200 + body when If-None-Match does not match", async () => {
+      const env = {
+        SPECS: createFakeR2({
+          contents: { "spec-262-main.json": '{"pin":{"sha":"abc"}}' },
+        }),
+      };
+      const r = await worker.fetch(
+        new Request("https://example.com/r2/spec-262-main.json", {
+          headers: { "if-none-match": '"stale-etag"' },
+        }),
+        env,
+      );
+      expect(r.status).toBe(200);
+      expect(await r.text()).toBe('{"pin":{"sha":"abc"}}');
+    });
+
     it("GET serves a per-SHA historical pin with immutable cache-control", async () => {
       const env = {
         SPECS: createFakeR2({

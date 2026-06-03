@@ -315,6 +315,21 @@ async function serveR2Object(
   if (!obj) {
     return new Response("Not found", { status: 404, headers: corsHeaders });
   }
+  // Honor conditional revalidation: the stdio loader re-checks live keys
+  // with `If-None-Match` once past its freshness window. When the etag
+  // still matches, return a bodyless 304 so a revalidation doesn't
+  // re-download the full (tens-of-MB) snapshot.
+  const ifNoneMatch = request.headers.get("if-none-match");
+  if (obj.etag && ifNoneMatch === `"${obj.etag}"`) {
+    return new Response(null, {
+      status: 304,
+      headers: {
+        etag: `"${obj.etag}"`,
+        "cache-control": r2CacheControl(key),
+        ...corsHeaders,
+      },
+    });
+  }
   const headers: Record<string, string> = {
     "content-type": "application/json",
     "cache-control": r2CacheControl(key),

@@ -1,6 +1,9 @@
 {
-  "version": "0.1.9",
   "refreshed_at": "2026-06-02T22:25:19Z",
+  "last_npm_publish": {
+    "version": "0.2.0",
+    "at": "2026-06-03T00:00:00Z"
+  },
   "specs": {
     "262/main": "c0a2b1aac2b8e3c7bedb67df4620cde27cf6501d",
     "402/main": "19913f13f47e779a3543ad3940410df575c3727b"

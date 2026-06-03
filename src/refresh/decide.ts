@@ -12,8 +12,9 @@
 // sees movement), so the npm bundle — the offline fallback — only
 // needs re-baking at most monthly. `should_publish` is that gate.
 
-/** Upstream SHAs observed at decision time, fetched by the caller via
- *  `git ls-remote` against tc39/* repos. */
+/** Upstream SHAs observed at decision time, supplied by the caller
+ *  (run-decide.ts reads them from the `UPSTREAM_*` env vars the refresh
+ *  workflow captures from the vendored tc39/* checkouts). */
 export interface UpstreamSnapshot {
   spec_262_main: string;
   spec_402_main: string;
