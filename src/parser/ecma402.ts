@@ -2,9 +2,9 @@
  * ECMA-402 parser entrypoint.
  *
  * tc39/ecma402 doesn't ship a single rendered `spec.html` (the way
- * tc39/ecma262 does) and doesn't publish a biblio package. Its spec is
- * split into `spec/*.html` ecmarkup fragments that the upstream build
- * concatenates via `<emu-import>` elements in `spec/index.html`.
+ * tc39/ecma262 does). Its spec is split into `spec/*.html` ecmarkup
+ * fragments that the upstream build concatenates via `<emu-import>`
+ * elements in `spec/index.html`.
  *
  * We don't shell out to ecmarkup. Instead we:
  *   1. Read `spec/index.html` and recursively inline every
@@ -18,6 +18,19 @@
  *      deterministically.
  *   4. Hand each clause off to the existing `extractClause()` so the
  *      output shape matches the ECMA-262 path bit-for-bit.
+ *
+ * Why synthesis and not `@tc39/ecma402-biblio` (which does exist):
+ * unlike 262 — where the biblio IS the clause index that drives the
+ * whole parse — 402's multi-file walk already recovers ids, section
+ * numbers, and aoids on its own. Measured head-to-head on 402/main the
+ * biblio adds a single aoid (125 → 126) and zero corrections, so it
+ * isn't worth a dependency. It would also be *wrong* for the released
+ * editions: the biblio only ever tracks `main`, whereas synthesis
+ * reads each edition's own HTML and stays edition-correct. And it would
+ * introduce a hard failure mode (a missing/broken biblio would throw),
+ * where synthesis simply always works. If a future change makes 402
+ * carry `aoid`/number attributes natively, revisit — but don't re-add
+ * the biblio for parity; the parser is already there.
  */
 
 import { readFileSync, existsSync } from "node:fs";

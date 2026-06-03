@@ -36,7 +36,7 @@ function pinOf(
   spec: Spec,
   dir: string,
   edition: string,
-  biblio_commit: string,
+  biblio_commit: string | undefined,
 ): SpecPin {
   let sha = "unknown";
   try {
@@ -55,7 +55,9 @@ function pinOf(
     edition,
     sha,
     fetched_at: new Date().toISOString(),
-    biblio_commit,
+    // Only 262 is parsed through a biblio; 402 is synthesized from its
+    // own HTML, so a 402 snapshot has no biblio commit to record.
+    ...(biblio_commit ? { biblio_commit } : {}),
   };
 }
 
@@ -87,10 +89,12 @@ for (const spec of SPEC_VALUES) {
 mkdirSync(BUILD_DIR, { recursive: true });
 
 const biblio_commit = biblioCommit();
-console.log(`biblio commit: ${biblio_commit}`);
+console.log(`biblio commit (262): ${biblio_commit}`);
 
 for (const { spec, edition, dir, entrypoint } of targets) {
-  const pin = pinOf(spec, dir, edition, biblio_commit);
+  // 262 parses through `@tc39/ecma262-biblio`; 402 is synthesized from
+  // its own HTML (see ecma402.ts), so it carries no biblio commit.
+  const pin = pinOf(spec, dir, edition, spec === "262" ? biblio_commit : undefined);
   const t0 = performance.now();
   const parsed: ParsedSpec =
     spec === "262" ? parseSpec(entrypoint, pin) : parseSpec402(entrypoint, pin);
