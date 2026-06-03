@@ -90,9 +90,15 @@ internet:
 - If you skip the `spec.history` tool, you can run with `git` absent
   from the container entirely — and that removes the last subprocess
   surface from the server.
-- Ship `build/test262-index.json` baked into the deployment. The tool
-  is index-only — no subprocess, no network — so you don't need `gh`
-  or a GitHub token in the container.
+- `test262.search` is index-only — no subprocess, no `gh` or GitHub
+  token. It resolves the test262 index via the same loader chain as
+  other tools (cache → hosted Worker → bundled fallback), so by
+  default it will reach the snapshot endpoint over HTTPS on a cold or
+  stale cache. To guarantee no outbound calls in a multi-tenant
+  deployment, **block egress** and either mount a pre-populated
+  `~/.cache/tc39-mcp/` or point `TC39_MCP_BASE_URL` at an internal
+  mirror — the bundle alone only covers the bundled editions when the
+  network is already unavailable, it doesn't suppress the attempt.
 
 ## Incident response
 

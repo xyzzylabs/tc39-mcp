@@ -34,7 +34,7 @@ entry away.
 | Latency | local subprocess, fast | one network hop per call |
 | Data freshness | whatever the installed version baked in | live, auto-refreshed every ~4 h |
 | Rate limit | none | 100 req / min / IP |
-| Offline use | ✓ | ✗ |
+| Offline use | ✓ for bundled editions (latest + main); fetched-on-first-use otherwise | ✗ |
 
 Most users want **stdio** for personal local use. Pick HTTP when
 several teammates share one server, when you can't install Node

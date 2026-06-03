@@ -19,12 +19,18 @@ ways, edition diffs, upstream git history, test262 search,
 proposal lookup. Every response is SHA-pinned to a specific
 upstream commit so anything an agent cites stays reproducible.
 
-Offline-first by default: the stdio transport (`npx tc39-mcp`)
-ships every parsed snapshot in the tarball, so once installed it
-runs entirely offline — no network call per agent query, no
-leakage of which clause the agent is reading. The hosted
-Cloudflare Worker is the HTTP alternative when you want a shared
-network endpoint; it auto-refreshes from upstream every ~4 hours.
+Snapshots resolve through a **local cache → hosted Worker →
+bundled fallback** chain. The stdio transport (`npx tc39-mcp`)
+fetches each snapshot from the hosted Cloudflare Worker on a cold
+cache, writes it under `~/.cache/tc39-mcp/`, and serves it from
+disk thereafter — revalidating only when the local copy is older
+than ~4 hours (a conditional `If-None-Match` request). The npm
+package also bundles the latest stable + main editions of both
+specs plus the test262 and proposals indexes; when the Worker is
+unreachable, those are served straight from the package (the
+offline fallback — not written to the cache). The hosted Worker
+is also the HTTP alternative when you want a shared network
+endpoint; its R2 data refreshes from upstream every ~4 hours.
 
 ## Install + first call
 
@@ -39,10 +45,13 @@ client via `.mcp.json`:
 }
 ```
 
-The first run downloads ~50 MB (the parsed snapshots ship in the
-tarball — no separate fetch step needed, and every subsequent call
-is served from local disk with no network round-trip). Then in
-your client:
+The first run downloads the npm package (latest stable + main
+editions plus the proposals and test262 indexes are bundled). The
+first call for a given snapshot fetches it from the hosted Worker
+and caches it locally; subsequent calls are served from disk,
+revalidated against the Worker only after the ~4-hour freshness
+window. If the Worker is unreachable, the bundled editions still
+answer offline. Then in your client:
 
 > use `clause.get` to read `sec-tonumber` and show me the steps
 
@@ -123,11 +132,14 @@ tc39-mcp                     # reads stdio
   `proposal.get` from a structured index of `tc39/proposals`,
   covering both ECMA-262 and ECMA-402 (Intl) proposals — filter by
   `spec`. Refreshed on the same 4-hour cadence as the specs.
-- **Running entirely offline (stdio).** Once `npx tc39-mcp` has
-  installed, every tool call is served from on-disk snapshots —
-  no network round-trip per query, no leakage of which clause
-  the agent is reading, no upstream rate limit. The hosted
-  Worker is the HTTP alternative for shared / multi-tenant use.
+- **Local cache, bundled fallback (stdio).** Once a snapshot is
+  cached under `~/.cache/tc39-mcp/`, tool calls are served from
+  disk and only revalidated against the hosted Worker after the
+  ~4-hour freshness window (a conditional `If-None-Match` request
+  that carries the R2 object key, never a clause-id). Bundled
+  editions answer offline when the Worker is unreachable. The
+  hosted Worker is the HTTP alternative for shared / multi-tenant
+  use.
 
 ## Tools (19 across 5 namespaces)
 
@@ -165,6 +177,32 @@ Every spec-reading tool accepts `spec` (`"262"` or `"402"`, default
   stable release, `es2025` today). `draft` / `next` → `main` on both.
 
 Full table + how to add new releases: [`docs/editions.md`](docs/editions.md).
+
+## Self-hosting snapshots
+
+The stdio server fetches snapshots from the public hosted Worker
+at `https://tc39-mcp.chicoxyzzy.workers.dev/r2/<key>` (cache →
+Worker → bundled fallback), so on a strict-egress network it falls
+back to the bundled editions and can't reach the others. Override
+the base URL via `TC39_MCP_BASE_URL` to point at a private mirror
+— useful for strict-egress networks, air-gapped environments, or
+running against a self-hosted Worker:
+
+```sh
+TC39_MCP_BASE_URL=https://my-mirror.example.com npx tc39-mcp
+```
+
+The endpoint just needs to serve the same key structure
+(`spec-<spec>-<edition>.json`, `test262-index.json`,
+`proposals-index.json`) — a plain static file server works. If it
+returns `ETag`s, the server revalidates with `If-None-Match`
+(cheap `304`s); without them it just refetches the full object
+when a cached copy goes stale. To populate a mirror, run
+`npm run parse` against a local checkout (see below) and upload
+`build/*.json` to your bucket of choice.
+
+The cache lives at `$XDG_CACHE_HOME/tc39-mcp` (or
+`~/.cache/tc39-mcp` when `XDG_CACHE_HOME` is unset).
 
 ## Build from source (contributors)
 
@@ -231,11 +269,13 @@ In-repo (also browseable on GitHub):
 ## Privacy Policy
 
 tc39-mcp is a read-only spec lookup service. The stdio transport
-(`npx tc39-mcp`) collects nothing — every spec snapshot ships
-in the npm tarball and the server runs entirely offline. The
-hosted Cloudflare Worker collects only standard request metadata
-(IP for rate limiting, timestamps, request headers); it does not
-log request bodies, set cookies, or share data with third parties.
+(`npx tc39-mcp`) sends no telemetry and never transmits your
+queries — snapshots are fetched from the hosted Worker on a cold
+or stale cache and served from local disk otherwise; those fetches
+carry R2 object keys, never clause-ids or tool arguments. The hosted Cloudflare Worker collects only standard
+request metadata (IP for rate limiting, timestamps, request
+headers); it does not log request bodies, set cookies, or share
+data with third parties.
 
 Full policy: [tc39-mcp.chicoxyzzy.workers.dev/privacy](https://tc39-mcp.chicoxyzzy.workers.dev/privacy)
 
