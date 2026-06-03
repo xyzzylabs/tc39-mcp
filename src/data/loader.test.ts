@@ -30,9 +30,7 @@ function trackingFetch(record: { calls: number }): typeof fetch {
 describe("isImmutableKey", () => {
   it("treats per-SHA pins as immutable", () => {
     expect(isImmutableKey("spec-262-main-abc1234567.json")).toBe(true);
-    expect(isImmutableKey("spec-402-es2025-candidate-deadbeef12.json")).toBe(
-      true,
-    );
+    expect(isImmutableKey("spec-402-main-deadbeef12.json")).toBe(true);
   });
 
   it("treats live + index keys as mutable", () => {

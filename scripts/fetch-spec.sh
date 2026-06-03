@@ -4,10 +4,10 @@
 #   ECMA-262 (core language) — every annual release (esYYYY) + the
 #     main branch.
 #   ECMA-402 (Intl)          — every annual release (esYYYY) + the
-#     main branch, plus the legacy es2025-candidate pin. ECMA-402
-#     publishes each annual edition as an `esYYYY` *branch* rather
-#     than a tag, but `git clone --branch` resolves a branch or a tag
-#     interchangeably, so coverage matches ECMA-262.
+#     main branch. ECMA-402 publishes each annual edition as an
+#     `esYYYY` *branch* rather than a tag, but `git clone --branch`
+#     resolves a branch or a tag interchangeably, so coverage matches
+#     ECMA-262.
 #
 # Defaults can be overridden via $EDITIONS_262 / $EDITIONS_402 /
 # $MAIN_BRANCH (space-separated).
@@ -16,7 +16,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 EDITIONS_262="${EDITIONS_262:-es2016 es2017 es2018 es2019 es2020 es2021 es2022 es2023 es2024 es2025}"
-EDITIONS_402="${EDITIONS_402:-es2016 es2017 es2018 es2019 es2020 es2021 es2022 es2023 es2024 es2025 es2025-candidate-2025-04-01}"
+EDITIONS_402="${EDITIONS_402:-es2016 es2017 es2018 es2019 es2020 es2021 es2022 es2023 es2024 es2025}"
 MAIN_BRANCH="${MAIN_BRANCH:-main}"
 REPO_262="${REPO_262:-https://github.com/tc39/ecma262}"
 REPO_402="${REPO_402:-https://github.com/tc39/ecma402}"
@@ -57,15 +57,11 @@ printf '262 %-16s SHA: %s\n' "main" "$main_sha" >> vendor/PINNED.txt
 echo >> vendor/PINNED.txt
 
 # ─── ECMA-402 (Intl) ───────────────────────────────────────────────
-# Upstream candidate tags get a friendly local alias: the long form
-# `es2025-candidate-2025-04-01` is what gets cloned, but we land it in
-# `vendor/ecma402-es2025-candidate/` to match the editions catalog.
 echo "# ECMA-402 — Internationalization API (Intl)" >> vendor/PINNED.txt
 for ed in $EDITIONS_402; do
-  local_name=$(echo "$ed" | sed -E 's/-[0-9]{4}-[0-9]{2}-[0-9]{2}$//')
-  sha=$(clone_at "vendor/ecma402-$local_name" "$ed" "$REPO_402")
-  printf '402 %-16s ref: %s\n' "$local_name" "$ed" >> vendor/PINNED.txt
-  printf '402 %-16s SHA: %s\n' "$local_name" "$sha" >> vendor/PINNED.txt
+  sha=$(clone_at "vendor/ecma402-$ed" "$ed" "$REPO_402")
+  printf '402 %-16s ref: %s\n' "$ed" "$ed" >> vendor/PINNED.txt
+  printf '402 %-16s SHA: %s\n' "$ed" "$sha" >> vendor/PINNED.txt
 done
 main_sha=$(clone_at "vendor/ecma402-main" "$MAIN_BRANCH" "$REPO_402")
 printf '402 %-16s ref: %s\n' "main" "$MAIN_BRANCH" >> vendor/PINNED.txt

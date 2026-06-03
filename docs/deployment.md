@@ -314,8 +314,8 @@ naming convention makes it trivial: `wrangler r2 object delete`
 anything matching `spec-*-main-*.json` with `last-modified <
 T-30d`.
 
-Pinned editions (`es2025`, `es2025-candidate`) get no historical
-copies — their live key already represents a single SHA forever.
+Pinned editions (`es2025`) get no historical copies — their live key
+already represents a single SHA forever.
 
 Inside the Worker, each isolate caches parsed JSONs in memory (see
 `worker/src/r2.ts`'s `specCache` / `test262Cache` / `proposalsCache`).

@@ -75,19 +75,12 @@ export type Released402Edition = (typeof RELEASED_402_EDITIONS)[number];
  *  same way it resolves to `LATEST_262_RELEASE` on 262. */
 export const LATEST_402_RELEASE: Released402Edition = "es2025";
 
-/** ECMA-402 also publishes `esYYYY-candidate` release-candidate tags.
- *  `es2025-candidate` predates the final `es2025` branch and is kept
- *  as a still-addressable pin for callers that referenced it before
- *  the final edition existed; new callers should prefer `es2025`. */
-export const CANDIDATE_402_EDITIONS = ["es2025-candidate"] as const;
-
 // ─── joint catalog ─────────────────────────────────────────────────
 
 /** All concrete editions across all specs. The cache + path helpers
  *  key on (spec, concrete-edition). */
 export const CONCRETE_EDITIONS = [
   ...RELEASED_262_EDITIONS,
-  "es2025-candidate",
   "main",
 ] as const;
 export type ConcreteEdition = (typeof CONCRETE_EDITIONS)[number];
@@ -122,20 +115,16 @@ export function resolveEdition(spec: Spec, e: Edition): ConcreteEdition {
   return e;
 }
 
-/** True if (spec, concrete edition) is a supported combination. Used
- *  by the loader to reject e.g. `clause.get { spec: "402", edition:
- *  "es2025-candidate" }` against 262 with a clear error rather than a
- *  silent miss. */
+/** True if (spec, concrete edition) is a supported combination. Both
+ *  specs cover the same annual range (es2016 … es2025) + `main`, so every
+ *  concrete edition is currently valid on both; the check stays as a
+ *  guard against future per-spec divergence. */
 export function isSupported(spec: Spec, concrete: ConcreteEdition): boolean {
   if (concrete === "main") return true;
   if (spec === "262") {
     return (RELEASED_262_EDITIONS as readonly string[]).includes(concrete);
   }
-  // spec === "402": annual editions + the legacy candidate pin.
-  return (
-    (RELEASED_402_EDITIONS as readonly string[]).includes(concrete) ||
-    (CANDIDATE_402_EDITIONS as readonly string[]).includes(concrete)
-  );
+  return (RELEASED_402_EDITIONS as readonly string[]).includes(concrete);
 }
 
 // ─── path helpers ──────────────────────────────────────────────────

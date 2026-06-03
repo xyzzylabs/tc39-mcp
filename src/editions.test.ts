@@ -62,7 +62,7 @@ describe("resolveEdition is spec-aware", () => {
   it("concrete editions pass through unchanged", () => {
     expect(resolveEdition("262", "es2024")).toBe("es2024");
     expect(resolveEdition("262", "main")).toBe("main");
-    expect(resolveEdition("402", "es2025-candidate")).toBe("es2025-candidate");
+    expect(resolveEdition("402", "es2025")).toBe("es2025");
     expect(resolveEdition("402", "main")).toBe("main");
   });
 });
@@ -75,15 +75,10 @@ describe("isSupported", () => {
     expect(isSupported("262", "main")).toBe(true);
   });
 
-  it("262 does NOT support 402-only editions", () => {
-    expect(isSupported("262", "es2025-candidate")).toBe(false);
-  });
-
-  it("402 supports every released 402 edition + candidate + main", () => {
+  it("402 supports every released 402 edition + main", () => {
     for (const ed of RELEASED_402_EDITIONS) {
       expect(isSupported("402", ed)).toBe(true);
     }
-    expect(isSupported("402", "es2025-candidate")).toBe(true);
     expect(isSupported("402", "main")).toBe(true);
   });
 

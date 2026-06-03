@@ -28,17 +28,20 @@ const RELEASED_262 = [
   "es2021", "es2022", "es2023", "es2024", "es2025",
 ] as const;
 const LATEST_262 = "es2025";
+// ECMA-402 publishes the same annual range as ECMA-262 (es2016 … es2025)
+// and resolves `latest` to the newest stable the same way.
+const LATEST_402 = "es2025";
 
 function resolveEdition(spec: string, e: string): string {
-  if (e === "latest") return spec === "262" ? LATEST_262 : "main";
+  if (e === "latest") return spec === "262" ? LATEST_262 : LATEST_402;
   if (e === "draft" || e === "next") return "main";
   return e;
 }
 
 function isSupported(spec: string, ed: string): boolean {
   if (ed === "main") return true;
-  if (spec === "262") return (RELEASED_262 as readonly string[]).includes(ed);
-  return ed === "es2025-candidate";
+  // Both specs cover es2016 … es2025 (RELEASED_262 doubles as the 402 list).
+  return (RELEASED_262 as readonly string[]).includes(ed);
 }
 
 // ─── narrow types pulled from the JSON contract ───────────────────
@@ -112,7 +115,7 @@ export async function specAbout(
   const present = new Set(await listSnapshots(env));
   const snapshots: Record<string, unknown>[] = [];
   for (const spec of ["262", "402"] as const) {
-    const eds = spec === "262" ? [...RELEASED_262, "main"] : ["es2025-candidate", "main"];
+    const eds = [...RELEASED_262, "main"];
     for (const ed of eds) {
       const key = `spec-${spec}-${ed}.json`;
       if (!present.has(key)) {

@@ -48,6 +48,13 @@ meaning code again.
   entirely missing), and `proposal.list` gains a `spec` filter
   (`{ spec: "402" }`). Every proposal row carries a `spec` tag.
 
+### Removed
+
+- **Dropped the transient `es2025-candidate` 402 pin.** It predated the
+  final `es2025` branch, which now supersedes it. `clause.get`,
+  `spec.diff`, and the other edition-aware tools no longer accept
+  `edition: "es2025-candidate"` — use `es2025`.
+
 ### Changed
 
 - **Snapshots are sourced through a cache → hosted Worker → bundled
