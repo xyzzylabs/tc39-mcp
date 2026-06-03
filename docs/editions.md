@@ -1,8 +1,14 @@
 # Specs and editions
 
-`tc39-mcp` ships with parsed snapshots of every release tag the
-upstream `tc39/ecma262` and `tc39/ecma402` repos cut, plus the working
-drafts on `main`. Aliases like `latest` rebind across releases (and
+`tc39-mcp` covers parsed snapshots of every release tag the upstream
+`tc39/ecma262` and `tc39/ecma402` repos cut, plus the working drafts
+on `main`. At runtime each snapshot is sourced through a local cache
+→ hosted Cloudflare Worker → bundled-fallback chain; snapshots
+fetched from the Worker are written to `~/.cache/tc39-mcp/` and
+served from disk thereafter. The npm package bundles the latest
+stable + main editions of both specs plus the proposals and test262
+indexes so those stay available offline (served from the package,
+not the cache). Aliases like `latest` rebind across releases (and
 across specs) so callers don't have to think about it.
 
 Every tool accepts two orthogonal arguments: `spec` (one of `"262"` /

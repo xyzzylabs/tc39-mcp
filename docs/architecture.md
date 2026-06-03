@@ -44,10 +44,14 @@ the same cache + alias machinery serves both.
    └────────────────────────────────────────────────────────────┘
 ```
 
-Steps 1 and 2 happen offline (build-time / fetch-time). Steps 3 and 4
-happen per-process. The same code can be deployed behind a Cloudflare
-Worker (see [`deployment.md`](deployment.md)) where steps 1–2 happen in
-CI and the parsed JSON is served from R2.
+Steps 1 and 2 happen offline (build-time / fetch-time) and produce
+the snapshots the server reads. At runtime the stdio server sources
+those snapshots through `src/data/loader.ts` (`loadSnapshot`) — a
+local cache → hosted Worker → bundled fallback chain — so the
+working set on disk grows lazily as editions are queried. The same
+code deploys behind a Cloudflare Worker (see
+[`deployment.md`](deployment.md)) where steps 1–2 happen in CI and
+the parsed JSON is served from R2 directly.
 
 ## Parsed shape
 
