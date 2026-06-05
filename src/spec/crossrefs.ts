@@ -25,9 +25,11 @@ export interface CrossrefClause {
   crossrefs?: string[];
 }
 
-/** The minimal parsed-spec shape: a clause map keyed by id. */
+/** The minimal parsed-spec shape: a clause map keyed by id, plus the
+ *  snapshot pin so the index memo can key on the content SHA. */
 export interface CrossrefSpec {
   clauses: Record<string, CrossrefClause>;
+  pin?: { sha?: string };
 }
 
 /** One cross-reference row, either incoming or outgoing. */
@@ -135,20 +137,25 @@ export function buildCrossrefIndices(parsed: CrossrefSpec): CrossrefIndices {
   return { forward, reverse };
 }
 
-// Per-(spec, edition) memo. The key space is the finite edition catalog
-// (≤ ~24 spec/edition pairs; `spec.crossrefs` never addresses by SHA),
-// so this stays naturally bounded without an LRU. Each transport bundles
-// its own copy, so the map is per-process (stdio) / per-isolate (Worker).
+// Per-(spec, edition, sha) memo. The key space is the finite edition
+// catalog (≤ ~24 spec/edition pairs; `spec.crossrefs` never addresses by
+// SHA), so this stays naturally bounded without an LRU. The content SHA
+// is folded into the key so a refreshed `main` snapshot rebuilds rather
+// than serving a stale adjacency: on a long-lived Worker isolate the
+// parsed bytes for `main` can be re-fetched newer (the isolate's
+// parsed-spec LRU evicts independently), and a sha-less key would keep
+// returning the old index. Each transport bundles its own copy, so the
+// map is per-process (stdio) / per-isolate (Worker).
 const indexCache = new Map<string, CrossrefIndices>();
 
-/** `buildCrossrefIndices`, memoized by `(spec, edition)`. The caller
- *  passes the already-loaded parsed spec for that pair. */
+/** `buildCrossrefIndices`, memoized by `(spec, edition, content sha)`.
+ *  The caller passes the already-loaded parsed spec for that pair. */
 export function getCrossrefIndices(
   spec: Spec,
   edition: string,
   parsed: CrossrefSpec,
 ): CrossrefIndices {
-  const key = `${spec}:${edition}`;
+  const key = `${spec}:${edition}:${parsed.pin?.sha ?? ""}`;
   const cached = indexCache.get(key);
   if (cached) return cached;
   const built = buildCrossrefIndices(parsed);
