@@ -15,12 +15,11 @@
 // best-effort pass over AOIDs known to live in the other spec.
 
 import { z } from "zod";
+import { specArg, editionArg } from "../_args.js";
 import { loadSpec } from "./clause.js";
 import { walkSteps } from "../../parser/walk.js";
 import type { ParsedSpec } from "../../parser/schema.js";
 import {
-  EDITION_VALUES,
-  SPEC_VALUES,
   resolveEdition,
   type ConcreteEdition,
   type Edition,
@@ -29,18 +28,8 @@ import {
 
 export const specCrossrefsSchema = {
   id: z.string().describe("Spec clause id, e.g. 'sec-tonumber' (262) or 'sec-intl.numberformat' (402)."),
-  spec: z
-    .enum(SPEC_VALUES)
-    .default("262")
-    .describe(
-      "Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API).",
-    ),
-  edition: z
-    .enum(EDITION_VALUES)
-    .default("latest")
-    .describe(
-      "Edition within the chosen spec. ECMA-262: es2016 … es2026, main. ECMA-402: es2016 … es2026, main. Aliases: latest, draft, next.",
-    ),
+  spec: specArg,
+  edition: editionArg,
   direction: z
     .enum(["in", "out", "both"])
     .default("both")

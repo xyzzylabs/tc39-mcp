@@ -21,10 +21,9 @@
 // callers want when asking "what does BindingIdentifier look like?".
 
 import { z } from "zod";
+import { specArg, editionArg } from "../_args.js";
 import { loadSpec } from "./clause.js";
 import {
-  EDITION_VALUES,
-  SPEC_VALUES,
   type Edition,
   type Spec,
 } from "../../editions.js";
@@ -49,18 +48,8 @@ export const specGrammarSchema = {
     .describe(
       "If true, also include productions captured as SDO algorithm headers. Off by default — most callers want the standalone lexical/syntactic grammar definitions.",
     ),
-  spec: z
-    .enum(SPEC_VALUES)
-    .default("262")
-    .describe(
-      "Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API).",
-    ),
-  edition: z
-    .enum(EDITION_VALUES)
-    .default("latest")
-    .describe(
-      "Edition within the chosen spec. ECMA-262: es2016 … es2026, main. ECMA-402: es2016 … es2026, main. Aliases: latest, draft, next.",
-    ),
+  spec: specArg,
+  edition: editionArg,
   limit: z
     .number()
     .int()
