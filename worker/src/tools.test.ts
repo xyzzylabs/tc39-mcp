@@ -543,6 +543,24 @@ describe("specGrammar", () => {
     if (r.mode !== "contains") throw new Error("expected contains mode");
     expect(r.total).toBe(1);
   });
+
+  it("returns an empty list when the snapshot predates grammar extraction", async () => {
+    // An old snapshot may have no `grammar` key at all; the `?? []` guard
+    // must keep it from throwing.
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": JSON.stringify({
+            pin: { spec: "262", edition: "es2026", sha: "x" },
+            clauses: {},
+          }),
+        },
+      }),
+    };
+    const r = await specGrammar(env, {});
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.total).toBe(0);
+  });
 });
 
 // ─── specTables ───────────────────────────────────────────────────
@@ -591,6 +609,24 @@ describe("specTables", () => {
     if (r.mode !== "list") throw new Error("expected list mode");
     expect(r.total).toBe(1);
     expect(r.tables[0]!.id).toBe("table-locale");
+  });
+
+  it("returns an empty list when the snapshot predates table extraction", async () => {
+    // An old snapshot may have no `tables` key at all; the `?? {}` guard
+    // must keep it from throwing.
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": JSON.stringify({
+            pin: { spec: "262", edition: "es2026", sha: "x" },
+            clauses: {},
+          }),
+        },
+      }),
+    };
+    const r = await specTables(env, {});
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.total).toBe(0);
   });
 });
 

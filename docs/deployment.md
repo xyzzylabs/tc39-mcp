@@ -126,9 +126,9 @@ freshness contract is in-band.
 
 A minimal Worker lives in [`worker/`](https://github.com/xyzzylabs/tc39-mcp/tree/main/worker) that speaks MCP's
 JSON-RPC over HTTP, reads parsed JSONs from a bound R2 bucket, and
-ships **6 core tools** (`spec.about`, `clause.get`, `clause.list`,
-`spec.search`, `proposal.list`, `proposal.get`). The bundled Worker
-gzips to **~12 KB**.
+ships **9 tools** (`spec.about`, `clause.get`, `clause.list`,
+`spec.search`, `proposal.list`, `proposal.get`, `spec.grammar`,
+`spec.tables`, `spec.sdo_index`). The bundled Worker gzips to **~8 KB**.
 
 The same Worker also serves the **documentation site** as static
 assets (Cloudflare Workers Assets). One origin, one deploy, one URL
