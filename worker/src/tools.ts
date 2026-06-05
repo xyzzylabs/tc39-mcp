@@ -13,6 +13,7 @@
 
 import {
   loadParsedSpec,
+  loadParsedSpecUncached,
   loadProposalsIndex,
   loadTest262Index,
   listSnapshots,
@@ -134,7 +135,13 @@ export async function specAbout(
         continue;
       }
       try {
-        const p = await getSpec(env, spec, ed);
+        // Parse-and-discard rather than `getSpec`: this scan touches
+        // every present (spec, edition) pair just to report counts, so
+        // populating the capacity-4 `specCache` would evict concurrent
+        // callers' hot clause.get / spec.search entries. The edition is
+        // already concrete here, so the resolve/support checks `getSpec`
+        // adds would be no-ops anyway.
+        const p = await loadParsedSpecUncached(env, spec, ed);
         const tables = p.tables;
         const grammar = p.grammar;
         snapshots.push({

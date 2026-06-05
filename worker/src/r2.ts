@@ -237,6 +237,32 @@ export async function loadParsedSpec(
   return parsed;
 }
 
+/** Full-parse a live snapshot WITHOUT touching the per-isolate LRU.
+ *  `spec.about`'s introspection scan reads every present snapshot just
+ *  to report `clause_count` / `has_tables` / `has_grammar`. Routing
+ *  those parses through `loadParsedSpec` would thrash `specCache`
+ *  (capacity 4) against the ~24 (spec, edition) pairs: every load
+ *  evicts a hot entry, so a single scan can drop a concurrent caller's
+ *  parsed `262/main` + `402/main` and force them to re-load. This still
+ *  layers through the edge cache — so repeated scans skip R2 and stay
+ *  cheap — but the parsed object goes straight out of scope and never
+ *  enters the LRU. Mirrors the stdio server's parse-and-discard
+ *  `spec.about`. Live keys only; the scan never addresses by SHA. */
+export async function loadParsedSpecUncached(
+  env: R2Env,
+  spec: string,
+  edition: string,
+): Promise<ParsedSpec> {
+  const key = specKey(spec, edition);
+  const text = await readTextWithEdgeCache(env, key);
+  if (text === null) {
+    throw new Error(
+      `Missing parsed spec object in R2: ${key}. Upload via the deploy-worker workflow or scripts/upload-r2.ts.`,
+    );
+  }
+  return JSON.parse(text) as ParsedSpec;
+}
+
 export async function loadTest262Index(
   env: R2Env,
 ): Promise<Test262IndexFile | null> {
