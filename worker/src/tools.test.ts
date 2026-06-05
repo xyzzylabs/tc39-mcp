@@ -818,4 +818,22 @@ describe("specSnapshots", () => {
     const r = await specSnapshots({ SPECS: createFakeR2() }, {});
     expect(r.snapshots).toEqual([]);
   });
+
+  it("skips a snapshot whose pin has no sha", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-main.json": fakeSpecJson({ spec: "262", edition: "main", sha: "good" }),
+          // A pin with no `sha` must be skipped, not emitted as a row
+          // with sha: undefined.
+          "spec-402-main.json": JSON.stringify({
+            pin: { spec: "402", edition: "main" },
+            clauses: {},
+          }),
+        },
+      }),
+    };
+    const r = await specSnapshots(env, {});
+    expect(r.snapshots.map((s) => `${s.spec}/${s.edition}`)).toEqual(["262/main"]);
+  });
 });

@@ -14,6 +14,7 @@
 
 import {
   loadParsedSpec,
+  readSnapshotPin,
   loadProposalsIndex,
   loadTest262Index,
   listSnapshots,
@@ -492,19 +493,21 @@ export async function specSnapshots(
     const edition = m[2]!;
     if (args.spec && args.spec !== spec) continue;
     if (args.edition && args.edition !== edition) continue;
-    let p: ParsedSpec;
-    try {
-      p = await loadParsedSpec(env, spec, edition);
-    } catch {
-      continue;
-    }
+    // Read only the pin, parse-and-discard — never populate the hot
+    // specCache LRU (mirrors the stdio tool; keeps a snapshots scan from
+    // evicting live clause.get / spec.search entries). A null pin means
+    // the object is missing (a list-then-delete race) or unparseable (a
+    // corrupt snapshot); skip it rather than fail the whole call or emit
+    // a row with no sha.
+    const pin = await readSnapshotPin(env, spec, edition);
+    if (!pin?.sha) continue;
     rows.push({
       spec,
       edition,
-      sha: p.pin.sha,
+      sha: pin.sha,
       live: true,
-      ...(p.pin.fetched_at ? { fetched_at: p.pin.fetched_at } : {}),
-      ...(p.pin.biblio_commit ? { biblio_commit: p.pin.biblio_commit } : {}),
+      ...(pin.fetched_at ? { fetched_at: pin.fetched_at } : {}),
+      ...(pin.biblio_commit ? { biblio_commit: pin.biblio_commit } : {}),
     });
   }
   // Deterministic order: spec → edition → sha (matches the stdio tool).

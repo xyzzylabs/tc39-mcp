@@ -79,7 +79,7 @@ Returns `SnapshotsResult`.
 |---|---|---|
 | `spec_filter` | `Spec` (optional) | Echo of the `spec` argument, if one was supplied. |
 | `edition_filter` | `string` (optional) | Echo of the `edition` argument, if one was supplied. |
-| `snapshots` | `SnapshotRow[]` | Matching snapshot rows. On the stdio server this is whatever the installed package version baked in; on the Worker this can include historical SHA-pinned copies. |
+| `snapshots` | `SnapshotRow[]` | Matching snapshot rows. On the stdio server these are whatever the installed package version baked in; on the Worker they are the live snapshots currently in R2. |
 
 ## `clause.get`
 

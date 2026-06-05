@@ -21,7 +21,7 @@ deployment, not a library, so it is never published to npm: you reach it
 over HTTP at the hosted URL, or self-host by cloning the repo and running
 `wrangler deploy` yourself. Both artifacts read the same parsed snapshots
 and differ only in transport (stdio vs HTTP) and tool surface (all 19
-tools vs the 6 core ones). The Worker keeps its own `package.json` +
+tools vs the hosted subset). The Worker keeps its own `package.json` +
 lockfile so its bundle never pulls in the Node-shaped source tree.
 
 ## Local stdio (the default)
