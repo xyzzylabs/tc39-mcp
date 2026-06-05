@@ -12,13 +12,14 @@ tc39-mcp serves read-only structured data from the TC39 specs
 response is deterministic over data pinned to specific upstream
 SHAs.
 
-This is the hosted Cloudflare Worker deployment. It exposes 12 tools:
+This is the hosted Cloudflare Worker deployment. It exposes 14 tools:
 spec.about, clause.get, clause.list, spec.search, proposal.list,
 proposal.get, spec.grammar, spec.tables, spec.sdo_index,
-clause.outline, spec.global_search, spec.snapshots. The full 19-tool
-surface (additionally spec.diff, spec.crossrefs, spec.symbol_resolve,
-spec.well_known_intrinsics, spec.history, test262.search,
-test262.get) is available via the stdio server (npx tc39-mcp).
+clause.outline, spec.global_search, spec.snapshots,
+spec.symbol_resolve, spec.well_known_intrinsics. The full 19-tool
+surface (additionally spec.diff, spec.crossrefs, spec.history,
+test262.search, test262.get) is available via the stdio server
+(npx tc39-mcp).
 
 Common workflow:
   1. \`spec.about\` — call first to see what SHAs and editions the
