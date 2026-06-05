@@ -17,10 +17,20 @@ All spec-reading tools accept `spec` (`"262"` | `"402"`) and `edition`
 arguments. See [`editions.md`](editions.md) for the value set and how
 aliases resolve per spec.
 
+**Transports + availability.** Every tool runs on the local stdio
+server (`npx tc39-mcp`). The hosted Cloudflare Worker reimplements
+17 of the 19 tools over its
+R2-backed data; `spec.history` and `test262.get` stay stdio-only because
+they need a subprocess or the local test262 corpus. Each tool's
+**Availability** line below says where it runs — see
+[Get started](getting-started) to pick a transport.
+
 Each tool section below carries:
 
 - **What it answers** — co-located example calls, each tagged with the
   natural-language question it resolves.
+- **Availability** — whether the tool runs on the hosted Worker too, or
+  on the local stdio server only (and why).
 - **Input** — every field from the Zod schema with its type, default,
   and inline help text.
 - **Output** — the handler's declared return type, expanded into a
@@ -29,6 +39,8 @@ Each tool section below carries:
 ## `spec.about`
 
 Return self-description of this MCP server: package name + version, per-snapshot pin metadata (sha, fetched_at, biblio_commit, clause_count) for every supported (spec, edition), plus test262 + proposals index headers when present. Lets callers verify freshness and reproducibility without loading the parses themselves.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 
@@ -56,6 +68,8 @@ Returns `AboutResult`.
 ## `spec.snapshots`
 
 List every (spec, edition, sha, fetched_at) snapshot this server has parsed. Use to discover what historical SHAs you can query via `at: "<sha>"`, or to verify reproducibility across server versions. Optional `spec` / `edition` filters.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 
@@ -85,6 +99,8 @@ Returns `SnapshotsResult`.
 
 Fetch a parsed TC39 clause as structured JSON: metadata, signature, algorithm steps, notes, cross-refs. `spec` selects '262' (default) or '402'. `edition` defaults to `latest` (current stable release on both specs — es2026 today).
 
+**Availability:** hosted Worker + local stdio.
+
 ### What it answers
 
 - **What are the steps of ToNumber?** — `{"id":"sec-tonumber"}`
@@ -105,6 +121,8 @@ Returns `Clause | null`.
 ## `clause.list`
 
 List parsed spec clauses with optional filters (kind, section prefix, has_algorithm). Returns lightweight rows {id, aoid, title, number, kind, algorithms}; follow up with clause.get for detail. `spec` selects '262' or '402'.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 
@@ -141,6 +159,8 @@ Returns `ClauseListHit[]`.
 
 Return the section tree (table of contents) for a parsed (spec, edition). `depth` caps tree depth (1 = top-level only). `under` anchors at a specific clause id so you get just its descendants. Each node carries { id, number, title, kind, children }.
 
+**Availability:** hosted Worker + local stdio.
+
 ### What it answers
 
 - **Top-level section tree of ECMA-262** — `{"depth":1}`
@@ -170,6 +190,8 @@ Returns `OutlineResult`.
 ## `spec.search`
 
 Search the parsed spec by clause id / aoid / title (and step text when search_steps is true). Returns lightweight hits ranked by match quality — the entry point when you don't know the exact clause id. `spec` selects '262' or '402'. Follow up with clause.get.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 
@@ -208,6 +230,8 @@ Returns `SpecSearchHit[]`.
 
 For a clause id, return its outgoing references (clauses it cites) and/or incoming references (clauses that cite it — the back-reference index the parse alone doesn't expose). Direction: 'in' | 'out' | 'both' (default). Set `include_cross_spec: true` to also resolve outgoing references from ECMA-262 → ECMA-402 (or vice versa).
 
+**Availability:** hosted Worker + local stdio.
+
 ### What it answers
 
 - **Which clauses cite ToNumber?** — `{"id":"sec-tonumber","direction":"in"}`
@@ -233,6 +257,8 @@ Returns `CrossrefsResult`.
 ## `spec.diff`
 
 Clause-level diff across any two editions of one spec. Defaults: from='latest', to='main' (working draft). Reports status (identical / modified / added / removed / missing-from-both) plus a field-level diff: title, signature, step count, per-step reworded indices, notes, crossrefs. `spec` selects '262' or '402'.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 
@@ -269,6 +295,8 @@ Returns `SpecDiffResult`.
 
 Recent commits in the vendored spec checkout that touched a clause's `id="..."` token. Uses git pickaxe (`-S`) so it catches clause creation, deletion, and edits to the opening tag reliably; interior-text-only edits won't show. Returns SHA, date, author, subject per commit. `spec` selects '262' or '402'.
 
+**Availability:** local stdio only — shells out to `git log` against a vendored checkout.
+
 ### What it answers
 
 - **Recent edits to ToNumber's clause tag** — `{"id":"sec-tonumber"}`
@@ -301,6 +329,8 @@ Returns `SpecHistoryResult`.
 ## `spec.symbol_resolve`
 
 Resolve spec notation like `[[Prototype]]` (internal slot), `%Object.prototype%` (well-known intrinsic), or `~number~` (sigil enum) to the clauses that mention or define it. Hits ranked by occurrence count + section-prefix bumps for the canonical definition location. `spec` selects '262' or '402'.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 
@@ -337,6 +367,8 @@ Returns `SymbolResolveResult`.
 
 Index Syntax-Directed Operations by the grammar production they handle. SDOs are abstract operations (Evaluation, BoundNames, etc.) with one `<emu-alg>` per production. Default by='production' returns { [production]: [{ sdo, id, title }] }; by='sdo' returns { [sdo title]: [productions] }. `filter` substring-narrows keys; `spec` selects '262' or '402'.
 
+**Availability:** hosted Worker + local stdio.
+
 ### What it answers
 
 - **Which SDOs implement BindingIdentifier?** — `{"by":"production","filter":"BindingIdentifier"}`
@@ -370,6 +402,8 @@ Returns `SdoIndexResult`.
 
 Run spec.search across both ECMA-262 and ECMA-402 in one call and interleave results by score. Each hit is tagged with the spec it came from. Useful when you don't know which spec defines the symbol (e.g. `Canonicalize` is 262, `CanonicalizeLocaleList` is 402).
 
+**Availability:** hosted Worker + local stdio.
+
 ### What it answers
 
 - **Where is Canonicalize defined across both specs?** — `{"query":"Canonicalize"}`
@@ -395,6 +429,8 @@ Returns `GlobalSearchHit[]`.
 ## `spec.well_known_intrinsics`
 
 Enumerate the well-known intrinsics (`%X%` notations) used in the spec, with each one's probable defining clause (chosen by a title-substring heuristic — see `matched_on` per hit). For the canonical 262 well-known intrinsics table, read `clause.get { id: 'sec-well-known-intrinsic-objects' }` directly.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 
@@ -427,6 +463,8 @@ Returns `IntrinsicsResult`.
 
 List or fetch parsed `<emu-table>` content. Pass `id` to get one table with full columns + rows; omit `id` to list tables (lightweight summaries) optionally filtered by caption/id substring. Authoritative source for the well-known intrinsics table (id='table-well-known-intrinsic-objects'), well-known symbols, completion record fields, etc. `spec` selects '262' or '402'.
 
+**Availability:** hosted Worker + local stdio.
+
 ### What it answers
 
 - **The authoritative well-known intrinsics table** — `{"id":"table-well-known-intrinsic-objects"}`
@@ -449,6 +487,8 @@ Returns `SpecTablesResult`.
 ## `spec.grammar`
 
 Query standalone `<emu-grammar>` productions from the spec's lexical / syntactic grammar (§11-15 in 262). Three modes: { nonterminal: 'X' } returns every production for X; { contains: 'Y' } returns productions whose RHS or non-terminal name contains Y; neither returns a list of all non-terminals with their production counts. Set include_sdo:true to also surface SDO-attached grammar headers.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 
@@ -473,6 +513,8 @@ Returns `SpecGrammarResult`.
 ## `test262.search`
 
 Search tc39/test262 for tests matching a free-text query and/or an esid (clause id, prefix-matched). test262 covers both ECMA-262 and ECMA-402. Served from a parsed test262 index sourced via the loader chain (local cache → hosted Worker → bundled fallback); the index is fetched on first use and cached locally. If no layer can produce the index the result is empty + a hint explaining the one-time local build. No auth, no subprocess.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 
@@ -508,6 +550,8 @@ Returns `Test262SearchResult`.
 
 Fetch one test's source + parsed front-matter by path within the vendored tc39/test262 checkout. Pairs with test262.search — the paths it returns plug in here directly. Returns { source, front_matter, test262_sha, url } or { hint } if the path can't be resolved.
 
+**Availability:** local stdio only — reads each test's full source from the vendored test262 corpus.
+
 ### What it answers
 
 - **Read one specific test262 file** — `{"path":"test/built-ins/Number/prototype/toString/S15.7.4.2_A1_T01.js"}`
@@ -536,6 +580,8 @@ Returns `Test262GetResult`.
 ## `proposal.list`
 
 List TC39 proposals from a parsed proposals index sourced via the loader chain (local cache → hosted Worker → bundled fallback); the index is fetched on first use and cached locally. Filter by `stage` ('0'|'1'|'2'|'2.7'|'3'|'finished'|'inactive'|'active'), `champion` (substring), or `contains` (name/slug substring). Returns lightweight rows; follow up with `proposal.get`. No auth, no subprocess.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 
@@ -570,6 +616,8 @@ Returns `ProposalListResult`.
 ## `proposal.get`
 
 Fetch one TC39 proposal by slug (exact) or name (case-insensitive). Returns { slug, name, stage, authors, champions, url, test262_flag, source_file }. Slug is canonical — use what proposal.list returns directly.
+
+**Availability:** hosted Worker + local stdio.
 
 ### What it answers
 

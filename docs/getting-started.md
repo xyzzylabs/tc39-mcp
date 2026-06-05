@@ -1,9 +1,8 @@
 # Get started
 
-This page walks you from zero to a successful spec lookup in five
-minutes. By the end you'll have `tc39-mcp` wired into your MCP
-client, you'll have called one tool from it, and you'll know where to
-go next.
+This page takes you from zero to a successful spec lookup in five
+minutes: pick how you run `tc39-mcp`, wire it into your MCP client,
+and call your first tool.
 
 ## What is MCP?
 
@@ -18,29 +17,36 @@ upstream spec.
 `tc39-mcp` is an MCP server. It exposes 19 tools that answer
 structured questions about ECMA-262 + ECMA-402 — clause text,
 algorithm steps, cross-references, edition diffs, git history,
-test262 search, proposal lookup. It runs locally over stdio or
-hosted as a Cloudflare Worker over HTTP; either way the wire
-protocol is the same.
+test262 search, proposal lookup. If your client already speaks MCP
+— Claude Desktop, Claude Code, Cursor, the official MCP Inspector —
+adding it is one config entry away.
 
-If your client already speaks MCP — Claude Desktop, Claude Code,
-Cursor, the official MCP Inspector — adding `tc39-mcp` is one config
-entry away.
+## Pick how you run it
 
-## Step 1: Pick a transport
+`tc39-mcp` runs two ways, with the same wire protocol either way.
+Pick **one**:
 
-|  | stdio (local) | hosted Worker (HTTP) |
+|  | [Local (stdio)](#local-stdio) | [Hosted (HTTP)](#hosted-http) |
 |---|---|---|
-| Setup cost | `npx tc39-mcp` runs immediately | zero — point your client at a URL |
+| How | `npx tc39-mcp` as a local subprocess | point your client at a URL |
+| Install | Node 20+ | none |
+| **Tools** | **all 19** | **17** — no `spec.history` / `test262.get` |
 | Latency | local subprocess, fast | one network hop per call |
 | Data freshness | live from the Worker on first use, then cached + revalidated ~4 h (bundled subset offline) | live, auto-refreshed every ~4 h |
-| Rate limit | none | 30 req / min / IP |
 | Offline use | ✓ for bundled editions (latest + main); fetched-on-first-use otherwise | ✗ |
+| Rate limit | none | 30 req / min / IP |
 
-Most users want **stdio** for personal local use. Pick HTTP when
-several teammates share one server, when you can't install Node
-locally, or when you want the always-current Worker pin.
+Most people want **Local** for personal use — every tool, and it
+works offline. Choose **Hosted** when you can't install Node, when a
+team shares one endpoint, or when you want the always-current Worker
+pin. The only functional difference is the two tools below: they need
+a subprocess or the on-disk test262 corpus, so they run locally only.
 
-## Step 2: Wire it into your MCP client
+## Local (stdio)
+
+Runs `tc39-mcp` as a subprocess of your MCP client through `npx` — no
+global install, **all 19 tools**, and the bundled editions answer
+offline. Wire it into your client:
 
 ::: code-group
 
@@ -73,27 +79,40 @@ locally, or when you want the always-current Worker pin.
 }
 ```
 
-```json [Hosted Worker (HTTP transport)]
+:::
+
+The first call for a given snapshot fetches it from the hosted Worker
+and caches it on disk; later calls are served locally, revalidated
+against the Worker only after the ~4-hour freshness window. If the
+Worker is unreachable, the bundled `latest` + `main` editions still
+answer. Restart your client after editing the config.
+
+## Hosted (HTTP)
+
+Point your client at the hosted Cloudflare Worker — zero install, but
+**17 of the 19 tools**: everything except `spec.history` (needs a git
+subprocess) and `test262.get` (needs the on-disk test262 corpus).
+
+```json
 {
   "mcpServers": {
     "tc39": {
       "type": "http",
-      "url": "https://tc39-mcp.<account>.workers.dev/mcp"
+      "url": "https://tc39-mcp.chicoxyzzy.workers.dev/mcp"
     }
   }
 }
 ```
 
-:::
+Requests are rate-limited to 30 / minute / IP and every call is a
+network hop (no offline mode). Each tool's exact availability is on
+the [tool reference](./tools) — look for the **Availability** line.
 
-Restart your client so it picks up the new config. Every tool is a
-deterministic function of the pinned spec data — see
-[Architecture](./architecture) for the security model.
+## Make your first call
 
-## Step 3: Make your first call
-
-A good first call is `clause.get` against `sec-tonumber` — short
-input, structured output, no parameters to guess at.
+This works on **either** transport. A good first call is `clause.get`
+against `sec-tonumber` — short input, structured output, no parameters
+to guess at.
 
 In a chat / agent client, the natural-language prompt:
 
@@ -111,7 +130,7 @@ title, section number, kind), `signatureRaw`, `algorithms[].steps`,
 `notes`, and `crossrefs`. The full field list lives on
 [`tools.md → clause.get`](./tools#clause-get).
 
-## Step 4: Verify it's working
+## Verify it's working
 
 Once the call returns, sanity-check the response:
 
@@ -124,19 +143,19 @@ If you got back `null` instead, the clause id was probably wrong;
 try [`spec.search`](./tools#spec-search) (`{ query: "ToNumber" }`)
 to find the right id.
 
-If the server didn't start at all, two things to check:
+If the server didn't respond at all, two things to check:
 
-1. **Node version**: tc39-mcp targets Node 20+. Older Node will
-   refuse to start with a clear error.
+1. **Node version** (Local): tc39-mcp targets Node 20+. Older Node
+   refuses to start with a clear error.
 2. **MCP transport**: confirm your client logs show a `tools/list`
-   handshake. Most stdio MCP clients log this; if you see no logs at
-   all the server probably never got launched.
+   handshake. Most MCP clients log this; if you see nothing, the
+   stdio server probably never launched, or the hosted URL is wrong.
 
 ## Next steps
 
 - **[Tool reference](./tools)** — every tool, every input field,
-  every example call. The list of "What it answers" entries per tool
-  is the easiest way to discover what you can ask.
+  every example call, plus each tool's **Availability** (hosted vs
+  stdio-only).
 - **[Cookbook](./cookbook)** — multi-tool recipes for common
   workflows (cross-spec lookups, prose-drift tracking, etc.).
 - **[Editions + specs](./editions)** — which editions and aliases
