@@ -8,7 +8,15 @@
 //
 // Keep this string focused on *workflows* and *invariants*, not on
 // individual tool details — those live in the per-tool descriptions
-// the agent already sees in tools/list.
+// the agent already sees in tools/list. The hosted vs stdio-only tool
+// counts come from the shared `src/spec/tool_inventory.ts` so they
+// can't drift from the Worker's copy or the registry.
+
+import {
+  HOSTED_TOOLS,
+  STDIO_ONLY_TOOLS,
+  TOTAL_TOOL_COUNT,
+} from "../spec/tool_inventory.js";
 
 export const SERVER_INSTRUCTIONS = `
 tc39-mcp serves read-only structured data from the TC39 specs
@@ -45,16 +53,12 @@ the hint to the user, it tells them which command to run. Don't
 retry; treat empty as "no match found".
 
 Transport differences:
-  - The stdio server (npx tc39-mcp) exposes all 19 tools.
-  - The hosted Cloudflare Worker exposes 14 tools (spec.about,
-    clause.get, clause.list, spec.search, proposal.list,
-    proposal.get, spec.grammar, spec.tables, spec.sdo_index,
-    clause.outline, spec.global_search, spec.snapshots,
-    spec.symbol_resolve, spec.well_known_intrinsics). The remaining 5
-    run stdio-only for now: spec.history (git subprocess) and the
-    test262.* tools (the vendored test262 corpus) need a subprocess or
-    the full test sources; spec.diff + spec.crossrefs are being brought
-    over.
+  - The stdio server (npx tc39-mcp) exposes all ${TOTAL_TOOL_COUNT} tools.
+  - The hosted Cloudflare Worker exposes ${HOSTED_TOOLS.length} of them
+    (${HOSTED_TOOLS.join(", ")}). The remaining ${STDIO_ONLY_TOOLS.length}
+    run stdio-only — filesystem / subprocess bound (\`spec.history\` needs
+    a git checkout, the \`test262.*\` tools need the vendored corpus) or
+    not yet ported.
 
 All data is read-only: no tool modifies anything upstream, no tool
 runs user-supplied code. Safe to call freely.
