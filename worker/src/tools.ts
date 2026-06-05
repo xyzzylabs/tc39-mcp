@@ -70,6 +70,10 @@ import {
   searchAcrossSpecs,
   type GlobalSearchHit,
 } from "../../src/spec/global_search.js";
+import {
+  diffClause,
+  type DiffCore,
+} from "../../src/spec/diff.js";
 
 // ─── tool result shapes ────────────────────────────────────────────
 
@@ -571,4 +575,21 @@ export async function specWellKnownIntrinsics(
     limit: args.limit,
   });
   return { spec, ...core };
+}
+
+// ─── spec.diff ────────────────────────────────────────────────────
+
+export async function specDiff(
+  env: R2Env,
+  args: { id: string; spec?: string; from?: string; to?: string },
+): Promise<{ id: string; from: string; to: string } & DiffCore> {
+  const spec = args.spec ?? "262";
+  const fromEd = resolveEdition(spec as Spec, (args.from ?? "latest") as Edition);
+  const toEd = resolveEdition(spec as Spec, (args.to ?? "main") as Edition);
+  const [before, after] = await Promise.all([
+    getSpec(env, spec, fromEd),
+    getSpec(env, spec, toEd),
+  ]);
+  const core = diffClause(before.clauses[args.id], after.clauses[args.id]);
+  return { id: args.id, from: fromEd, to: toEd, ...core };
 }

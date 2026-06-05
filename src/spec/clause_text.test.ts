@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { flatClauseText, type ClauseTextInput, type ClauseTextStep } from "./clause_text.js";
+import {
+  flatClauseText,
+  walkSteps,
+  flattenStepText,
+  type ClauseTextInput,
+  type ClauseTextStep,
+} from "./clause_text.js";
 
 function step(text: string, substeps: ClauseTextStep[] = []): ClauseTextStep {
   return { text, substeps };
@@ -31,5 +37,34 @@ describe("flatClauseText", () => {
     const text = flatClauseText(clause({ algorithms: [] }));
     expect(text).toContain("Test Clause");
     expect(text).not.toContain("step-");
+  });
+});
+
+const tree: ClauseTextStep[] = [
+  step("A", [step("A.1"), step("A.2", [step("A.2.1"), step("A.2.2")])]),
+  step("B"),
+];
+
+describe("walkSteps", () => {
+  it("visits every step depth-first, pre-order", () => {
+    const visited: string[] = [];
+    walkSteps(tree, (s) => visited.push(s.text));
+    expect(visited).toEqual(["A", "A.1", "A.2", "A.2.1", "A.2.2", "B"]);
+  });
+
+  it("doesn't recurse on an empty array", () => {
+    let called = 0;
+    walkSteps([], () => called++);
+    expect(called).toBe(0);
+  });
+});
+
+describe("flattenStepText", () => {
+  it("returns every step's text in DFS order", () => {
+    expect(flattenStepText(tree)).toEqual(["A", "A.1", "A.2", "A.2.1", "A.2.2", "B"]);
+  });
+
+  it("returns [] for empty input", () => {
+    expect(flattenStepText([])).toEqual([]);
   });
 });

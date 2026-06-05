@@ -17,7 +17,7 @@
 import { z } from "zod";
 import { specArg, editionArg } from "../_args.js";
 import { loadSpec } from "./clause.js";
-import { walkSteps } from "../../parser/walk.js";
+import { walkSteps } from "../../spec/clause_text.js";
 import type { ParsedSpec } from "../../parser/schema.js";
 import {
   resolveEdition,

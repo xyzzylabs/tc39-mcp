@@ -1,13 +1,32 @@
-// Pure clause-text flattening, shared by the stdio server and the
-// Cloudflare Worker. `spec.symbol_resolve` and `spec.well_known_intrinsics`
-// scan a clause's full text for literal occurrences; this concatenates
-// the searchable parts into one blob. Dependency-free (no node:fs /
-// parser imports) so the Worker bundles it directly, like ./search.ts.
+// Pure step + clause-text walkers, shared by the stdio server and the
+// Cloudflare Worker. Several read tools (spec.symbol_resolve,
+// spec.well_known_intrinsics, spec.crossrefs, spec.diff) walk a clause's
+// nested algorithm steps and flatten its text. Dependency-free (no
+// node:fs / parser imports) so the Worker bundles it directly, like
+// ./search.ts.
 
 /** One algorithm step, possibly with nested substeps. */
 export interface ClauseTextStep {
   text: string;
   substeps: ClauseTextStep[];
+}
+
+/** Visit every step depth-first (pre-order). */
+export function walkSteps(
+  steps: ClauseTextStep[],
+  visit: (step: ClauseTextStep) => void,
+): void {
+  for (const s of steps) {
+    visit(s);
+    if (s.substeps.length > 0) walkSteps(s.substeps, visit);
+  }
+}
+
+/** Collect every step's verbatim text into a flat string[], DFS order. */
+export function flattenStepText(steps: ClauseTextStep[]): string[] {
+  const out: string[] = [];
+  walkSteps(steps, (s) => out.push(s.text));
+  return out;
 }
 
 /** The minimal clause shape `flatClauseText` reads. Structurally
@@ -26,14 +45,6 @@ export function flatClauseText(c: ClauseTextInput): string {
   if (c.signatureRaw) out.push(c.signatureRaw);
   if (c.meta.title) out.push(c.meta.title);
   for (const n of c.notes) out.push(n.text);
-  for (const algo of c.algorithms) {
-    const walk = (steps: ClauseTextStep[]) => {
-      for (const s of steps) {
-        out.push(s.text);
-        if (s.substeps.length > 0) walk(s.substeps);
-      }
-    };
-    walk(algo.steps);
-  }
+  for (const algo of c.algorithms) walkSteps(algo.steps, (s) => out.push(s.text));
   return out.join("\n");
 }
