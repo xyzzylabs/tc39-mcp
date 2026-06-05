@@ -1,20 +1,20 @@
 // MCP tool: test262.search — search the tc39/test262 conformance suite
 // for tests matching a free-text query and/or a specific esid.
 //
+// The rank/filter logic lives in `src/index/test262_search.ts` so the
+// stdio server and the Cloudflare Worker answer identically; this file
+// wires the Zod schema to that shared core plus the stdio index loader.
+//
 // One backend: the `test262-index.json` snapshot, resolved through
 // `loadSnapshot` (cache → hosted Worker → bundled fallback). Locally
 // it's also producible via `npm run build-test262-index` from a
-// vendored checkout. If no layer in the chain can produce the index
-// the tool returns `source: "none"` plus an actionable hint, never
-// throwing. No auth, no subprocess.
-//
-// Earlier revisions had a `gh search code` fallback; it was the only
-// subprocess surface in the whole server, hosted deployments couldn't
-// use it anyway, and the index path is faster + more deterministic.
-// Dropped.
+// vendored checkout. If no layer in the chain can produce the index the
+// tool returns `source: "none"` plus an actionable hint, never throwing.
+// No auth, no subprocess.
 
 import { z } from "zod";
 import { loadSnapshot } from "../../data/loader.js";
+import { runTest262Search, type Test262IndexFile } from "../../index/test262_search.js";
 
 export const test262SearchSchema = {
   query: z
@@ -89,26 +89,9 @@ export interface Test262SearchResult {
   hint?: string;
 }
 
-// ─── local-index path ──────────────────────────────────────────────
+let indexCache: Test262IndexFile | null = null;
 
-interface IndexEntry {
-  path: string;
-  esid?: string;
-  description?: string;
-  features?: string[];
-  flags?: string[];
-}
-
-interface IndexFile {
-  version: number;
-  test262_sha: string;
-  generated_at: string;
-  tests: IndexEntry[];
-}
-
-let indexCache: IndexFile | null = null;
-
-async function loadIndex(): Promise<IndexFile | null> {
+async function loadIndex(): Promise<Test262IndexFile | null> {
   if (indexCache) return indexCache;
   // No negative caching: a transient network failure on the first
   // call must not poison the result for the rest of the process.
@@ -117,94 +100,22 @@ async function loadIndex(): Promise<IndexFile | null> {
   const outcome = await loadSnapshot("test262-index.json");
   if (outcome.kind === "missing") return null;
   try {
-    indexCache = JSON.parse(outcome.body) as IndexFile;
+    indexCache = JSON.parse(outcome.body) as Test262IndexFile;
     return indexCache;
   } catch {
     return null;
   }
 }
 
-function ghUrl(path: string, sha: string): string {
-  return `https://github.com/tc39/test262/blob/${sha}/${path}`;
-}
-
-function searchIndex(
-  idx: IndexFile,
-  args: { query?: string; esid?: string; limit?: number },
-): Test262SearchResult {
-  const limit = args.limit ?? 20;
-  const esidPrefix = args.esid?.toLowerCase();
-  // Multi-token AND match: every whitespace-separated token must appear
-  // somewhere in description + path. Single-word queries reduce to one
-  // substring check; multi-word queries don't require the exact phrase.
-  const queryTokens =
-    args.query
-      ?.toLowerCase()
-      .split(/\s+/)
-      .filter((s) => s.length > 0) ?? [];
-  const hits: Test262Hit[] = [];
-
-  for (const t of idx.tests) {
-    if (esidPrefix) {
-      if (!t.esid) continue;
-      if (!t.esid.toLowerCase().startsWith(esidPrefix)) continue;
-    }
-    if (queryTokens.length > 0) {
-      const haystack = (t.description ?? "").toLowerCase() + " " + t.path.toLowerCase();
-      let ok = true;
-      for (const tok of queryTokens) {
-        if (!haystack.includes(tok)) {
-          ok = false;
-          break;
-        }
-      }
-      if (!ok) continue;
-    }
-    hits.push({
-      path: t.path,
-      url: ghUrl(t.path, idx.test262_sha),
-      ...(t.esid ? { esid: t.esid } : {}),
-      ...(t.description ? { description: t.description } : {}),
-      ...(t.features ? { features: t.features } : {}),
-      ...(t.flags ? { flags: t.flags } : {}),
-    });
-    if (hits.length >= limit) break;
-  }
-
-  return {
-    query: args.query,
-    esid: args.esid,
-    source: "index",
-    index_sha: idx.test262_sha,
-    hits,
-  };
-}
-
-// ─── public entry ──────────────────────────────────────────────────
-
 export async function test262Search(args: {
   query?: string;
   esid?: string;
   limit?: number;
 }): Promise<Test262SearchResult> {
-  if (!args.query && !args.esid) {
-    return {
-      source: "none",
-      hits: [],
-      hint: "Provide either `query` or `esid` (or both).",
-    };
-  }
-
-  const idx = await loadIndex();
-  if (idx) return searchIndex(idx, args);
-
-  return {
-    query: args.query,
-    esid: args.esid,
-    source: "none",
-    hits: [],
-    hint:
-      "test262 index not built. Run: `npm run fetch-test262 && npm run build-test262-index`. " +
+  return runTest262Search(
+    args,
+    loadIndex,
+    "test262 index not built. Run: `npm run fetch-test262 && npm run build-test262-index`. " +
       "The index ships a ~13 MB JSON of every test's front-matter, served instantly with no network and no auth.",
-  };
+  );
 }

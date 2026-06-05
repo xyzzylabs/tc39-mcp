@@ -16,6 +16,7 @@ import {
   specSymbolResolve,
   specTables,
   specWellKnownIntrinsics,
+  test262Search,
 } from "./tools.js";
 import { __resetCachesForTests } from "./r2.js";
 import { __resetCrossrefCacheForTests } from "../../src/spec/crossrefs.js";
@@ -1130,5 +1131,42 @@ describe("specCrossrefs", () => {
       include_cross_spec: true,
     });
     expect(on.outgoing?.find((h) => h.spec === "262")?.id).toBe("sec-oc");
+  });
+});
+
+describe("test262Search", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "test262-index.json": fakeTest262IndexJson({ sha: "t262sha", testCount: 3 }),
+      },
+    }),
+  });
+
+  it("ranks hits from the R2 index, tagged source:index with the index SHA", async () => {
+    const r = await test262Search(env(), { esid: "sec-x0" });
+    expect(r.source).toBe("index");
+    expect(r.index_sha).toBe("t262sha");
+    expect(r.hits.map((h) => h.path)).toEqual(["test/built-ins/x0.js"]);
+    expect(r.hits[0]?.url).toContain("/blob/t262sha/test/built-ins/x0.js");
+  });
+
+  it("query AND-matches across the index", async () => {
+    const r = await test262Search(env(), { query: "Test" });
+    expect(r.hits.length).toBe(3);
+  });
+
+  it("requires at least one of query / esid", async () => {
+    const r = await test262Search(env(), {});
+    expect(r.source).toBe("none");
+    expect(r.hits).toEqual([]);
+    expect(r.hint).toContain("Provide either");
+  });
+
+  it("returns source:none with the R2 hint when the index isn't in the bucket", async () => {
+    const r = await test262Search({ SPECS: createFakeR2() }, { query: "x" });
+    expect(r.source).toBe("none");
+    expect(r.hits).toEqual([]);
+    expect(r.hint).toContain("not present in R2");
   });
 });

@@ -78,6 +78,11 @@ import {
   computeCrossrefs,
   type CrossrefsResult,
 } from "../../src/spec/crossrefs.js";
+import {
+  runTest262Search,
+  type Test262IndexFile,
+  type Test262SearchResult,
+} from "../../src/index/test262_search.js";
 
 // ─── tool result shapes ────────────────────────────────────────────
 
@@ -632,4 +637,23 @@ export async function specCrossrefs(
       }
     },
   });
+}
+
+// ─── test262.search ───────────────────────────────────────────────
+
+export async function test262Search(
+  env: R2Env,
+  args: { query?: string; esid?: string; limit?: number },
+): Promise<Test262SearchResult> {
+  // The Worker reads `test262-index.json` from R2 (uploaded as a
+  // side-index by scripts/upload-r2.ts); the full test sources stay
+  // stdio-only via test262.get. `loadTest262Index` returns r2.ts's
+  // `Test262IndexFile`, whose `tests` is typed `unknown[]`; the bytes
+  // are the indexed front-matter the shared ranker reads, so the cast
+  // is sound.
+  return runTest262Search(
+    args,
+    async () => (await loadTest262Index(env)) as Test262IndexFile | null,
+    "test262 index not present in R2. Upload via the deploy-worker workflow or scripts/upload-r2.ts.",
+  );
 }

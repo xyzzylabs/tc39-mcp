@@ -56,9 +56,9 @@ Transport differences:
   - The stdio server (npx tc39-mcp) exposes all ${TOTAL_TOOL_COUNT} tools.
   - The hosted Cloudflare Worker exposes ${HOSTED_TOOLS.length} of them
     (${HOSTED_TOOLS.join(", ")}). The remaining ${STDIO_ONLY_TOOLS.length}
-    run stdio-only — filesystem / subprocess bound (\`spec.history\` needs
-    a git checkout, the \`test262.*\` tools need the vendored corpus) or
-    not yet ported.
+    run stdio-only — each needs the filesystem or a subprocess the
+    Worker can't provide: \`spec.history\` shells out to git, and
+    \`test262.get\` reads each test's full source from the vendored corpus.
 
 All data is read-only: no tool modifies anything upstream, no tool
 runs user-supplied code. Safe to call freely.
