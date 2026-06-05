@@ -100,7 +100,7 @@ const TOOL_REGISTRY: {
   {
     name: "spec.search",
     description:
-      "Search the parsed spec by clause id / aoid / title. Aoid-exact ranks first. `at: '<sha>'` searches a historical main snapshot.",
+      "Search the parsed spec by clause id / aoid / title (+ step text with `search_steps`). Aoid-exact ranks first. `at: '<sha>'` searches a historical main snapshot.",
     inputSchema: {
       type: "object",
       properties: {
@@ -109,11 +109,12 @@ const TOOL_REGISTRY: {
         edition: { type: "string" },
         at: { type: "string" },
         limit: { type: "number" },
+        search_steps: { type: "boolean" },
       },
       required: ["query"],
     },
     handler: async (env, args) =>
-      specSearch(env, args as { query: string; spec?: string; edition?: string; at?: string; limit?: number }),
+      specSearch(env, args as { query: string; spec?: string; edition?: string; at?: string; limit?: number; search_steps?: boolean }),
   },
   {
     name: "proposal.list",
