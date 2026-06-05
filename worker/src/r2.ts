@@ -110,6 +110,32 @@ async function readTextWithEdgeCache(
 // node:fs transitively via its sibling modules). The shapes are
 // pinned by the JSON contract on disk.
 
+export interface ClauseMeta {
+  id: string;
+  aoid: string | null;
+  title: string;
+  number: string;
+  kind: string;
+}
+
+export interface AlgorithmStep {
+  text: string;
+  substeps: AlgorithmStep[];
+}
+
+export interface Algorithm {
+  steps: AlgorithmStep[];
+  production?: string;
+}
+
+export interface Clause {
+  meta: ClauseMeta;
+  signatureRaw: string | null;
+  algorithms: Algorithm[];
+  notes: { text: string; id?: string; type?: string }[];
+  crossrefs: string[];
+}
+
 export interface ParsedSpec {
   pin: {
     spec: string;
@@ -118,7 +144,7 @@ export interface ParsedSpec {
     fetched_at?: string;
     biblio_commit?: string;
   };
-  clauses: Record<string, unknown>;
+  clauses: Record<string, Clause>;
   tables?: Record<string, unknown>;
   grammar?: unknown[];
 }
