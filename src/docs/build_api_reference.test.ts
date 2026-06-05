@@ -47,7 +47,7 @@ describe("docs/build_api_reference", () => {
 
   describe("readStringConstArrays", () => {
     it("resolves SPEC_VALUES into the literal pair", () => {
-      const map = readStringConstArrays(join(ROOT, "src", "editions.ts"));
+      const map = readStringConstArrays(join(ROOT, "src", "spec", "catalog.ts"));
       expect(map.get("SPEC_VALUES")).toEqual(["262", "402"]);
     });
   });
