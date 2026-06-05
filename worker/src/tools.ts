@@ -33,6 +33,10 @@ import {
   searchClauses,
   type SpecSearchHit,
 } from "../../src/spec/search.js";
+import {
+  filterProposals,
+  type FilterableProposal,
+} from "../../src/index/proposals_filter.js";
 
 async function getSpec(
   env: R2Env,
@@ -217,7 +221,7 @@ export async function specSearch(
 
 export async function proposalList(
   env: R2Env,
-  args: { stage?: string; champion?: string; contains?: string; limit?: number },
+  args: { spec?: string; stage?: string; champion?: string; contains?: string; limit?: number },
 ): Promise<unknown> {
   const idx = await loadProposalsIndex(env);
   if (!idx) {
@@ -229,21 +233,14 @@ export async function proposalList(
     };
   }
   const limit = args.limit ?? 100;
-  const stage = args.stage;
-  const champion = args.champion?.toLowerCase();
-  const contains = args.contains?.toLowerCase();
-  let matches = idx.proposals as { slug: string; name: string; stage: string; champions: string[] }[];
-  if (stage) matches = matches.filter((p) => p.stage === stage);
-  if (champion) {
-    matches = matches.filter((p) =>
-      p.champions.some((c) => c.toLowerCase().includes(champion)),
-    );
-  }
-  if (contains) {
-    matches = matches.filter((p) =>
-      (p.name + " " + p.slug).toLowerCase().includes(contains),
-    );
-  }
+  // Same shared filter the stdio server uses — including `spec`, which
+  // the Worker previously couldn't filter on.
+  const matches = filterProposals(idx.proposals as FilterableProposal[], {
+    spec: args.spec,
+    stage: args.stage,
+    champion: args.champion,
+    contains: args.contains,
+  });
   return {
     source: "index",
     proposals_sha: idx.proposals_sha,
