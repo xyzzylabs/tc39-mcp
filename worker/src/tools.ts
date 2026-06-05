@@ -18,6 +18,7 @@ import {
   listSnapshots,
   type R2Env,
   type ParsedSpec,
+  type Clause,
 } from "./r2.js";
 // Shared, dependency-free spec/edition catalog — the same module the
 // stdio server uses, bundled directly so the two never drift on edition
@@ -37,6 +38,54 @@ import {
   filterProposals,
   type FilterableProposal,
 } from "../../src/index/proposals_filter.js";
+
+// ─── tool result shapes ────────────────────────────────────────────
+
+interface SnapshotInfo {
+  spec: string;
+  edition: string;
+  present: boolean;
+  sha?: string;
+  fetched_at?: string;
+  biblio_commit?: string;
+  clause_count?: number;
+  has_tables?: boolean;
+  has_grammar?: boolean;
+}
+
+interface SpecAboutResult {
+  server: { name: string; version: string };
+  transport: string;
+  backed_by: string;
+  generated_at: string;
+  snapshots: SnapshotInfo[];
+  test262_index?: { test262_sha: string; generated_at: string; test_count: number };
+  proposals_index?: { proposals_sha: string; generated_at: string; proposal_count: number };
+}
+
+interface ClauseListHit {
+  id: string;
+  aoid: string | null;
+  title: string;
+  number: string;
+  kind: string;
+  algorithms: number;
+}
+
+interface ProposalListResult {
+  source: "index" | "none";
+  proposals_sha?: string;
+  total: number;
+  proposals: FilterableProposal[];
+  hint?: string;
+}
+
+interface ProposalGetResult {
+  source: "index" | "none";
+  proposals_sha?: string;
+  proposal: FilterableProposal | null;
+  hint?: string;
+}
 
 async function getSpec(
   env: R2Env,
@@ -73,9 +122,9 @@ async function getSpec(
 export async function specAbout(
   env: R2Env,
   serverVersion: string,
-): Promise<unknown> {
+): Promise<SpecAboutResult> {
   const present = new Set(await listSnapshots(env));
-  const snapshots: Record<string, unknown>[] = [];
+  const snapshots: SnapshotInfo[] = [];
   for (const spec of ["262", "402"] as const) {
     const eds = [...RELEASED_262_EDITIONS, "main"];
     for (const ed of eds) {
@@ -138,7 +187,7 @@ export async function specAbout(
 export async function clauseGet(
   env: R2Env,
   args: { id: string; spec?: string; edition?: string; at?: string },
-): Promise<unknown> {
+): Promise<Clause | null> {
   const p = await getSpec(
     env,
     args.spec ?? "262",
@@ -161,7 +210,7 @@ export async function clauseList(
     has_algorithm?: boolean;
     limit?: number;
   },
-): Promise<unknown> {
+): Promise<{ hits: ClauseListHit[] }> {
   const limit = args.limit ?? 200;
   const p = await getSpec(
     env,
@@ -169,7 +218,7 @@ export async function clauseList(
     args.edition ?? "latest",
     args.at,
   );
-  const hits: unknown[] = [];
+  const hits: ClauseListHit[] = [];
   for (const [id, c] of Object.entries(p.clauses)) {
     if (args.kind && c.meta.kind !== args.kind) continue;
     if (args.section && !(c.meta.number ?? "").startsWith(args.section)) continue;
@@ -222,7 +271,7 @@ export async function specSearch(
 export async function proposalList(
   env: R2Env,
   args: { spec?: string; stage?: string; champion?: string; contains?: string; limit?: number },
-): Promise<unknown> {
+): Promise<ProposalListResult> {
   const idx = await loadProposalsIndex(env);
   if (!idx) {
     return {
@@ -252,12 +301,12 @@ export async function proposalList(
 export async function proposalGet(
   env: R2Env,
   args: { name: string },
-): Promise<unknown> {
+): Promise<ProposalGetResult> {
   const idx = await loadProposalsIndex(env);
   if (!idx) {
     return { source: "none", proposal: null, hint: "Proposals index not present in R2." };
   }
-  const ps = idx.proposals as { slug: string; name: string }[];
+  const ps = idx.proposals as FilterableProposal[];
   const bySlug = ps.find((p) => p.slug === args.name);
   if (bySlug) return { source: "index", proposals_sha: idx.proposals_sha, proposal: bySlug };
   const lc = args.name.toLowerCase();
