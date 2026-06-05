@@ -238,9 +238,9 @@ export async function loadParsedSpec(
 }
 
 /** Full-parse a live snapshot WITHOUT touching the per-isolate LRU.
- *  `spec.about`'s introspection scan reads every present snapshot just
- *  to report `clause_count` / `has_tables` / `has_grammar`. Routing
- *  those parses through `loadParsedSpec` would thrash `specCache`
+ *  The introspection scans — `spec.about`, and `spec.snapshots` via
+ *  `readSnapshotPin` — read every present snapshot to report metadata.
+ *  Routing those parses through `loadParsedSpec` would thrash `specCache`
  *  (capacity 4) against the ~24 (spec, edition) pairs: every load
  *  evicts a hot entry, so a single scan can drop a concurrent caller's
  *  parsed `262/main` + `402/main` and force them to re-load. This still
@@ -263,24 +263,18 @@ export async function loadParsedSpecUncached(
   return JSON.parse(text) as ParsedSpec;
 }
 
-/** Read just the `pin` block of a snapshot WITHOUT populating the
- *  parsed-spec LRU. Parses the full JSON (no streaming parser is
- *  available) but lets it go straight out of scope — the same
- *  parse-and-discard the stdio server uses for `spec.snapshots`, so a
- *  snapshot scan can't evict the hot `clause.get` / `spec.search`
- *  entries in `specCache`. Returns `null` when the object is missing or
- *  unparseable. */
+/** Read just the `pin` block of a live snapshot without populating the
+ *  parsed-spec LRU — a thin wrapper over `loadParsedSpecUncached` that
+ *  extracts the pin and maps a missing / unparseable object to `null`
+ *  instead of throwing. Used by `spec.snapshots`, which only ever
+ *  enumerates live keys. */
 export async function readSnapshotPin(
   env: R2Env,
   spec: string,
   edition: string,
-  at?: string,
 ): Promise<ParsedSpec["pin"] | null> {
-  const key = specKey(spec, edition, at);
-  const text = await readTextWithEdgeCache(env, key);
-  if (text === null) return null;
   try {
-    return (JSON.parse(text) as ParsedSpec).pin ?? null;
+    return (await loadParsedSpecUncached(env, spec, edition)).pin ?? null;
   } catch {
     return null;
   }
