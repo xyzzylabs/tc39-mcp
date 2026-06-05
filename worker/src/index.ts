@@ -14,9 +14,11 @@
 import {
   clauseGet,
   clauseList,
+  clauseOutline,
   proposalGet,
   proposalList,
   specAbout,
+  specGlobalSearch,
   specGrammar,
   specSdoIndex,
   specSearch,
@@ -223,6 +225,44 @@ const TOOL_REGISTRY: {
           edition?: string;
           limit?: number;
         },
+      ),
+  },
+  {
+    name: "clause.outline",
+    description:
+      "Return the section tree (table of contents) for a parsed (spec, edition). `depth` caps how deep the tree descends (1 = top-level only); `under` limits the tree to descendants of one clause id.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        depth: { type: "number" },
+        under: { type: "string" },
+      },
+    },
+    handler: async (env, args) =>
+      clauseOutline(
+        env,
+        args as { spec?: string; edition?: string; depth?: number; under?: string },
+      ),
+  },
+  {
+    name: "spec.global_search",
+    description:
+      "Run spec.search across both ECMA-262 and ECMA-402 in one call and interleave hits by score. Each hit is tagged with the spec it came from. Use it when you don't know which spec defines a symbol. `search_steps` also matches algorithm step text.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        search_steps: { type: "boolean" },
+        limit: { type: "number" },
+      },
+      required: ["query"],
+    },
+    handler: async (env, args) =>
+      specGlobalSearch(
+        env,
+        args as { query: string; search_steps?: boolean; limit?: number },
       ),
   },
 ];

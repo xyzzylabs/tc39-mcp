@@ -126,9 +126,10 @@ freshness contract is in-band.
 
 A minimal Worker lives in [`worker/`](https://github.com/xyzzylabs/tc39-mcp/tree/main/worker) that speaks MCP's
 JSON-RPC over HTTP, reads parsed JSONs from a bound R2 bucket, and
-ships **9 tools** (`spec.about`, `clause.get`, `clause.list`,
+ships **11 tools** (`spec.about`, `clause.get`, `clause.list`,
 `spec.search`, `proposal.list`, `proposal.get`, `spec.grammar`,
-`spec.tables`, `spec.sdo_index`). The bundled Worker gzips to **~8 KB**.
+`spec.tables`, `spec.sdo_index`, `clause.outline`,
+`spec.global_search`). The bundled Worker gzips to **~8 KB**.
 
 The same Worker also serves the **documentation site** as static
 assets (Cloudflare Workers Assets). One origin, one deploy, one URL
@@ -392,14 +393,15 @@ The model favors simplicity; these are tradeoffs, not correctness gaps:
 ### Which tools run stdio-only?
 
 The stdio server exposes all 19 tools; the hosted Worker currently
-ships 9 — the six core lookup tools plus `spec.grammar`, `spec.tables`,
-and `spec.sdo_index`. The other 10 fall into two buckets:
+ships 11 — the six core lookup tools plus `spec.grammar`,
+`spec.tables`, `spec.sdo_index`, `clause.outline`, and
+`spec.global_search`. The other 8 fall into two buckets:
 
 | Excluded tool | Reason |
 |---|---|
 | `spec.history` | Shells out to `git log` against a vendored checkout; no FS or subprocess on Workers. |
 | `test262.get` | Reads test sources from `vendor/test262/`; the full corpus isn't in R2 and Workers have no FS. |
-| `spec.crossrefs`, `spec.diff`, `spec.global_search`, `spec.symbol_resolve`, `spec.well_known_intrinsics`, `clause.outline`, `spec.snapshots`, `test262.search` | Pure functions over data the Worker already loads from R2; being brought to the Worker incrementally (`spec.grammar`, `spec.tables`, `spec.sdo_index` already shipped). |
+| `spec.crossrefs`, `spec.diff`, `spec.symbol_resolve`, `spec.well_known_intrinsics`, `spec.snapshots`, `test262.search` | Pure functions over data the Worker already loads from R2; being brought to the Worker incrementally (`spec.grammar`, `spec.tables`, `spec.sdo_index`, `clause.outline`, `spec.global_search` already shipped). |
 
 ### Performance baseline
 

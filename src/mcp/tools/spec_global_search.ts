@@ -6,12 +6,14 @@
 // for (e.g. `Canonicalize` lives in 262, `CanonicalizeLocaleList`
 // lives in 402 — global search returns both in score order).
 //
-// This is a thin wrapper over `specSearch`; the ranking model is
-// identical. The only added behavior is interleaving the two specs'
-// results by score and tagging each row.
+// The ranking + interleaving lives in `src/spec/global_search.ts`
+// (built on the shared single-spec ranker) so the stdio server and the
+// Cloudflare Worker rank a cross-spec query identically.
 
 import { z } from "zod";
-import { specSearch, type SpecSearchHit } from "./spec_search.js";
+import { loadSpec } from "./clause.js";
+import { searchAcrossSpecs } from "../../spec/global_search.js";
+import { type SpecSearchHit } from "../../spec/search.js";
 import { SPEC_VALUES, type Spec } from "../../editions.js";
 
 export const specGlobalSearchSchema = {
@@ -54,38 +56,23 @@ export async function specGlobalSearch(args: {
   search_steps?: boolean;
   limit?: number;
 }): Promise<GlobalSearchHit[]> {
-  const limit = args.limit ?? 20;
-  const search_steps = args.search_steps ?? false;
-  const all: GlobalSearchHit[] = [];
-
-  // Per-spec searches use each spec's `latest` resolution (which is
-  // spec-aware: es2026 for both specs). Limit per-spec to
-  // `limit` so an over-saturated 262 can't shut 402 out completely;
-  // we re-trim after interleaving. The two specs are loaded in
-  // parallel so the cold path doesn't pay 2× the snapshot latency.
-  const perSpec = await Promise.all(
+  // Load both specs at their own `latest` in parallel so the cold path
+  // doesn't pay 2× the snapshot latency. A spec whose parsed JSON is
+  // missing locally is skipped rather than crashing the whole call.
+  const loaded = await Promise.all(
     SPEC_VALUES.map(async (spec) => {
       try {
-        const hits = await specSearch({
-          query: args.query,
-          spec,
-          edition: "latest",
-          search_steps,
-          limit,
-        });
-        return hits.map((h) => ({ ...h, spec }));
+        const parsed = await loadSpec(spec, "latest");
+        return { spec, clauses: parsed.clauses };
       } catch {
-        // Parsed JSON for one spec might be missing locally; skip it
-        // rather than crash the whole call.
-        return [] as GlobalSearchHit[];
+        return null;
       }
     }),
   );
-  for (const hits of perSpec) all.push(...hits);
-
-  // Sort by score desc, then by section number (ascending). Score
-  // dominates so cross-spec interleaving is rank-based, not
-  // alphabetic-by-spec.
-  all.sort((a, b) => b.score - a.score || a.number.localeCompare(b.number));
-  return all.slice(0, limit);
+  const inputs = loaded.filter((x): x is NonNullable<typeof x> => x !== null);
+  return searchAcrossSpecs(inputs, {
+    query: args.query,
+    searchSteps: args.search_steps,
+    limit: args.limit,
+  }) as GlobalSearchHit[];
 }
