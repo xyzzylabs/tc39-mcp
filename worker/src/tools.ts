@@ -647,9 +647,10 @@ export async function test262Search(
 ): Promise<Test262SearchResult> {
   // The Worker reads `test262-index.json` from R2 (uploaded as a
   // side-index by scripts/upload-r2.ts); the full test sources stay
-  // stdio-only via test262.get. `loadTest262Index` types `tests` as
-  // `unknown[]`; the bytes are the indexed front-matter the shared
-  // ranker reads.
+  // stdio-only via test262.get. `loadTest262Index` returns r2.ts's
+  // `Test262IndexFile`, whose `tests` is typed `unknown[]`; the bytes
+  // are the indexed front-matter the shared ranker reads, so the cast
+  // is sound.
   return runTest262Search(
     args,
     async () => (await loadTest262Index(env)) as Test262IndexFile | null,
