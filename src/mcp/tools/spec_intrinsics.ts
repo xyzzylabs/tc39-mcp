@@ -14,18 +14,21 @@
 //      + step text for `%X%` notation and ranking by occurrence + a
 //      title-substring heuristic.
 //
-// Either way, each hit carries `source: "table" | "heuristic"` so
-// callers can tell which path produced it.
+// Either way, each hit carries `defining_clause.matched_on` so callers
+// can tell which path produced it. The resolution logic lives in
+// `src/spec/intrinsics.ts` so the stdio server and the Cloudflare Worker
+// enumerate intrinsics identically.
 
 import { z } from "zod";
 import { specArg, editionArg } from "../_args.js";
 import { loadSpec } from "./clause.js";
-import { flatClauseText } from "../../parser/walk.js";
-import type { ParsedSpec, SpecTable } from "../../parser/schema.js";
+import { wellKnownIntrinsics } from "../../spec/intrinsics.js";
 import {
   type Edition,
   type Spec,
 } from "../../editions.js";
+
+const WKI_TABLE_ID = "table-well-known-intrinsic-objects";
 
 export const specIntrinsicsSchema = {
   spec: specArg,
@@ -98,194 +101,6 @@ export interface IntrinsicsResult {
   hits: IntrinsicHit[];
 }
 
-const INTRINSIC_RE = /%([A-Za-z0-9_$.%]+?)%/g;
-const WKI_TABLE_ID = "table-well-known-intrinsic-objects";
-
-// ─── table-driven path ─────────────────────────────────────────────
-
-/** Drive the result from the structured WKI table. For each row, find
- *  the clause that defines that intrinsic by matching either:
- *    a) a clause titled with `%Name%` literally, or
- *    b) a clause titled with the bare name + an "intrinsic verb"
- *       (Constructor / Object / Function), or
- *    c) the global name from the row (e.g. `Array` → "Array").
- *
- *  Falls back to `defining_clause: null` when nothing matches — the
- *  table tells the caller what the intrinsic is even without the
- *  clause pointer. */
-function fromTable(
-  parsed: ParsedSpec,
-  table: SpecTable,
-  filter: string | undefined,
-  limit: number,
-): IntrinsicHit[] {
-  const hits: IntrinsicHit[] = [];
-  // Pre-index clauses by title for cheap lookup.
-  const byTitle = new Map<string, { id: string; title: string; number: string }>();
-  for (const [id, c] of Object.entries(parsed.clauses)) {
-    const title = c.meta.title ?? "";
-    if (!title) continue;
-    // Multiple clauses can share a title (e.g. forwarders); keep the
-    // first, which is usually the canonical definition by section order.
-    if (!byTitle.has(title)) {
-      byTitle.set(title, { id, title, number: c.meta.number ?? "" });
-    }
-  }
-
-  for (const row of table.rows) {
-    const intrinsic = row[0] ?? "";
-    const globalName = row[1] ?? "";
-    const association = row[2] ?? "";
-    // The "Intrinsic Name" column carries the `%Name%` form. Strip
-    // the percent signs to get the bare name.
-    const m = /^%([^%]+)%/.exec(intrinsic);
-    if (!m) continue;
-    const name = m[1]!;
-    if (filter && !name.toLowerCase().includes(filter)) continue;
-
-    let defining: IntrinsicHit["defining_clause"] = null;
-
-    // (a) title literally contains `%Name%` — strongest match
-    for (const [title, info] of byTitle) {
-      if (title.includes(intrinsic)) {
-        defining = { ...info, matched_on: "title-literal" };
-        break;
-      }
-    }
-
-    // (b) "The X Constructor" / "The X Object" — canonical defining
-    //     pattern. Tried before generic bare-name substring so
-    //     "%Array%" lands on "The Array Constructor" rather than
-    //     "IsArray ( argument )".
-    if (!defining) {
-      const canonicalShapes = [
-        `The ${name} Constructor`,
-        `The ${name} Object`,
-        `The ${name} Function`,
-      ];
-      outer: for (const [title, info] of byTitle) {
-        for (const shape of canonicalShapes) {
-          if (title.includes(shape)) {
-            defining = { ...info, matched_on: "table-row" };
-            break outer;
-          }
-        }
-      }
-    }
-
-    // (c) global-name match (e.g. globalName=`Array` → title === "Array")
-    if (!defining && globalName) {
-      const bare = globalName.replace(/`/g, "").trim();
-      if (bare) {
-        for (const [title, info] of byTitle) {
-          if (title === bare) {
-            defining = { ...info, matched_on: "table-row" };
-            break;
-          }
-        }
-      }
-    }
-
-    // (d) bare-name substring as last resort — kept honest by the
-    //     `matched_on` label so callers can downweight it
-    if (!defining) {
-      // Require word-boundary so "Array" doesn't hit "IsArray".
-      const wbRe = new RegExp(`\\b${name.replace(/[.$+()[\]{}|^?*\\]/g, "\\$&")}\\b`);
-      for (const [title, info] of byTitle) {
-        if (wbRe.test(title)) {
-          defining = { ...info, matched_on: "title-bare" };
-          break;
-        }
-      }
-    }
-    hits.push({
-      name,
-      ...(globalName ? { global_name: globalName } : {}),
-      ...(association ? { association } : {}),
-      defining_clause: defining,
-    });
-    if (hits.length >= limit) break;
-  }
-  return hits;
-}
-
-// ─── heuristic fallback path ───────────────────────────────────────
-
-function fromHeuristic(
-  parsed: ParsedSpec,
-  filter: string | undefined,
-  limit: number,
-): IntrinsicHit[] {
-  type Acc = { name: string; mentions: number; perClause: Map<string, number> };
-  const accs = new Map<string, Acc>();
-
-  for (const [id, c] of Object.entries(parsed.clauses)) {
-    const text = flatClauseText(c);
-    INTRINSIC_RE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    const seenInThisClause = new Map<string, number>();
-    while ((m = INTRINSIC_RE.exec(text)) !== null) {
-      const name = m[1]!;
-      if (!name || /^[%.]+$/.test(name)) continue;
-      seenInThisClause.set(name, (seenInThisClause.get(name) ?? 0) + 1);
-    }
-    for (const [name, count] of seenInThisClause) {
-      if (!accs.has(name)) {
-        accs.set(name, { name, mentions: 0, perClause: new Map() });
-      }
-      const acc = accs.get(name)!;
-      acc.mentions += count;
-      acc.perClause.set(id, count);
-    }
-  }
-
-  const hits: IntrinsicHit[] = [];
-  for (const acc of accs.values()) {
-    if (filter && !acc.name.toLowerCase().includes(filter)) continue;
-    const literal = `%${acc.name}%`;
-    let defining: IntrinsicHit["defining_clause"] = null;
-    let titleLiteral: { id: string; title: string; number: string } | null = null;
-    let titleBare: { id: string; title: string; number: string } | null = null;
-    let mostMentions: { id: string; title: string; number: string; n: number } = {
-      id: "",
-      title: "",
-      number: "",
-      n: 0,
-    };
-    for (const [id, count] of acc.perClause) {
-      const c = parsed.clauses[id];
-      if (!c) continue;
-      const t = c.meta.title ?? "";
-      if (!titleLiteral && t.includes(literal)) {
-        titleLiteral = { id, title: t, number: c.meta.number ?? "" };
-      }
-      if (!titleBare && t.includes(acc.name)) {
-        titleBare = { id, title: t, number: c.meta.number ?? "" };
-      }
-      if (count > mostMentions.n) {
-        mostMentions = { id, title: t, number: c.meta.number ?? "", n: count };
-      }
-    }
-    if (titleLiteral) {
-      defining = { ...titleLiteral, matched_on: "title-literal" };
-    } else if (titleBare) {
-      defining = { ...titleBare, matched_on: "title-bare" };
-    } else if (mostMentions.id) {
-      const { id, title, number } = mostMentions;
-      defining = { id, title, number, matched_on: "most-mentions" };
-    }
-    hits.push({
-      name: acc.name,
-      mention_count: acc.mentions,
-      defining_clause: defining,
-    });
-  }
-  hits.sort((a, b) => (b.mention_count ?? 0) - (a.mention_count ?? 0) || a.name.localeCompare(b.name));
-  return hits.slice(0, limit);
-}
-
-// ─── public entry ──────────────────────────────────────────────────
-
 export async function specIntrinsics(args: {
   spec?: Spec;
   edition?: Edition;
@@ -293,27 +108,10 @@ export async function specIntrinsics(args: {
   limit?: number;
 }): Promise<IntrinsicsResult> {
   const spec = args.spec ?? "262";
-  const parsed: ParsedSpec = await loadSpec(spec, args.edition ?? "latest");
-  const filter = args.filter?.toLowerCase();
-  const limit = args.limit ?? 100;
-
-  const table = parsed.tables?.[WKI_TABLE_ID];
-  if (table && table.rows.length > 0) {
-    return {
-      spec,
-      source: "table",
-      hint:
-        "Hits driven from the canonical Well-Known Intrinsic Objects table (§6.1.7.4 in ECMA-262). Each row carries the global name + ECMAScript-language association; defining_clause is the parsed clause matched against the row, when one exists.",
-      hits: fromTable(parsed, table, filter, limit),
-    };
-  }
-
-  return {
-    spec,
-    source: "heuristic",
-    hint:
-      "No structured WKI table available for this (spec, edition). Hits come from scanning prose for `%X%` notation; defining_clause uses a title-substring heuristic. See `matched_on` per hit for confidence.",
-    hits: fromHeuristic(parsed, filter, limit),
-  };
+  const parsed = await loadSpec(spec, args.edition ?? "latest");
+  const core = wellKnownIntrinsics(parsed.clauses, parsed.tables?.[WKI_TABLE_ID], {
+    filter: args.filter,
+    limit: args.limit,
+  });
+  return { spec, ...core };
 }
-

@@ -2,10 +2,18 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   clauseGet,
   clauseList,
+  clauseOutline,
   proposalGet,
   proposalList,
   specAbout,
+  specGlobalSearch,
+  specGrammar,
+  specSdoIndex,
   specSearch,
+  specSnapshots,
+  specSymbolResolve,
+  specTables,
+  specWellKnownIntrinsics,
 } from "./tools.js";
 import { __resetCachesForTests } from "./r2.js";
 import { RELEASED_262_EDITIONS } from "../../src/spec/catalog.js";
@@ -531,5 +539,431 @@ describe("proposalGet", () => {
       proposal: unknown;
     };
     expect(r.proposal).toBeNull();
+  });
+});
+
+// ─── specGrammar ──────────────────────────────────────────────────
+
+describe("specGrammar", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          grammar: [
+            { nonterminal: "Statement", rhs: ["BlockStatement"], clause_id: "sec-statements" },
+            {
+              nonterminal: "BindingIdentifier",
+              parameters: ["Yield"],
+              rhs: ["Identifier", "yield"],
+              clause_id: "sec-identifiers",
+            },
+            { nonterminal: "SdoAttached", rhs: ["x"], standalone: false },
+          ],
+        }),
+      },
+    }),
+  });
+
+  it("lists standalone non-terminals by default and echoes spec", async () => {
+    const r = await specGrammar(env(), {});
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.spec).toBe("262");
+    expect(r.total).toBe(2); // SdoAttached excluded (standalone:false)
+  });
+
+  it("returns productions for a non-terminal", async () => {
+    const r = await specGrammar(env(), { nonterminal: "BindingIdentifier" });
+    if (r.mode !== "by_nonterminal") throw new Error("expected by_nonterminal");
+    expect(r.productions[0]!.nonterminal).toBe("BindingIdentifier");
+  });
+
+  it("filters by RHS substring with contains", async () => {
+    const r = await specGrammar(env(), { contains: "yield" });
+    if (r.mode !== "contains") throw new Error("expected contains mode");
+    expect(r.total).toBe(1);
+  });
+
+  it("returns an empty list when the snapshot predates grammar extraction", async () => {
+    // An old snapshot may have no `grammar` key at all; the `?? []` guard
+    // must keep it from throwing.
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": JSON.stringify({
+            pin: { spec: "262", edition: "es2026", sha: "x" },
+            clauses: {},
+          }),
+        },
+      }),
+    };
+    const r = await specGrammar(env, {});
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.total).toBe(0);
+  });
+});
+
+// ─── specTables ───────────────────────────────────────────────────
+
+describe("specTables", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          tables: {
+            "table-wki": {
+              id: "table-wki",
+              caption: "Well-Known Intrinsic Objects",
+              columns: ["Name"],
+              rows: [["%Array%"], ["%Object%"]],
+            },
+            "table-locale": {
+              id: "table-locale",
+              caption: "Locale Data",
+              columns: ["Key"],
+              rows: [["nu"]],
+            },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("fetches a table by id", async () => {
+    const r = await specTables(env(), { id: "table-wki" });
+    if (r.mode !== "get") throw new Error("expected get mode");
+    expect(r.spec).toBe("262");
+    expect(r.table!.rows.length).toBe(2);
+  });
+
+  it("lists tables when no id is given", async () => {
+    const r = await specTables(env(), {});
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.total).toBe(2);
+  });
+
+  it("filters the list by caption substring", async () => {
+    const r = await specTables(env(), { filter: "locale" });
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.total).toBe(1);
+    expect(r.tables[0]!.id).toBe("table-locale");
+  });
+
+  it("returns an empty list when the snapshot predates table extraction", async () => {
+    // An old snapshot may have no `tables` key at all; the `?? {}` guard
+    // must keep it from throwing.
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": JSON.stringify({
+            pin: { spec: "262", edition: "es2026", sha: "x" },
+            clauses: {},
+          }),
+        },
+      }),
+    };
+    const r = await specTables(env, {});
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.total).toBe(0);
+  });
+});
+
+// ─── specSdoIndex ─────────────────────────────────────────────────
+
+describe("specSdoIndex", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          clauses: {
+            "sec-eval-a": {
+              id: "sec-eval-a",
+              title: "Evaluation",
+              algorithms: [{ production: "BindingIdentifier : Identifier" }],
+            },
+            "sec-eval-b": {
+              id: "sec-eval-b",
+              title: "Evaluation",
+              algorithms: [{ production: "Statement : BlockStatement" }],
+            },
+            "sec-prose": { id: "sec-prose", title: "Prose" },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("indexes by production by default", async () => {
+    const r = await specSdoIndex(env(), {});
+    expect(r.spec).toBe("262");
+    expect(r.by).toBe("production");
+    expect(r.pair_count).toBe(2); // sec-prose has no production
+    expect(r.group_count).toBe(2);
+  });
+
+  it("indexes by sdo title", async () => {
+    const r = await specSdoIndex(env(), { by: "sdo" });
+    expect(r.by).toBe("sdo");
+    expect(r.groups["Evaluation"]!.length).toBe(2);
+  });
+});
+
+// ─── clauseOutline ────────────────────────────────────────────────
+
+describe("clauseOutline", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          clauses: {
+            "sec-7": { id: "sec-7", title: "Abstract Operations", number: "7" },
+            "sec-7-1": { id: "sec-7-1", title: "Type Conversion", number: "7.1" },
+            "sec-7-1-4": { id: "sec-7-1-4", title: "ToNumber", number: "7.1.4" },
+            "sec-8": { id: "sec-8", title: "Executable Code", number: "8" },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("builds the full section tree and echoes spec", async () => {
+    const r = await clauseOutline(env(), {});
+    expect(r.spec).toBe("262");
+    expect(r.node_count).toBe(4);
+    expect(r.roots.map((n) => n.number)).toEqual(["7", "8"]);
+    const seven = r.roots.find((n) => n.number === "7")!;
+    expect(seven.children[0]!.number).toBe("7.1");
+  });
+
+  it("respects depth", async () => {
+    const r = await clauseOutline(env(), { depth: 1 });
+    expect(r.node_count).toBe(2); // 7, 8 only
+  });
+
+  it("scopes to a clause with under", async () => {
+    const r = await clauseOutline(env(), { under: "sec-7" });
+    expect(r.roots.map((n) => n.number)).toEqual(["7.1"]);
+    expect(r.node_count).toBe(2); // 7.1, 7.1.4
+  });
+});
+
+// ─── specGlobalSearch ─────────────────────────────────────────────
+
+describe("specGlobalSearch", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          clauses: {
+            "sec-canon": { id: "sec-canon", aoid: "Canonicalize", title: "Canonicalize ( ch )" },
+          },
+        }),
+        "spec-402-es2026.json": fakeSpecJson({
+          spec: "402",
+          edition: "es2026",
+          clauses: {
+            "sec-canon-locale": {
+              id: "sec-canon-locale",
+              aoid: "CanonicalizeLocaleList",
+              title: "CanonicalizeLocaleList ( locales )",
+            },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("returns hits from both specs, tagged and ranked by score", async () => {
+    const hits = await specGlobalSearch(env(), { query: "Canonicalize" });
+    expect(hits.map((h) => h.spec).sort()).toEqual(["262", "402"]);
+    // 262 Canonicalize is aoid-exact (score 100) → ranks first.
+    expect(hits[0]!.spec).toBe("262");
+    expect(hits[0]!.score).toBe(100);
+  });
+
+  it("skips a spec whose snapshot is missing rather than failing", async () => {
+    const env262Only = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": fakeSpecJson({
+            spec: "262",
+            edition: "es2026",
+            clauses: {
+              "sec-canon": { id: "sec-canon", aoid: "Canonicalize", title: "Canonicalize ( ch )" },
+            },
+          }),
+        },
+      }),
+    };
+    const hits = await specGlobalSearch(env262Only, { query: "Canonicalize" });
+    expect(hits.length).toBe(1);
+    expect(hits[0]!.spec).toBe("262");
+  });
+});
+
+// ─── specSnapshots ────────────────────────────────────────────────
+
+describe("specSnapshots", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({ spec: "262", edition: "es2026", sha: "abc262" }),
+        "spec-262-main.json": fakeSpecJson({ spec: "262", edition: "main", sha: "main262" }),
+        "spec-402-es2026.json": fakeSpecJson({ spec: "402", edition: "es2026", sha: "abc402" }),
+        // Historical SHA-pinned copy — must NOT be enumerated.
+        "spec-262-main-abc1234567.json": fakeSpecJson({ spec: "262", edition: "main", sha: "old262" }),
+      },
+    }),
+  });
+
+  it("lists live snapshots with pin metadata, sorted, skipping historical pins", async () => {
+    const r = await specSnapshots(env(), {});
+    expect(r.snapshots.length).toBe(3); // the -abc1234567 historical pin is skipped
+    expect(r.snapshots.every((s) => s.live)).toBe(true);
+    expect(r.snapshots.map((s) => `${s.spec}/${s.edition}`)).toEqual([
+      "262/es2026",
+      "262/main",
+      "402/es2026",
+    ]);
+    expect(r.snapshots[0]!.sha).toBe("abc262");
+  });
+
+  it("filters by spec and echoes the filter", async () => {
+    const r = await specSnapshots(env(), { spec: "402" });
+    expect(r.spec_filter).toBe("402");
+    expect(r.snapshots.map((s) => s.spec)).toEqual(["402"]);
+  });
+
+  it("filters by edition and echoes the filter", async () => {
+    const r = await specSnapshots(env(), { edition: "es2026" });
+    expect(r.edition_filter).toBe("es2026");
+    expect(r.snapshots.map((s) => `${s.spec}/${s.edition}`)).toEqual([
+      "262/es2026",
+      "402/es2026",
+    ]);
+  });
+
+  it("returns empty snapshots when R2 is empty", async () => {
+    const r = await specSnapshots({ SPECS: createFakeR2() }, {});
+    expect(r.snapshots).toEqual([]);
+  });
+
+  it("skips a snapshot whose pin has no sha", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-main.json": fakeSpecJson({ spec: "262", edition: "main", sha: "good" }),
+          // A pin with no `sha` must be skipped, not emitted as a row
+          // with sha: undefined.
+          "spec-402-main.json": JSON.stringify({
+            pin: { spec: "402", edition: "main" },
+            clauses: {},
+          }),
+        },
+      }),
+    };
+    const r = await specSnapshots(env, {});
+    expect(r.snapshots.map((s) => `${s.spec}/${s.edition}`)).toEqual(["262/main"]);
+  });
+});
+
+// ─── specSymbolResolve ────────────────────────────────────────────
+
+describe("specSymbolResolve", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          clauses: {
+            "sec-proto": {
+              id: "sec-proto",
+              title: "Object Type",
+              number: "6.1.7",
+              algorithms: [{ steps: [{ text: "The [[Prototype]] internal slot." }] }],
+            },
+            "sec-unrelated": { id: "sec-unrelated", title: "ToString", number: "7.1.17" },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("classifies + resolves a notation, echoing notation/kind/name", async () => {
+    const r = await specSymbolResolve(env(), { notation: "[[Prototype]]" });
+    expect(r.notation).toBe("[[Prototype]]");
+    expect(r.kind).toBe("internal-slot");
+    expect(r.name).toBe("Prototype");
+    expect(r.hits[0]!.id).toBe("sec-proto");
+    expect(r.hits[0]!.match_count).toBe(1);
+    expect(r.hits.map((h) => h.id)).not.toContain("sec-unrelated");
+  });
+});
+
+// ─── specWellKnownIntrinsics ──────────────────────────────────────
+
+describe("specWellKnownIntrinsics", () => {
+  it("drives from the WKI table when present", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": fakeSpecJson({
+            spec: "262",
+            edition: "es2026",
+            clauses: {
+              "sec-array-ctor": { id: "sec-array-ctor", title: "The Array Constructor", number: "23.1.1" },
+            },
+            tables: {
+              "table-well-known-intrinsic-objects": {
+                id: "table-well-known-intrinsic-objects",
+                caption: "Well-Known Intrinsic Objects",
+                columns: ["Intrinsic Name", "Global Name", "ECMAScript Language Association"],
+                rows: [["%Array%", "Array", "The Array constructor"]],
+              },
+            },
+          }),
+        },
+      }),
+    };
+    const r = await specWellKnownIntrinsics(env, {});
+    expect(r.spec).toBe("262");
+    expect(r.source).toBe("table");
+    expect(r.hits.find((h) => h.name === "Array")!.defining_clause?.id).toBe("sec-array-ctor");
+  });
+
+  it("falls back to a heuristic %X% scan when there's no table", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-402-es2026.json": fakeSpecJson({
+            spec: "402",
+            edition: "es2026",
+            clauses: {
+              "sec-x": {
+                id: "sec-x",
+                title: "Some Clause",
+                number: "1.1",
+                algorithms: [
+                  { steps: [{ text: "Mentions %Array.prototype% twice: %Array.prototype%." }] },
+                ],
+              },
+            },
+          }),
+        },
+      }),
+    };
+    const r = await specWellKnownIntrinsics(env, { spec: "402" });
+    expect(r.source).toBe("heuristic");
+    expect(r.hits.find((h) => h.name === "Array.prototype")!.mention_count).toBe(2);
   });
 });

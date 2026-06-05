@@ -12,6 +12,9 @@
 //   - id="table-well-known-symbols" → Symbol.x values.
 //   - filter="completion record" → tables describing completion fields.
 //   - filter="locale" (on spec=402) → locale data tables.
+//
+// The query logic lives in `src/spec/tables_query.ts` so the stdio
+// server and the Cloudflare Worker answer it identically.
 
 import { z } from "zod";
 import { specArg, editionArg } from "../_args.js";
@@ -20,7 +23,13 @@ import {
   type Edition,
   type Spec,
 } from "../../editions.js";
-import type { SpecTable } from "../../parser/schema.js";
+import {
+  queryTables,
+  type TablesQueryResult,
+  type TableSummary,
+} from "../../spec/tables_query.js";
+
+export type { TableSummary };
 
 export const specTablesSchema = {
   id: z
@@ -57,44 +66,9 @@ export const specTablesExamples = [
   },
 ] as const;
 
-/** Lightweight `<emu-table>` summary row returned in list mode. */
-export interface TableSummary {
-  /** Verbatim `id="..."` attribute of the `<emu-table>` element. */
-  id: string;
-  /** Caption text (from `<emu-caption>` or the `caption` attribute). */
-  caption: string;
-  /** `<th>` column headers in document order. Empty if the table has
-   *  no header row. */
-  columns: string[];
-  /** Number of body rows in the table. */
-  row_count: number;
-  /** The clause id that contains this table, if any. */
-  clause_id?: string;
-}
-
-/** Output of `spec.tables`. Two discriminated variants:
- *
- *  - `get`  — full structured table (or `null` when not found).
- *  - `list` — summary rows, optionally filtered. */
-export type SpecTablesResult =
-  | {
-      /** Returned when the `id` arg was set. */
-      mode: "get";
-      /** Which TC39 spec the table came from. */
-      spec: Spec;
-      /** Full table object, or `null` when the id doesn't match. */
-      table: SpecTable | null;
-    }
-  | {
-      /** Returned when the `id` arg was omitted. */
-      mode: "list";
-      /** Which TC39 spec the listing came from. */
-      spec: Spec;
-      /** Total tables matching the `filter` before the `limit` cap. */
-      total: number;
-      /** Table summaries, capped at `limit`. */
-      tables: TableSummary[];
-    };
+/** Output of `spec.tables`: the shared tables-query result plus which
+ *  TC39 spec it was drawn from. */
+export type SpecTablesResult = { spec: Spec } & TablesQueryResult;
 
 export async function specTables(args: {
   id?: string;
@@ -105,33 +79,10 @@ export async function specTables(args: {
 }): Promise<SpecTablesResult> {
   const spec = args.spec ?? "262";
   const parsed = await loadSpec(spec, args.edition ?? "latest");
-  const all = parsed.tables ?? {};
-
-  if (args.id) {
-    return { mode: "get", spec, table: all[args.id] ?? null };
-  }
-
-  const filter = args.filter?.toLowerCase();
-  const limit = args.limit ?? 50;
-  const list: TableSummary[] = [];
-  for (const t of Object.values(all)) {
-    if (filter) {
-      const blob = (t.caption + " " + t.id).toLowerCase();
-      if (!blob.includes(filter)) continue;
-    }
-    list.push({
-      id: t.id,
-      caption: t.caption,
-      columns: t.columns,
-      row_count: t.rows.length,
-      ...(t.clause_id ? { clause_id: t.clause_id } : {}),
-    });
-  }
-  list.sort((a, b) => a.id.localeCompare(b.id));
-  return {
-    mode: "list",
-    spec,
-    total: list.length,
-    tables: list.slice(0, limit),
-  };
+  const core = queryTables(parsed.tables ?? {}, {
+    id: args.id,
+    filter: args.filter,
+    limit: args.limit,
+  });
+  return { spec, ...core };
 }

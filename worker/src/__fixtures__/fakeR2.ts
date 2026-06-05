@@ -124,12 +124,36 @@ export function createFakeRateLimiter(opts: { denyAll?: boolean } = {}): {
   };
 }
 
-/** Build a syntactically-valid `ParsedSpec`-shape JSON string. */
+/** Build a syntactically-valid `ParsedSpec`-shape JSON string. The
+ *  `clauses` entries default to prose clauses with no algorithms; pass
+ *  `algorithms` (with a `production`) to exercise the SDO index, and the
+ *  top-level `tables` / `grammar` to exercise those query tools. */
 export function fakeSpecJson(opts: {
   spec: string;
   edition: string;
   sha?: string;
-  clauses?: Record<string, { id: string; aoid?: string | null; title?: string }>;
+  clauses?: Record<
+    string,
+    {
+      id: string;
+      aoid?: string | null;
+      title?: string;
+      number?: string;
+      kind?: string;
+      algorithms?: { production?: string; steps?: { text: string; substeps?: unknown[] }[] }[];
+    }
+  >;
+  tables?: Record<
+    string,
+    { id: string; caption?: string; columns?: string[]; rows?: string[][]; clause_id?: string }
+  >;
+  grammar?: {
+    nonterminal: string;
+    parameters?: string[];
+    rhs?: string[];
+    clause_id?: string;
+    standalone?: boolean;
+  }[];
   fetched_at?: string;
   biblio_commit?: string;
 }): string {
@@ -140,15 +164,35 @@ export function fakeSpecJson(opts: {
         id,
         aoid: c.aoid ?? null,
         title: c.title ?? "",
-        number: "0",
-        kind: "clause",
+        number: c.number ?? "0",
+        kind: c.kind ?? "clause",
       },
       signatureRaw: null,
-      algorithms: [],
+      algorithms: (c.algorithms ?? []).map((a) => ({
+        steps: (a.steps ?? []).map((s) => ({ text: s.text, substeps: s.substeps ?? [] })),
+        ...(a.production ? { production: a.production } : {}),
+      })),
       notes: [],
       crossrefs: [],
     };
   }
+  const tables: Record<string, unknown> = {};
+  for (const [id, t] of Object.entries(opts.tables ?? {})) {
+    tables[id] = {
+      id: t.id,
+      caption: t.caption ?? "",
+      columns: t.columns ?? [],
+      rows: t.rows ?? [],
+      ...(t.clause_id ? { clause_id: t.clause_id } : {}),
+    };
+  }
+  const grammar = (opts.grammar ?? []).map((g) => ({
+    nonterminal: g.nonterminal,
+    parameters: g.parameters ?? [],
+    rhs: g.rhs ?? [],
+    standalone: g.standalone ?? true,
+    ...(g.clause_id ? { clause_id: g.clause_id } : {}),
+  }));
   return JSON.stringify({
     pin: {
       spec: opts.spec,
@@ -158,8 +202,8 @@ export function fakeSpecJson(opts: {
       biblio_commit: opts.biblio_commit,
     },
     clauses,
-    tables: {},
-    grammar: [],
+    tables,
+    grammar,
   });
 }
 

@@ -2,18 +2,20 @@
 // async function that takes the R2 env + the parsed args and returns
 // a JSON-serializable result.
 //
-// v0.1.0 covers the core lookup surface: clause.get, clause.list,
-// spec.search, spec.about, proposal.list, proposal.get. The richer
-// tools (crossrefs index, sdo index, tables / grammar parsing,
-// global_search, etc.) ride on the same R2 loader and ship in v0.2.
+// Beyond the core lookup surface (clause.get, clause.list, spec.search,
+// spec.about, proposal.list, proposal.get) the Worker also serves the
+// pure-data query tools that read only the parsed spec it already loads
+// from R2: spec.grammar, spec.tables, spec.sdo_index. Each shares its
+// logic with the stdio server via a dependency-free `src/spec/*` module
+// so the two transports answer identically.
 //
-// `spec.history` and `test262.get` are filesystem / subprocess-bound
-// and don't ship in the hosted Worker — the stdio server remains
-// the right consumer for those.
+// `spec.history` (git subprocess) and `test262.get` (full test sources,
+// not in R2) stay filesystem / subprocess-bound and run stdio-only.
 
 import {
   loadParsedSpec,
   loadParsedSpecUncached,
+  readSnapshotPin,
   loadProposalsIndex,
   loadTest262Index,
   listSnapshots,
@@ -39,6 +41,36 @@ import {
   filterProposals,
   type FilterableProposal,
 } from "../../src/index/proposals_filter.js";
+import {
+  queryGrammar,
+  type GrammarQueryResult,
+  type GrammarRow,
+} from "../../src/spec/grammar_query.js";
+import {
+  queryTables,
+  type TablesQueryResult,
+  type TableRow,
+} from "../../src/spec/tables_query.js";
+import {
+  buildSdoIndex,
+  type SdoIndexResult,
+} from "../../src/spec/sdo_index.js";
+import {
+  buildOutline,
+  type OutlineTree,
+} from "../../src/spec/outline.js";
+import {
+  resolveSymbol,
+  type SymbolResolveResult,
+} from "../../src/spec/symbol_resolve.js";
+import {
+  wellKnownIntrinsics,
+  type IntrinsicsResult,
+} from "../../src/spec/intrinsics.js";
+import {
+  searchAcrossSpecs,
+  type GlobalSearchHit,
+} from "../../src/spec/global_search.js";
 
 // ─── tool result shapes ────────────────────────────────────────────
 
@@ -319,4 +351,220 @@ export async function proposalGet(
   const lc = args.name.toLowerCase();
   const byName = ps.find((p) => p.name.toLowerCase() === lc);
   return { source: "index", proposals_sha: idx.proposals_sha, proposal: byName ?? null };
+}
+
+// ─── spec.grammar ─────────────────────────────────────────────────
+
+export async function specGrammar(
+  env: R2Env,
+  args: {
+    nonterminal?: string;
+    contains?: string;
+    include_sdo?: boolean;
+    spec?: string;
+    edition?: string;
+    limit?: number;
+  },
+): Promise<{ spec: string } & GrammarQueryResult> {
+  const spec = args.spec ?? "262";
+  const p = await getSpec(env, spec, args.edition ?? "latest");
+  // `p.grammar` is typed `unknown[]` in the Worker's local ParsedSpec;
+  // the bytes are the parser's structured GrammarProduction[] (see r2.ts).
+  const core = queryGrammar((p.grammar ?? []) as GrammarRow[], {
+    nonterminal: args.nonterminal,
+    contains: args.contains,
+    includeSdo: args.include_sdo,
+    limit: args.limit,
+  });
+  return { spec, ...core };
+}
+
+// ─── spec.tables ──────────────────────────────────────────────────
+
+export async function specTables(
+  env: R2Env,
+  args: {
+    id?: string;
+    filter?: string;
+    spec?: string;
+    edition?: string;
+    limit?: number;
+  },
+): Promise<{ spec: string } & TablesQueryResult> {
+  const spec = args.spec ?? "262";
+  const p = await getSpec(env, spec, args.edition ?? "latest");
+  // `p.tables` is typed `Record<string, unknown>` in the Worker's local
+  // ParsedSpec; the bytes are the parser's structured SpecTable map.
+  const core = queryTables((p.tables ?? {}) as Record<string, TableRow>, {
+    id: args.id,
+    filter: args.filter,
+    limit: args.limit,
+  });
+  return { spec, ...core };
+}
+
+// ─── spec.sdo_index ───────────────────────────────────────────────
+
+export async function specSdoIndex(
+  env: R2Env,
+  args: {
+    by?: "production" | "sdo";
+    filter?: string;
+    spec?: string;
+    edition?: string;
+    limit?: number;
+  },
+): Promise<{ spec: string } & SdoIndexResult> {
+  const spec = args.spec ?? "262";
+  const p = await getSpec(env, spec, args.edition ?? "latest");
+  const core = buildSdoIndex(p.clauses, {
+    by: args.by,
+    filter: args.filter,
+    limit: args.limit,
+  });
+  return { spec, ...core };
+}
+
+// ─── clause.outline ───────────────────────────────────────────────
+
+export async function clauseOutline(
+  env: R2Env,
+  args: { spec?: string; edition?: string; depth?: number; under?: string },
+): Promise<{ spec: string } & OutlineTree> {
+  const spec = args.spec ?? "262";
+  const p = await getSpec(env, spec, args.edition ?? "latest");
+  const core = buildOutline(p.clauses, { depth: args.depth, under: args.under });
+  return { spec, ...core };
+}
+
+// ─── spec.global_search ───────────────────────────────────────────
+
+export async function specGlobalSearch(
+  env: R2Env,
+  args: { query: string; search_steps?: boolean; limit?: number },
+): Promise<GlobalSearchHit[]> {
+  // Load both specs at their own `latest` in parallel; skip a spec whose
+  // R2 snapshot is missing rather than failing the whole call.
+  const loaded = await Promise.all(
+    (["262", "402"] as const).map(async (spec) => {
+      try {
+        const p = await getSpec(env, spec, "latest");
+        return { spec, clauses: p.clauses };
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const inputs = loaded.filter((x): x is NonNullable<typeof x> => x !== null);
+  return searchAcrossSpecs(inputs, {
+    query: args.query,
+    searchSteps: args.search_steps,
+    limit: args.limit,
+  });
+}
+
+// ─── spec.snapshots ───────────────────────────────────────────────
+//
+// Lists the live (spec, edition, sha, fetched_at) snapshots the Worker
+// is serving from R2. Like spec.about it reads each present snapshot's
+// `pin`, but returns the leaner snapshot-row shape (no clause counts).
+// Historical SHA-pinned copies (spec-...-{sha10}.json) stay addressable
+// via `at:` but aren't enumerated here.
+
+/** One snapshot the server has available. Mirrors the stdio
+ *  `spec.snapshots` row shape. */
+interface SnapshotRow {
+  spec: string;
+  edition: string;
+  sha: string;
+  fetched_at?: string;
+  biblio_commit?: string;
+  /** Always true here — only the live snapshot for each (spec, edition)
+   *  is enumerated; historical pins are reachable via `at:` but not
+   *  listed. */
+  live: boolean;
+}
+
+interface SnapshotsResult {
+  spec_filter?: string;
+  edition_filter?: string;
+  snapshots: SnapshotRow[];
+}
+
+export async function specSnapshots(
+  env: R2Env,
+  args: { spec?: string; edition?: string },
+): Promise<SnapshotsResult> {
+  const keys = await listSnapshots(env);
+  const rows: SnapshotRow[] = [];
+  for (const key of keys) {
+    // Live snapshot keys only: `spec-{spec}-{edition}.json`. The
+    // historical SHA-pinned copies (`spec-...-{sha10}.json`) carry a
+    // dash before a 10-hex suffix, so the `[a-z0-9]+` edition match
+    // skips them.
+    const m = /^spec-(262|402)-([a-z0-9]+)\.json$/.exec(key);
+    if (!m) continue;
+    const spec = m[1]!;
+    const edition = m[2]!;
+    if (args.spec && args.spec !== spec) continue;
+    if (args.edition && args.edition !== edition) continue;
+    // Read only the pin, parse-and-discard — never populate the hot
+    // specCache LRU (mirrors the stdio tool; keeps a snapshots scan from
+    // evicting live clause.get / spec.search entries). A null pin means
+    // the object is missing (a list-then-delete race) or unparseable (a
+    // corrupt snapshot); skip it rather than fail the whole call or emit
+    // a row with no sha.
+    const pin = await readSnapshotPin(env, spec, edition);
+    if (!pin?.sha) continue;
+    rows.push({
+      spec,
+      edition,
+      sha: pin.sha,
+      live: true,
+      ...(pin.fetched_at ? { fetched_at: pin.fetched_at } : {}),
+      ...(pin.biblio_commit ? { biblio_commit: pin.biblio_commit } : {}),
+    });
+  }
+  // Deterministic order: spec → edition → sha (matches the stdio tool).
+  rows.sort(
+    (a, b) =>
+      a.spec.localeCompare(b.spec) ||
+      a.edition.localeCompare(b.edition) ||
+      a.sha.localeCompare(b.sha),
+  );
+  return {
+    ...(args.spec ? { spec_filter: args.spec } : {}),
+    ...(args.edition ? { edition_filter: args.edition } : {}),
+    snapshots: rows,
+  };
+}
+
+// ─── spec.symbol_resolve ──────────────────────────────────────────
+
+export async function specSymbolResolve(
+  env: R2Env,
+  args: { notation: string; spec?: string; edition?: string; limit?: number },
+): Promise<SymbolResolveResult> {
+  const p = await getSpec(env, args.spec ?? "262", args.edition ?? "latest");
+  return resolveSymbol(p.clauses, { notation: args.notation, limit: args.limit });
+}
+
+// ─── spec.well_known_intrinsics ───────────────────────────────────
+
+export async function specWellKnownIntrinsics(
+  env: R2Env,
+  args: { spec?: string; edition?: string; filter?: string; limit?: number },
+): Promise<{ spec: string } & IntrinsicsResult> {
+  const spec = args.spec ?? "262";
+  const p = await getSpec(env, spec, args.edition ?? "latest");
+  // `p.tables` is typed `Record<string, unknown>` in the Worker's local
+  // ParsedSpec; the bytes are the parser's structured SpecTable map.
+  const table = p.tables?.["table-well-known-intrinsic-objects"] as
+    | { rows: string[][] }
+    | undefined;
+  const core = wellKnownIntrinsics(p.clauses, table, {
+    filter: args.filter,
+    limit: args.limit,
+  });
+  return { spec, ...core };
 }

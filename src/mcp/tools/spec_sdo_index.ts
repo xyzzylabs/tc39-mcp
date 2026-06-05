@@ -10,8 +10,11 @@
 // "what productions does Evaluation handle?".
 //
 // Two query directions:
-//   `by_production: true`  (default) → { [production]: [{ sdo, id, title }] }
-//   `by_sdo: true`                    → { [sdo title]: [productions[]] }
+//   `by: "production"` (default) → { [production]: [{ sdo, id, title }] }
+//   `by: "sdo"`                   → { [sdo title]: [productions[]] }
+//
+// The index logic lives in `src/spec/sdo_index.ts` so the stdio server
+// and the Cloudflare Worker build it identically.
 
 import { z } from "zod";
 import { specArg, editionArg } from "../_args.js";
@@ -20,6 +23,12 @@ import {
   type Edition,
   type Spec,
 } from "../../editions.js";
+import {
+  buildSdoIndex,
+  type SdoEntry,
+} from "../../spec/sdo_index.js";
+
+export type { SdoEntry };
 
 export const specSdoIndexSchema = {
   spec: specArg,
@@ -54,15 +63,6 @@ export const specSdoIndexExamples = [
   },
 ] as const;
 
-export interface SdoEntry {
-  /** The clause id the algorithm lives under. */
-  id: string;
-  /** The clause's `<h1>` text. For an SDO, this is the SDO name + signature. */
-  title: string;
-  /** The grammar production this algorithm handles (verbatim). */
-  production: string;
-}
-
 /** Output of `spec.sdo_index`: the SDO ↔ production index either
  *  grouped by production (the default) or by SDO title. */
 export interface SdoIndexResult {
@@ -92,41 +92,10 @@ export async function specSdoIndex(args: {
 }): Promise<SdoIndexResult> {
   const spec = args.spec ?? "262";
   const parsed = await loadSpec(spec, args.edition ?? "latest");
-  const by = args.by ?? "production";
-  const filter = args.filter?.toLowerCase();
-  const limit = args.limit ?? 50;
-
-  // Collect every (production, sdo) pair across the parse.
-  const pairs: SdoEntry[] = [];
-  for (const [id, c] of Object.entries(parsed.clauses)) {
-    const title = c.meta.title ?? "";
-    for (const algo of c.algorithms) {
-      if (!algo.production) continue;
-      pairs.push({ id, title, production: algo.production });
-    }
-  }
-
-  const groups: Record<string, SdoEntry[]> = {};
-  const keyOf = (e: SdoEntry) => (by === "production" ? e.production : e.title);
-
-  for (const p of pairs) {
-    const key = keyOf(p);
-    if (filter && !key.toLowerCase().includes(filter)) continue;
-    if (!groups[key]) groups[key] = [];
-    groups[key]!.push(p);
-  }
-
-  // Stable sort + truncate. Sort keys alphabetically so output is
-  // deterministic; cap to `limit` groups.
-  const keptKeys = Object.keys(groups).sort().slice(0, limit);
-  const kept: Record<string, SdoEntry[]> = {};
-  for (const k of keptKeys) kept[k] = groups[k]!;
-
-  return {
-    spec,
-    by,
-    pair_count: pairs.length,
-    group_count: Object.keys(groups).length,
-    groups: kept,
-  };
+  const core = buildSdoIndex(parsed.clauses, {
+    by: args.by,
+    filter: args.filter,
+    limit: args.limit,
+  });
+  return { spec, ...core };
 }

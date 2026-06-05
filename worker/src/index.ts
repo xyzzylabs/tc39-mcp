@@ -14,10 +14,18 @@
 import {
   clauseGet,
   clauseList,
+  clauseOutline,
   proposalGet,
   proposalList,
   specAbout,
+  specGlobalSearch,
+  specGrammar,
+  specSdoIndex,
   specSearch,
+  specSnapshots,
+  specSymbolResolve,
+  specTables,
+  specWellKnownIntrinsics,
 } from "./tools.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import type { R2Env } from "./r2.js";
@@ -141,6 +149,177 @@ const TOOL_REGISTRY: {
       required: ["name"],
     },
     handler: async (env, args) => proposalGet(env, args as { name: string }),
+  },
+  {
+    name: "spec.grammar",
+    description:
+      "Query grammar productions captured from the spec's `<emu-grammar>` blocks. `{ nonterminal }` returns every production for that non-terminal (exact match); `{ contains }` filters by RHS / name substring; neither lists all non-terminals + their production counts. `include_sdo` folds in SDO-attached productions (off by default).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        nonterminal: { type: "string" },
+        contains: { type: "string" },
+        include_sdo: { type: "boolean" },
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+    handler: async (env, args) =>
+      specGrammar(
+        env,
+        args as {
+          nonterminal?: string;
+          contains?: string;
+          include_sdo?: boolean;
+          spec?: string;
+          edition?: string;
+          limit?: number;
+        },
+      ),
+  },
+  {
+    name: "spec.tables",
+    description:
+      "List or fetch parsed `<emu-table>` content. `{ id }` returns exactly that table (full columns + rows); otherwise list table summaries, optionally narrowed by a `filter` substring over the caption or id.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        filter: { type: "string" },
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+    handler: async (env, args) =>
+      specTables(
+        env,
+        args as {
+          id?: string;
+          filter?: string;
+          spec?: string;
+          edition?: string;
+          limit?: number;
+        },
+      ),
+  },
+  {
+    name: "spec.sdo_index",
+    description:
+      "Index Syntax-Directed Operations by the grammar production they're defined on. `by: 'production'` (default) groups SDOs under each production; `by: 'sdo'` groups productions under each SDO title. `filter` narrows to keys containing a substring (case-insensitive).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        by: { type: "string", enum: ["production", "sdo"] },
+        filter: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+    handler: async (env, args) =>
+      specSdoIndex(
+        env,
+        args as {
+          by?: "production" | "sdo";
+          filter?: string;
+          spec?: string;
+          edition?: string;
+          limit?: number;
+        },
+      ),
+  },
+  {
+    name: "clause.outline",
+    description:
+      "Return the section tree (table of contents) for a parsed (spec, edition). `depth` caps how deep the tree descends (1 = top-level only); `under` limits the tree to descendants of one clause id.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        depth: { type: "number" },
+        under: { type: "string" },
+      },
+    },
+    handler: async (env, args) =>
+      clauseOutline(
+        env,
+        args as { spec?: string; edition?: string; depth?: number; under?: string },
+      ),
+  },
+  {
+    name: "spec.global_search",
+    description:
+      "Run spec.search across both ECMA-262 and ECMA-402 in one call and interleave hits by score. Each hit is tagged with the spec it came from. Use it when you don't know which spec defines a symbol. `search_steps` also matches algorithm step text.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        search_steps: { type: "boolean" },
+        limit: { type: "number" },
+      },
+      required: ["query"],
+    },
+    handler: async (env, args) =>
+      specGlobalSearch(
+        env,
+        args as { query: string; search_steps?: boolean; limit?: number },
+      ),
+  },
+  {
+    name: "spec.snapshots",
+    description:
+      "List the live (spec, edition, sha, fetched_at) snapshots the hosted Worker is serving from R2. Filter by `spec` ('262'|'402') or `edition` (e.g. 'main', 'es2026'). Historical SHA-pinned copies are reachable via `at:` on clause.get / spec.search but aren't enumerated here.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+      },
+    },
+    handler: async (env, args) =>
+      specSnapshots(env, args as { spec?: string; edition?: string }),
+  },
+  {
+    name: "spec.symbol_resolve",
+    description:
+      "Resolve spec notation like `[[Prototype]]` (internal slot), `%Object.prototype%` (well-known intrinsic), or `~number~` (sigil enum): return clauses that mention or define it, ranked by occurrence with a bump for definition-y sections.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        notation: { type: "string" },
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        limit: { type: "number" },
+      },
+      required: ["notation"],
+    },
+    handler: async (env, args) =>
+      specSymbolResolve(
+        env,
+        args as { notation: string; spec?: string; edition?: string; limit?: number },
+      ),
+  },
+  {
+    name: "spec.well_known_intrinsics",
+    description:
+      "Enumerate the well-known intrinsics in a spec with their probable defining clauses. Driven from the canonical §6.1.7.4 WKI table when present (ECMA-262), else a `%X%` prose scan (e.g. ECMA-402). `filter` narrows by bare-name substring.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        filter: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+    handler: async (env, args) =>
+      specWellKnownIntrinsics(
+        env,
+        args as { spec?: string; edition?: string; filter?: string; limit?: number },
+      ),
   },
 ];
 
