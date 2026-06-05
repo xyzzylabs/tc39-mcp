@@ -16,6 +16,7 @@
 import { z } from "zod";
 import { loadSnapshot } from "../../data/loader.js";
 import { SPEC_VALUES } from "../../editions.js";
+import { filterProposals } from "../../index/proposals_filter.js";
 import type { ProposalEntry } from "../../index/proposals_parser.js";
 
 // Re-export so historical callers can keep importing `ProposalEntry`
@@ -136,24 +137,14 @@ export async function proposalList(args: {
     return { source: "none", total: 0, proposals: [], hint: NO_INDEX_HINT };
   }
   const limit = args.limit ?? 100;
-  const stage = args.stage;
-  const champion = args.champion?.toLowerCase();
-  const contains = args.contains?.toLowerCase();
-
-  let matches = idx.proposals;
-  if (args.spec) matches = matches.filter((p) => p.spec === args.spec);
-  if (stage) matches = matches.filter((p) => p.stage === stage);
-  if (champion) {
-    matches = matches.filter((p) =>
-      p.champions.some((c) => c.toLowerCase().includes(champion)),
-    );
-  }
-  if (contains) {
-    matches = matches.filter((p) => {
-      const blob = (p.name + " " + p.slug).toLowerCase();
-      return blob.includes(contains);
-    });
-  }
+  // Filtering is shared with the Worker so both transports apply the
+  // same spec / stage / champion / contains filters.
+  const matches = filterProposals(idx.proposals, {
+    spec: args.spec,
+    stage: args.stage,
+    champion: args.champion,
+    contains: args.contains,
+  });
   return {
     source: "index",
     proposals_sha: idx.proposals_sha,

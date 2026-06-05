@@ -119,10 +119,11 @@ const TOOL_REGISTRY: {
   {
     name: "proposal.list",
     description:
-      "List TC39 proposals from the static index (tc39/proposals). Filter by stage ('0'|'1'|'2'|'2.7'|'3'|'finished'|'inactive'|'active'), champion (substring), or contains (name/slug substring).",
+      "List TC39 proposals from the static index (tc39/proposals). Filter by spec ('262'|'402'), stage ('0'|'1'|'2'|'2.7'|'3'|'finished'|'inactive'|'active'), champion (substring), or contains (name/slug substring).",
     inputSchema: {
       type: "object",
       properties: {
+        spec: { type: "string", enum: ["262", "402"] },
         stage: { type: "string" },
         champion: { type: "string" },
         contains: { type: "string" },
