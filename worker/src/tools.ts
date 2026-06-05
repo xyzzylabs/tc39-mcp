@@ -17,6 +17,7 @@ import {
   loadTest262Index,
   listSnapshots,
   type R2Env,
+  type ParsedSpec,
 } from "./r2.js";
 
 // ─── editions catalog ─────────────────────────────────────────────
@@ -44,45 +45,12 @@ function isSupported(spec: string, ed: string): boolean {
   return (RELEASED_262 as readonly string[]).includes(ed);
 }
 
-// ─── narrow types pulled from the JSON contract ───────────────────
-
-interface ClauseMeta {
-  id: string;
-  aoid: string | null;
-  title: string;
-  number: string;
-  kind: string;
-}
-
-interface AlgorithmStep {
-  text: string;
-  substeps: AlgorithmStep[];
-}
-
-interface Algorithm {
-  steps: AlgorithmStep[];
-  production?: string;
-}
-
-interface Clause {
-  meta: ClauseMeta;
-  signatureRaw: string | null;
-  algorithms: Algorithm[];
-  notes: { text: string; id?: string; type?: string }[];
-  crossrefs: string[];
-}
-
-interface ParsedSpecBody {
-  pin: { spec: string; edition: string; sha: string; fetched_at?: string; biblio_commit?: string };
-  clauses: Record<string, Clause>;
-}
-
 async function getSpec(
   env: R2Env,
   spec: string,
   ed: string,
   at?: string,
-): Promise<ParsedSpecBody> {
+): Promise<ParsedSpec> {
   const resolved = resolveEdition(spec, ed);
   if (!isSupported(spec, resolved)) {
     throw new Error(`Unsupported (spec, edition): ${spec}/${ed} → ${resolved}`);
@@ -104,7 +72,7 @@ async function getSpec(
     }
   }
   const p = await loadParsedSpec(env, spec, resolved, at);
-  return p as unknown as ParsedSpecBody;
+  return p;
 }
 
 // ─── spec.about ────────────────────────────────────────────────────
@@ -125,8 +93,8 @@ export async function specAbout(
       }
       try {
         const p = await getSpec(env, spec, ed);
-        const tables = (p as unknown as { tables?: Record<string, unknown> }).tables;
-        const grammar = (p as unknown as { grammar?: unknown[] }).grammar;
+        const tables = p.tables;
+        const grammar = p.grammar;
         snapshots.push({
           spec,
           edition: ed,
