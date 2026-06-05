@@ -24,14 +24,14 @@ export const HOSTED_TOOLS = [
   "spec.symbol_resolve",
   "spec.well_known_intrinsics",
   "spec.diff",
+  "spec.crossrefs",
 ] as const;
 
-/** Tools that run on the stdio server only — either filesystem /
- *  subprocess bound (`spec.history` shells out to git; the `test262.*`
- *  tools read the vendored corpus) or not yet ported to the Worker
- *  (`spec.crossrefs`). */
+/** Tools that run on the stdio server only — filesystem / subprocess
+ *  bound: `spec.history` shells out to `git log` against a vendored
+ *  checkout, and the `test262.*` tools read the vendored test262 corpus
+ *  (far too large to ship in R2). Nothing else stays stdio-only. */
 export const STDIO_ONLY_TOOLS = [
-  "spec.crossrefs",
   "spec.history",
   "test262.search",
   "test262.get",

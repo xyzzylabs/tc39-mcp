@@ -39,11 +39,17 @@ export interface ClauseTextInput {
 }
 
 /** Concatenate signature + title + notes + every algorithm step's text
- *  (depth-first) into one newline-joined blob for a clause. */
-export function flatClauseText(c: ClauseTextInput): string {
+ *  (depth-first) into one newline-joined blob for a clause. Pass
+ *  `{ includeTitle: false }` to drop the heading — `spec.crossrefs`
+ *  scans only prose for AOID call sites, where the clause's own title
+ *  would be noise (and risks matching the operation's own name). */
+export function flatClauseText(
+  c: ClauseTextInput,
+  opts?: { includeTitle?: boolean },
+): string {
   const out: string[] = [];
   if (c.signatureRaw) out.push(c.signatureRaw);
-  if (c.meta.title) out.push(c.meta.title);
+  if (opts?.includeTitle !== false && c.meta.title) out.push(c.meta.title);
   for (const n of c.notes) out.push(n.text);
   for (const algo of c.algorithms) walkSteps(algo.steps, (s) => out.push(s.text));
   return out.join("\n");

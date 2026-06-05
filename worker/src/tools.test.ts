@@ -6,6 +6,7 @@ import {
   proposalGet,
   proposalList,
   specAbout,
+  specCrossrefs,
   specDiff,
   specGlobalSearch,
   specGrammar,
@@ -17,6 +18,7 @@ import {
   specWellKnownIntrinsics,
 } from "./tools.js";
 import { __resetCachesForTests } from "./r2.js";
+import { __resetCrossrefCacheForTests } from "../../src/spec/crossrefs.js";
 import { RELEASED_262_EDITIONS } from "../../src/spec/catalog.js";
 import {
   asFakeR2,
@@ -28,6 +30,10 @@ import {
 
 beforeEach(() => {
   __resetCachesForTests();
+  // The crossref index memo lives in the shared module, not r2.ts, so
+  // reset it too — otherwise a `262:es2026` index built from one test's
+  // fixture would leak into the next.
+  __resetCrossrefCacheForTests();
 });
 
 // ─── specAbout ────────────────────────────────────────────────────
@@ -1028,5 +1034,101 @@ describe("specDiff", () => {
     const r = await specDiff(env2, { id: "sec-new" });
     expect(r.status).toBe("added");
     expect(r.to_summary?.title).toBe("New Clause");
+  });
+});
+
+describe("specCrossrefs", () => {
+  // sec-bar cites sec-foo via a `Foo(` call site in its step text; the
+  // reverse index densifies that into an incoming back-ref on sec-foo.
+  const env262 = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          clauses: {
+            "sec-foo": { id: "sec-foo", aoid: "Foo", title: "Foo", number: "1" },
+            "sec-bar": {
+              id: "sec-bar",
+              aoid: "Bar",
+              title: "Bar",
+              number: "2",
+              algorithms: [{ steps: [{ text: "Let x be Foo(y)." }] }],
+            },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("returns outgoing refs (clauses this one cites), tagged with the spec", async () => {
+    const r = await specCrossrefs(env262(), { id: "sec-bar", direction: "out" });
+    expect(r.incoming).toBeUndefined();
+    expect(r.outgoing?.map((h) => h.id)).toEqual(["sec-foo"]);
+    expect(r.outgoing?.[0]?.spec).toBe("262");
+  });
+
+  it("returns incoming back-refs densified from step text", async () => {
+    const r = await specCrossrefs(env262(), { id: "sec-foo", direction: "in" });
+    expect(r.outgoing).toBeUndefined();
+    expect(r.incoming?.map((h) => h.id)).toEqual(["sec-bar"]);
+  });
+
+  it("direction 'both' populates both; a missing id yields empty arrays", async () => {
+    const both = await specCrossrefs(env262(), { id: "sec-foo" });
+    expect(both.incoming).toBeDefined();
+    expect(both.outgoing).toEqual([]);
+
+    const missing = await specCrossrefs(env262(), { id: "sec-nope", direction: "both" });
+    expect(missing.incoming).toEqual([]);
+    expect(missing.outgoing).toEqual([]);
+  });
+
+  it("include_cross_spec loads the other spec from R2 and tags its hits", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-402-es2026.json": fakeSpecJson({
+            spec: "402",
+            edition: "es2026",
+            clauses: {
+              "sec-nf": {
+                id: "sec-nf",
+                aoid: "InitializeNumberFormat",
+                title: "NumberFormat",
+                number: "1",
+                algorithms: [
+                  { steps: [{ text: "Let O be OrdinaryCreateFromConstructor(nf)." }] },
+                ],
+              },
+            },
+          }),
+          // The other spec, read at its `latest` (es2026) for the
+          // cross-spec pass.
+          "spec-262-es2026.json": fakeSpecJson({
+            spec: "262",
+            edition: "es2026",
+            clauses: {
+              "sec-oc": {
+                id: "sec-oc",
+                aoid: "OrdinaryCreateFromConstructor",
+                title: "OrdinaryCreateFromConstructor",
+                number: "10",
+              },
+            },
+          }),
+        },
+      }),
+    };
+    const off = await specCrossrefs(env, { id: "sec-nf", spec: "402", direction: "out" });
+    expect(off.outgoing?.some((h) => h.spec === "262")).toBe(false);
+
+    const on = await specCrossrefs(env, {
+      id: "sec-nf",
+      spec: "402",
+      direction: "out",
+      include_cross_spec: true,
+    });
+    expect(on.outgoing?.find((h) => h.spec === "262")?.id).toBe("sec-oc");
   });
 });

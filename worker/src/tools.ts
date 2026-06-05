@@ -74,6 +74,10 @@ import {
   diffClause,
   type DiffCore,
 } from "../../src/spec/diff.js";
+import {
+  computeCrossrefs,
+  type CrossrefsResult,
+} from "../../src/spec/crossrefs.js";
 
 // ─── tool result shapes ────────────────────────────────────────────
 
@@ -592,4 +596,40 @@ export async function specDiff(
   ]);
   const core = diffClause(before.clauses[args.id], after.clauses[args.id]);
   return { id: args.id, from: fromEd, to: toEd, ...core };
+}
+
+// ─── spec.crossrefs ───────────────────────────────────────────────
+
+export async function specCrossrefs(
+  env: R2Env,
+  args: {
+    id: string;
+    spec?: string;
+    edition?: string;
+    direction?: "in" | "out" | "both";
+    include_cross_spec?: boolean;
+    limit?: number;
+  },
+): Promise<CrossrefsResult> {
+  const spec = (args.spec ?? "262") as Spec;
+  const edition = resolveEdition(spec, (args.edition ?? "latest") as Edition);
+  const parsed = await getSpec(env, spec, edition);
+  return computeCrossrefs({
+    spec,
+    edition,
+    parsed,
+    id: args.id,
+    direction: args.direction ?? "both",
+    limit: args.limit ?? 100,
+    includeCrossSpec: args.include_cross_spec ?? false,
+    // Opt-in cross-spec pass loads the other spec at its `latest` from
+    // R2; a missing snapshot just skips cross-spec hits.
+    loadOther: async (otherSpec) => {
+      try {
+        return await getSpec(env, otherSpec, "latest");
+      } catch {
+        return null;
+      }
+    },
+  });
 }

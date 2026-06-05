@@ -126,11 +126,11 @@ freshness contract is in-band.
 
 A minimal Worker lives in [`worker/`](https://github.com/xyzzylabs/tc39-mcp/tree/main/worker) that speaks MCP's
 JSON-RPC over HTTP, reads parsed JSONs from a bound R2 bucket, and
-ships **15 tools** (`spec.about`, `clause.get`, `clause.list`,
+ships **16 tools** (`spec.about`, `clause.get`, `clause.list`,
 `spec.search`, `proposal.list`, `proposal.get`, `spec.grammar`,
 `spec.tables`, `spec.sdo_index`, `clause.outline`,
 `spec.global_search`, `spec.snapshots`, `spec.symbol_resolve`,
-`spec.well_known_intrinsics`, `spec.diff`). The bundled Worker gzips to
+`spec.well_known_intrinsics`, `spec.diff`, `spec.crossrefs`). The bundled Worker gzips to
 **~8 KB**.
 
 The same Worker also serves the **documentation site** as static
@@ -395,16 +395,16 @@ The model favors simplicity; these are tradeoffs, not correctness gaps:
 ### Which tools run stdio-only?
 
 The stdio server exposes all 19 tools; the hosted Worker currently
-ships 15 — the six core lookup tools plus `spec.grammar`,
+ships 16 — the six core lookup tools plus `spec.grammar`,
 `spec.tables`, `spec.sdo_index`, `clause.outline`, `spec.global_search`,
 `spec.snapshots`, `spec.symbol_resolve`, `spec.well_known_intrinsics`,
-and `spec.diff`. The other 4 fall into two buckets:
+`spec.diff`, and `spec.crossrefs`. The other 3 fall into two buckets:
 
 | Excluded tool | Reason |
 |---|---|
 | `spec.history` | Shells out to `git log` against a vendored checkout; no FS or subprocess on Workers. |
 | `test262.get` | Reads test sources from `vendor/test262/`; the full corpus isn't in R2 and Workers have no FS. |
-| `spec.crossrefs`, `test262.search` | Pure functions over data the Worker already loads from R2; being brought to the Worker incrementally (everything else already shipped). |
+| `test262.search` | Pure function over the test262 index the Worker already loads from R2; the last tool slated for an incremental port. |
 
 ### Performance baseline
 

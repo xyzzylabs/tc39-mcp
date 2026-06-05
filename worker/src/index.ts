@@ -18,6 +18,7 @@ import {
   proposalGet,
   proposalList,
   specAbout,
+  specCrossrefs,
   specDiff,
   specGlobalSearch,
   specGrammar,
@@ -338,6 +339,35 @@ const TOOL_REGISTRY: {
     },
     handler: async (env, args) =>
       specDiff(env, args as { id: string; spec?: string; from?: string; to?: string }),
+  },
+  {
+    name: "spec.crossrefs",
+    description:
+      "For a clause id, return its outgoing references (clauses it cites) and/or incoming references (clauses that cite it — the back-reference index the parse alone doesn't expose). The reverse index is AOID-densified from step text. `direction`: 'in' | 'out' | 'both' (default). Set `include_cross_spec: true` to also resolve outgoing references from ECMA-262 → ECMA-402 (or vice versa).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        direction: { type: "string", enum: ["in", "out", "both"] },
+        include_cross_spec: { type: "boolean" },
+        limit: { type: "number" },
+      },
+      required: ["id"],
+    },
+    handler: async (env, args) =>
+      specCrossrefs(
+        env,
+        args as {
+          id: string;
+          spec?: string;
+          edition?: string;
+          direction?: "in" | "out" | "both";
+          include_cross_spec?: boolean;
+          limit?: number;
+        },
+      ),
   },
 ];
 
