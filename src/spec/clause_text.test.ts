@@ -38,6 +38,14 @@ describe("flatClauseText", () => {
     expect(text).toContain("Test Clause");
     expect(text).not.toContain("step-");
   });
+
+  it("omits the title when includeTitle:false, keeping signature + notes + steps", () => {
+    const text = flatClauseText(clause(), { includeTitle: false });
+    expect(text).not.toContain("Test Clause");
+    for (const part of ["sig", "n1", "n2", "step-1", "step-2", "step-2a"]) {
+      expect(text).toContain(part);
+    }
+  });
 });
 
 const tree: ClauseTextStep[] = [
