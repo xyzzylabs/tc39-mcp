@@ -7,7 +7,7 @@
 // and the Cloudflare Worker diff two editions identically.
 
 import { z } from "zod";
-import { specArg, editionArg } from "../_args.js";
+import { specArg } from "../_args.js";
 import { loadSpec } from "./clause.js";
 import { diffClause } from "../../spec/diff.js";
 import {
