@@ -59,6 +59,14 @@ import {
   type OutlineTree,
 } from "../../src/spec/outline.js";
 import {
+  resolveSymbol,
+  type SymbolResolveResult,
+} from "../../src/spec/symbol_resolve.js";
+import {
+  wellKnownIntrinsics,
+  type IntrinsicsResult,
+} from "../../src/spec/intrinsics.js";
+import {
   searchAcrossSpecs,
   type GlobalSearchHit,
 } from "../../src/spec/global_search.js";
@@ -522,4 +530,34 @@ export async function specSnapshots(
     ...(args.edition ? { edition_filter: args.edition } : {}),
     snapshots: rows,
   };
+}
+
+// ─── spec.symbol_resolve ──────────────────────────────────────────
+
+export async function specSymbolResolve(
+  env: R2Env,
+  args: { notation: string; spec?: string; edition?: string; limit?: number },
+): Promise<SymbolResolveResult> {
+  const p = await getSpec(env, args.spec ?? "262", args.edition ?? "latest");
+  return resolveSymbol(p.clauses, { notation: args.notation, limit: args.limit });
+}
+
+// ─── spec.well_known_intrinsics ───────────────────────────────────
+
+export async function specWellKnownIntrinsics(
+  env: R2Env,
+  args: { spec?: string; edition?: string; filter?: string; limit?: number },
+): Promise<{ spec: string } & IntrinsicsResult> {
+  const spec = args.spec ?? "262";
+  const p = await getSpec(env, spec, args.edition ?? "latest");
+  // `p.tables` is typed `Record<string, unknown>` in the Worker's local
+  // ParsedSpec; the bytes are the parser's structured SpecTable map.
+  const table = p.tables?.["table-well-known-intrinsic-objects"] as
+    | { rows: string[][] }
+    | undefined;
+  const core = wellKnownIntrinsics(p.clauses, table, {
+    filter: args.filter,
+    limit: args.limit,
+  });
+  return { spec, ...core };
 }

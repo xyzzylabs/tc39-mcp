@@ -126,11 +126,11 @@ freshness contract is in-band.
 
 A minimal Worker lives in [`worker/`](https://github.com/xyzzylabs/tc39-mcp/tree/main/worker) that speaks MCP's
 JSON-RPC over HTTP, reads parsed JSONs from a bound R2 bucket, and
-ships **12 tools** (`spec.about`, `clause.get`, `clause.list`,
+ships **14 tools** (`spec.about`, `clause.get`, `clause.list`,
 `spec.search`, `proposal.list`, `proposal.get`, `spec.grammar`,
 `spec.tables`, `spec.sdo_index`, `clause.outline`,
-`spec.global_search`, `spec.snapshots`). The bundled Worker gzips to
-**~8 KB**.
+`spec.global_search`, `spec.snapshots`, `spec.symbol_resolve`,
+`spec.well_known_intrinsics`). The bundled Worker gzips to **~8 KB**.
 
 The same Worker also serves the **documentation site** as static
 assets (Cloudflare Workers Assets). One origin, one deploy, one URL
@@ -394,15 +394,16 @@ The model favors simplicity; these are tradeoffs, not correctness gaps:
 ### Which tools run stdio-only?
 
 The stdio server exposes all 19 tools; the hosted Worker currently
-ships 12 — the six core lookup tools plus `spec.grammar`,
+ships 14 — the six core lookup tools plus `spec.grammar`,
 `spec.tables`, `spec.sdo_index`, `clause.outline`, `spec.global_search`,
-and `spec.snapshots`. The other 7 fall into two buckets:
+`spec.snapshots`, `spec.symbol_resolve`, and `spec.well_known_intrinsics`.
+The other 5 fall into two buckets:
 
 | Excluded tool | Reason |
 |---|---|
 | `spec.history` | Shells out to `git log` against a vendored checkout; no FS or subprocess on Workers. |
 | `test262.get` | Reads test sources from `vendor/test262/`; the full corpus isn't in R2 and Workers have no FS. |
-| `spec.crossrefs`, `spec.diff`, `spec.symbol_resolve`, `spec.well_known_intrinsics`, `test262.search` | Pure functions over data the Worker already loads from R2; being brought to the Worker incrementally (`spec.grammar`, `spec.tables`, `spec.sdo_index`, `clause.outline`, `spec.global_search`, `spec.snapshots` already shipped). |
+| `spec.crossrefs`, `spec.diff`, `test262.search` | Pure functions over data the Worker already loads from R2; being brought to the Worker incrementally (everything else already shipped). |
 
 ### Performance baseline
 

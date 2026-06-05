@@ -11,7 +11,9 @@ import {
   specSdoIndex,
   specSearch,
   specSnapshots,
+  specSymbolResolve,
   specTables,
+  specWellKnownIntrinsics,
 } from "./tools.js";
 import { __resetCachesForTests } from "./r2.js";
 import {
@@ -835,5 +837,97 @@ describe("specSnapshots", () => {
     };
     const r = await specSnapshots(env, {});
     expect(r.snapshots.map((s) => `${s.spec}/${s.edition}`)).toEqual(["262/main"]);
+  });
+});
+
+// ─── specSymbolResolve ────────────────────────────────────────────
+
+describe("specSymbolResolve", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          clauses: {
+            "sec-proto": {
+              id: "sec-proto",
+              title: "Object Type",
+              number: "6.1.7",
+              algorithms: [{ steps: [{ text: "The [[Prototype]] internal slot." }] }],
+            },
+            "sec-unrelated": { id: "sec-unrelated", title: "ToString", number: "7.1.17" },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("classifies + resolves a notation, echoing notation/kind/name", async () => {
+    const r = await specSymbolResolve(env(), { notation: "[[Prototype]]" });
+    expect(r.notation).toBe("[[Prototype]]");
+    expect(r.kind).toBe("internal-slot");
+    expect(r.name).toBe("Prototype");
+    expect(r.hits[0]!.id).toBe("sec-proto");
+    expect(r.hits[0]!.match_count).toBe(1);
+    expect(r.hits.map((h) => h.id)).not.toContain("sec-unrelated");
+  });
+});
+
+// ─── specWellKnownIntrinsics ──────────────────────────────────────
+
+describe("specWellKnownIntrinsics", () => {
+  it("drives from the WKI table when present", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": fakeSpecJson({
+            spec: "262",
+            edition: "es2026",
+            clauses: {
+              "sec-array-ctor": { id: "sec-array-ctor", title: "The Array Constructor", number: "23.1.1" },
+            },
+            tables: {
+              "table-well-known-intrinsic-objects": {
+                id: "table-well-known-intrinsic-objects",
+                caption: "Well-Known Intrinsic Objects",
+                columns: ["Intrinsic Name", "Global Name", "ECMAScript Language Association"],
+                rows: [["%Array%", "Array", "The Array constructor"]],
+              },
+            },
+          }),
+        },
+      }),
+    };
+    const r = await specWellKnownIntrinsics(env, {});
+    expect(r.spec).toBe("262");
+    expect(r.source).toBe("table");
+    expect(r.hits.find((h) => h.name === "Array")!.defining_clause?.id).toBe("sec-array-ctor");
+  });
+
+  it("falls back to a heuristic %X% scan when there's no table", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-402-es2026.json": fakeSpecJson({
+            spec: "402",
+            edition: "es2026",
+            clauses: {
+              "sec-x": {
+                id: "sec-x",
+                title: "Some Clause",
+                number: "1.1",
+                algorithms: [
+                  { steps: [{ text: "Mentions %Array.prototype% twice: %Array.prototype%." }] },
+                ],
+              },
+            },
+          }),
+        },
+      }),
+    };
+    const r = await specWellKnownIntrinsics(env, { spec: "402" });
+    expect(r.source).toBe("heuristic");
+    expect(r.hits.find((h) => h.name === "Array.prototype")!.mention_count).toBe(2);
   });
 });

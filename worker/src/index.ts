@@ -23,7 +23,9 @@ import {
   specSdoIndex,
   specSearch,
   specSnapshots,
+  specSymbolResolve,
   specTables,
+  specWellKnownIntrinsics,
 } from "./tools.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import type { R2Env } from "./r2.js";
@@ -279,6 +281,45 @@ const TOOL_REGISTRY: {
     },
     handler: async (env, args) =>
       specSnapshots(env, args as { spec?: string; edition?: string }),
+  },
+  {
+    name: "spec.symbol_resolve",
+    description:
+      "Resolve spec notation like `[[Prototype]]` (internal slot), `%Object.prototype%` (well-known intrinsic), or `~number~` (sigil enum): return clauses that mention or define it, ranked by occurrence with a bump for definition-y sections.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        notation: { type: "string" },
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        limit: { type: "number" },
+      },
+      required: ["notation"],
+    },
+    handler: async (env, args) =>
+      specSymbolResolve(
+        env,
+        args as { notation: string; spec?: string; edition?: string; limit?: number },
+      ),
+  },
+  {
+    name: "spec.well_known_intrinsics",
+    description:
+      "Enumerate the well-known intrinsics in a spec with their probable defining clauses. Driven from the canonical §6.1.7.4 WKI table when present (ECMA-262), else a `%X%` prose scan (e.g. ECMA-402). `filter` narrows by bare-name substring.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        filter: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+    handler: async (env, args) =>
+      specWellKnownIntrinsics(
+        env,
+        args as { spec?: string; edition?: string; filter?: string; limit?: number },
+      ),
   },
 ];
 
