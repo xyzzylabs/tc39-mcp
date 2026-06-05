@@ -15,7 +15,7 @@
 
 import * as ts from "typescript";
 import { readFileSync, readdirSync, existsSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 interface ToolReg {
   name: string;
@@ -427,6 +427,64 @@ function literalToJs(node: ts.Expression, sf: ts.SourceFile): unknown {
   return undefined;
 }
 
+/** A z.object field can reference a shared schema fragment imported
+ *  from another module (e.g. `spec: specArg`) instead of an inline
+ *  chain. Resolve the import to the fragment's `export const` so its
+ *  chain can be analyzed in place — returns the initializer expression
+ *  plus the source file it lives in (needed for `.getText()` on
+ *  `.default(...)`). Returns null for inline chains or unresolvable
+ *  references (the caller then analyzes the initializer as-is). */
+function resolveImportedConst(
+  name: string,
+  toolSf: ts.SourceFile,
+  toolPath: string,
+): { expr: ts.Expression; sf: ts.SourceFile } | null {
+  let moduleSpec: string | undefined;
+  for (const stmt of toolSf.statements) {
+    if (
+      !ts.isImportDeclaration(stmt) ||
+      !stmt.importClause?.namedBindings ||
+      !ts.isNamedImports(stmt.importClause.namedBindings) ||
+      !ts.isStringLiteral(stmt.moduleSpecifier)
+    ) {
+      continue;
+    }
+    if (
+      stmt.importClause.namedBindings.elements.some((el) => el.name.text === name)
+    ) {
+      moduleSpec = stmt.moduleSpecifier.text;
+      break;
+    }
+  }
+  if (!moduleSpec || !moduleSpec.startsWith(".")) return null;
+  const modPath = resolve(dirname(toolPath), moduleSpec.replace(/\.js$/, ".ts"));
+  if (!existsSync(modPath)) return null;
+  const modSf = ts.createSourceFile(
+    modPath,
+    readFileSync(modPath, "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  let found: ts.Expression | null = null;
+  const visit = (node: ts.Node) => {
+    if (found) return;
+    if (
+      ts.isVariableStatement(node) &&
+      node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+    ) {
+      for (const decl of node.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && decl.name.text === name && decl.initializer) {
+          found = decl.initializer;
+          return;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(modSf);
+  return found ? { expr: found, sf: modSf } : null;
+}
+
 export function parseToolFile(
   path: string,
   schemaIdent: string,
@@ -519,7 +577,20 @@ export function parseToolFile(
             ) {
               continue;
             }
-            const analysis = analyzeZodChain(prop.initializer, sf);
+            // A field is usually an inline zod chain, but it can also
+            // reference a shared fragment imported from another module
+            // (e.g. `spec: specArg`). Resolve the import so the chain is
+            // analyzed from its own module's source.
+            let chainExpr: ts.Expression = prop.initializer;
+            let chainSf = sf;
+            if (ts.isIdentifier(prop.initializer)) {
+              const shared = resolveImportedConst(prop.initializer.text, sf, path);
+              if (shared) {
+                chainExpr = shared.expr;
+                chainSf = shared.sf;
+              }
+            }
+            const analysis = analyzeZodChain(chainExpr, chainSf);
             const desc = analysis.description || jsdocFor(prop, sf);
             inputFields.push({
               name: prop.name.text,

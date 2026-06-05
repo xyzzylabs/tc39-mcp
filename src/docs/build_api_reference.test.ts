@@ -101,6 +101,14 @@ describe("docs/build_api_reference", () => {
       expect(md).not.toMatch(/`spec` \| SPEC_VALUES/);
     });
 
+    it("resolves shared arg fragments (specArg/editionArg) to full field docs", () => {
+      // Tools reference `spec: specArg` / `edition: editionArg` imported
+      // from src/mcp/_args.ts. The generator must follow the import and
+      // render the resolved chain's description, not an empty cell.
+      expect(md).toContain("Which TC39 spec to read");
+      expect(md).toContain("Edition within the chosen spec");
+    });
+
     it("shows a Returns line with the handler return type", () => {
       expect(md).toMatch(/Returns `Clause \| null`/);
     });

@@ -4,12 +4,12 @@
 // reworded indices, notes, crossrefs).
 
 import { z } from "zod";
+import { specArg, editionArg } from "../_args.js";
 import { loadSpec } from "./clause.js";
 import { flattenStepText, walkSteps } from "../../parser/walk.js";
 import type { Clause } from "../../parser/schema.js";
 import {
   EDITION_VALUES,
-  SPEC_VALUES,
   type ConcreteEdition,
   type Edition,
   type Spec,
@@ -20,12 +20,7 @@ import {
 
 export const specDiffSchema = {
   id: z.string().describe("Spec clause id."),
-  spec: z
-    .enum(SPEC_VALUES)
-    .default("262")
-    .describe(
-      "Which TC39 spec to read: '262' (core language, default) or '402' (Internationalization API).",
-    ),
+  spec: specArg,
   from: z
     .enum(EDITION_VALUES)
     .default("latest")
