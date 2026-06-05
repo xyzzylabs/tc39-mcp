@@ -28,6 +28,7 @@ import {
   specSymbolResolve,
   specTables,
   specWellKnownIntrinsics,
+  test262Search,
 } from "./tools.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import type { R2Env } from "./r2.js";
@@ -368,6 +369,21 @@ const TOOL_REGISTRY: {
           limit?: number;
         },
       ),
+  },
+  {
+    name: "test262.search",
+    description:
+      "Search the tc39/test262 conformance suite from its indexed front-matter. `query` AND-matches whitespace tokens (case-insensitive) across each test's description + path; `esid` prefix-matches the front-matter esid. Returns ranked hits (path, GitHub url at the indexed SHA, esid, description, features, flags), capped at `limit` (default 20). Supply at least one of `query` / `esid`.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        esid: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+    handler: async (env, args) =>
+      test262Search(env, args as { query?: string; esid?: string; limit?: number }),
   },
 ];
 
