@@ -1,10 +1,16 @@
 // Server-level instructions surfaced to MCP clients (and through them
 // to LLM agents) during initialization.
 //
-// This is a Worker-local copy of the stdio server's
-// `src/mcp/instructions.ts`. We keep two copies so the Worker bundle
-// doesn't depend on the main Node-shaped source tree; the content
-// stays in sync via the deploy workflow's typecheck + smoke test.
+// The hosted / stdio-only tool lists are built from the shared
+// `src/spec/tool_inventory.ts` so they can't drift from the stdio
+// server's instructions or the tools/list registry. The surrounding
+// prose is Worker-specific (this is the hosted deployment).
+
+import {
+  HOSTED_TOOLS,
+  STDIO_ONLY_TOOLS,
+  TOTAL_TOOL_COUNT,
+} from "../../src/spec/tool_inventory.js";
 
 export const SERVER_INSTRUCTIONS = `
 tc39-mcp serves read-only structured data from the TC39 specs
@@ -12,14 +18,10 @@ tc39-mcp serves read-only structured data from the TC39 specs
 response is deterministic over data pinned to specific upstream
 SHAs.
 
-This is the hosted Cloudflare Worker deployment. It exposes 14 tools:
-spec.about, clause.get, clause.list, spec.search, proposal.list,
-proposal.get, spec.grammar, spec.tables, spec.sdo_index,
-clause.outline, spec.global_search, spec.snapshots,
-spec.symbol_resolve, spec.well_known_intrinsics. The full 19-tool
-surface (additionally spec.diff, spec.crossrefs, spec.history,
-test262.search, test262.get) is available via the stdio server
-(npx tc39-mcp).
+This is the hosted Cloudflare Worker deployment. It exposes ${HOSTED_TOOLS.length} tools:
+${HOSTED_TOOLS.join(", ")}. The full ${TOTAL_TOOL_COUNT}-tool surface
+(additionally ${STDIO_ONLY_TOOLS.join(", ")}) is available via the stdio
+server (npx tc39-mcp).
 
 Common workflow:
   1. \`spec.about\` — call first to see what SHAs and editions the

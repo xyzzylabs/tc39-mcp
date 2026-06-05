@@ -6,6 +6,7 @@ import {
   fakeProposalsIndexJson,
   fakeSpecJson,
 } from "./__fixtures__/fakeR2.js";
+import { HOSTED_TOOLS } from "../../src/spec/tool_inventory.js";
 
 beforeEach(() => {
   __resetCachesForTests();
@@ -66,34 +67,19 @@ describe("dispatch — initialize", () => {
 // ─── tools/list ────────────────────────────────────────────────────
 
 describe("dispatch — tools/list", () => {
-  it("returns 14 tools", async () => {
+  it("registers exactly the hosted-tool inventory count", async () => {
     const env = { SPECS: createFakeR2() };
     const r = await dispatch(env, rpc("tools/list"));
     const result = r.result as { tools: { name: string }[] };
-    expect(result.tools.length).toBe(14);
+    expect(result.tools.length).toBe(HOSTED_TOOLS.length);
   });
 
-  it("includes the expected tool names", async () => {
+  it("registers exactly the hosted-tool inventory names", async () => {
     const env = { SPECS: createFakeR2() };
     const r = await dispatch(env, rpc("tools/list"));
     const result = r.result as { tools: { name: string }[] };
     const names = result.tools.map((t) => t.name).sort();
-    expect(names).toEqual([
-      "clause.get",
-      "clause.list",
-      "clause.outline",
-      "proposal.get",
-      "proposal.list",
-      "spec.about",
-      "spec.global_search",
-      "spec.grammar",
-      "spec.sdo_index",
-      "spec.search",
-      "spec.snapshots",
-      "spec.symbol_resolve",
-      "spec.tables",
-      "spec.well_known_intrinsics",
-    ]);
+    expect(names).toEqual([...HOSTED_TOOLS].sort());
   });
 
   it("every tool has a description + inputSchema", async () => {
