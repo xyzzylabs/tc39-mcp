@@ -237,27 +237,31 @@ export async function loadParsedSpec(
   return parsed;
 }
 
-/** Read just the `pin` block of a snapshot WITHOUT populating the
- *  parsed-spec LRU. Parses the full JSON (no streaming parser is
- *  available) but lets it go straight out of scope — the same
- *  parse-and-discard the stdio server uses for `spec.snapshots`, so a
- *  snapshot scan can't evict the hot `clause.get` / `spec.search`
- *  entries in `specCache`. Returns `null` when the object is missing or
- *  unparseable. */
-export async function readSnapshotPin(
+/** Full-parse a live snapshot WITHOUT touching the per-isolate LRU.
+ *  Both introspection scans — `spec.about` and `spec.snapshots` — read
+ *  every present snapshot to report metadata (pins, plus clause counts
+ *  for `spec.about`). Routing those parses through `loadParsedSpec`
+ *  would thrash `specCache`
+ *  (capacity 4) against the ~24 (spec, edition) pairs: every load
+ *  evicts a hot entry, so a single scan can drop a concurrent caller's
+ *  parsed `262/main` + `402/main` and force them to re-load. This still
+ *  layers through the edge cache — so repeated scans skip R2 and stay
+ *  cheap — but the parsed object goes straight out of scope and never
+ *  enters the LRU. Mirrors the stdio server's parse-and-discard
+ *  `spec.about`. Live keys only; the scan never addresses by SHA. */
+export async function loadParsedSpecUncached(
   env: R2Env,
   spec: string,
   edition: string,
-  at?: string,
-): Promise<ParsedSpec["pin"] | null> {
-  const key = specKey(spec, edition, at);
+): Promise<ParsedSpec> {
+  const key = specKey(spec, edition);
   const text = await readTextWithEdgeCache(env, key);
-  if (text === null) return null;
-  try {
-    return (JSON.parse(text) as ParsedSpec).pin ?? null;
-  } catch {
-    return null;
+  if (text === null) {
+    throw new Error(
+      `Missing parsed spec object in R2: ${key}. Upload via the deploy-worker workflow or scripts/upload-r2.ts.`,
+    );
   }
+  return JSON.parse(text) as ParsedSpec;
 }
 
 export async function loadTest262Index(

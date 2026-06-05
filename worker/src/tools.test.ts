@@ -16,7 +16,9 @@ import {
   specWellKnownIntrinsics,
 } from "./tools.js";
 import { __resetCachesForTests } from "./r2.js";
+import { RELEASED_262_EDITIONS } from "../../src/spec/catalog.js";
 import {
+  asFakeR2,
   createFakeR2,
   fakeProposalsIndexJson,
   fakeSpecJson,
@@ -110,6 +112,40 @@ describe("specAbout", () => {
       test262_index?: unknown;
     };
     expect(r.test262_index).toBeUndefined();
+  });
+
+  it("scan never evicts a concurrent caller's hot LRU entry", async () => {
+    // The introspection scan full-parses every present snapshot just to
+    // report counts. If it populated the capacity-4 specCache, walking
+    // the ~24 editions would evict whatever a concurrent clause.get /
+    // spec.search had warmed. Here we warm 262/main, then run a scan
+    // that also walks all 402 editions — far more sets than the LRU
+    // holds under the old getSpec/loadParsedSpec path — and confirm
+    // 262/main is still served from cache (zero R2 reads).
+    const contents: Record<string, string> = {
+      "spec-262-main.json": fakeSpecJson({
+        spec: "262",
+        edition: "main",
+        clauses: { "sec-x": { id: "sec-x" } },
+      }),
+    };
+    for (const ed of [...RELEASED_262_EDITIONS, "main"]) {
+      contents[`spec-402-${ed}.json`] = fakeSpecJson({ spec: "402", edition: ed });
+    }
+    const env = { SPECS: createFakeR2({ contents }) };
+
+    // Warm 262/main into the per-isolate LRU.
+    await clauseGet(env, { id: "sec-x", spec: "262", edition: "main" });
+
+    // Run the introspection scan, then isolate the post-scan reads.
+    await specAbout(env, "0.1.0");
+    asFakeR2(env.SPECS).__reset_counts();
+
+    // 262/main must still be hot: a follow-up clause.get hits the LRU
+    // and touches R2 zero times. Under the old path the scan would have
+    // evicted it, forcing a re-read here.
+    await clauseGet(env, { id: "sec-x", spec: "262", edition: "main" });
+    expect(asFakeR2(env.SPECS).__get_count("spec-262-main.json")).toBe(0);
   });
 });
 

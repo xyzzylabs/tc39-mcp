@@ -14,7 +14,7 @@
 
 import {
   loadParsedSpec,
-  readSnapshotPin,
+  loadParsedSpecUncached,
   loadProposalsIndex,
   loadTest262Index,
   listSnapshots,
@@ -166,7 +166,13 @@ export async function specAbout(
         continue;
       }
       try {
-        const p = await getSpec(env, spec, ed);
+        // Parse-and-discard rather than `getSpec`: this scan touches
+        // every present (spec, edition) pair just to report counts, so
+        // populating the capacity-4 `specCache` would evict concurrent
+        // callers' hot clause.get / spec.search entries. The edition is
+        // already concrete here, so the resolve/support checks `getSpec`
+        // adds would be no-ops anyway.
+        const p = await loadParsedSpecUncached(env, spec, ed);
         const tables = p.tables;
         const grammar = p.grammar;
         snapshots.push({
@@ -501,13 +507,18 @@ export async function specSnapshots(
     const edition = m[2]!;
     if (args.spec && args.spec !== spec) continue;
     if (args.edition && args.edition !== edition) continue;
-    // Read only the pin, parse-and-discard — never populate the hot
-    // specCache LRU (mirrors the stdio tool; keeps a snapshots scan from
-    // evicting live clause.get / spec.search entries). A null pin means
-    // the object is missing (a list-then-delete race) or unparseable (a
-    // corrupt snapshot); skip it rather than fail the whole call or emit
-    // a row with no sha.
-    const pin = await readSnapshotPin(env, spec, edition);
+    // Read the snapshot for its pin via the uncached loader, so this
+    // scan never populates the hot specCache LRU (which would evict live
+    // clause.get / spec.search entries — same reasoning as spec.about).
+    // A missing object (list-then-delete race) or corrupt snapshot
+    // throws; skip it rather than fail the whole call or emit a row with
+    // no sha.
+    let pin: ParsedSpec["pin"];
+    try {
+      pin = (await loadParsedSpecUncached(env, spec, edition)).pin;
+    } catch {
+      continue;
+    }
     if (!pin?.sha) continue;
     rows.push({
       spec,
