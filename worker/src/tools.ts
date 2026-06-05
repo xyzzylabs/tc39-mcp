@@ -2,14 +2,15 @@
 // async function that takes the R2 env + the parsed args and returns
 // a JSON-serializable result.
 //
-// v0.1.0 covers the core lookup surface: clause.get, clause.list,
-// spec.search, spec.about, proposal.list, proposal.get. The richer
-// tools (crossrefs index, sdo index, tables / grammar parsing,
-// global_search, etc.) ride on the same R2 loader and ship in v0.2.
+// Beyond the core lookup surface (clause.get, clause.list, spec.search,
+// spec.about, proposal.list, proposal.get) the Worker also serves the
+// pure-data query tools that read only the parsed spec it already loads
+// from R2: spec.grammar, spec.tables, spec.sdo_index. Each shares its
+// logic with the stdio server via a dependency-free `src/spec/*` module
+// so the two transports answer identically.
 //
-// `spec.history` and `test262.get` are filesystem / subprocess-bound
-// and don't ship in the hosted Worker — the stdio server remains
-// the right consumer for those.
+// `spec.history` (git subprocess) and `test262.get` (full test sources,
+// not in R2) stay filesystem / subprocess-bound and run stdio-only.
 
 import {
   loadParsedSpec,
@@ -38,6 +39,20 @@ import {
   filterProposals,
   type FilterableProposal,
 } from "../../src/index/proposals_filter.js";
+import {
+  queryGrammar,
+  type GrammarQueryResult,
+  type GrammarRow,
+} from "../../src/spec/grammar_query.js";
+import {
+  queryTables,
+  type TablesQueryResult,
+  type TableRow,
+} from "../../src/spec/tables_query.js";
+import {
+  buildSdoIndex,
+  type SdoIndexResult,
+} from "../../src/spec/sdo_index.js";
 
 // ─── tool result shapes ────────────────────────────────────────────
 
@@ -312,4 +327,76 @@ export async function proposalGet(
   const lc = args.name.toLowerCase();
   const byName = ps.find((p) => p.name.toLowerCase() === lc);
   return { source: "index", proposals_sha: idx.proposals_sha, proposal: byName ?? null };
+}
+
+// ─── spec.grammar ─────────────────────────────────────────────────
+
+export async function specGrammar(
+  env: R2Env,
+  args: {
+    nonterminal?: string;
+    contains?: string;
+    include_sdo?: boolean;
+    spec?: string;
+    edition?: string;
+    limit?: number;
+  },
+): Promise<{ spec: string } & GrammarQueryResult> {
+  const spec = args.spec ?? "262";
+  const p = await getSpec(env, spec, args.edition ?? "latest");
+  // `p.grammar` is typed `unknown[]` in the Worker's local ParsedSpec;
+  // the bytes are the parser's structured GrammarProduction[] (see r2.ts).
+  const core = queryGrammar((p.grammar ?? []) as GrammarRow[], {
+    nonterminal: args.nonterminal,
+    contains: args.contains,
+    includeSdo: args.include_sdo,
+    limit: args.limit,
+  });
+  return { spec, ...core };
+}
+
+// ─── spec.tables ──────────────────────────────────────────────────
+
+export async function specTables(
+  env: R2Env,
+  args: {
+    id?: string;
+    filter?: string;
+    spec?: string;
+    edition?: string;
+    limit?: number;
+  },
+): Promise<{ spec: string } & TablesQueryResult> {
+  const spec = args.spec ?? "262";
+  const p = await getSpec(env, spec, args.edition ?? "latest");
+  // `p.tables` is typed `Record<string, unknown>` in the Worker's local
+  // ParsedSpec; the bytes are the parser's structured SpecTable map.
+  const core = queryTables((p.tables ?? {}) as Record<string, TableRow>, {
+    id: args.id,
+    filter: args.filter,
+    limit: args.limit,
+  });
+  return { spec, ...core };
+}
+
+// ─── spec.sdo_index ───────────────────────────────────────────────
+
+export async function specSdoIndex(
+  env: R2Env,
+  args: {
+    by?: "production" | "sdo";
+    filter?: string;
+    spec?: string;
+    edition?: string;
+    limit?: number;
+  },
+): Promise<{ spec: string } & SdoIndexResult> {
+  const spec = args.spec ?? "262";
+  const p = await getSpec(env, spec, args.edition ?? "latest");
+  const core = buildSdoIndex(p.clauses, {
+    by: args.by,
+    filter: args.filter,
+    limit: args.limit,
+  });
+  return { spec, ...core };
 }

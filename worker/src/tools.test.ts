@@ -5,7 +5,10 @@ import {
   proposalGet,
   proposalList,
   specAbout,
+  specGrammar,
+  specSdoIndex,
   specSearch,
+  specTables,
 } from "./tools.js";
 import { __resetCachesForTests } from "./r2.js";
 import {
@@ -495,5 +498,176 @@ describe("proposalGet", () => {
       proposal: unknown;
     };
     expect(r.proposal).toBeNull();
+  });
+});
+
+// ─── specGrammar ──────────────────────────────────────────────────
+
+describe("specGrammar", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          grammar: [
+            { nonterminal: "Statement", rhs: ["BlockStatement"], clause_id: "sec-statements" },
+            {
+              nonterminal: "BindingIdentifier",
+              parameters: ["Yield"],
+              rhs: ["Identifier", "yield"],
+              clause_id: "sec-identifiers",
+            },
+            { nonterminal: "SdoAttached", rhs: ["x"], standalone: false },
+          ],
+        }),
+      },
+    }),
+  });
+
+  it("lists standalone non-terminals by default and echoes spec", async () => {
+    const r = await specGrammar(env(), {});
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.spec).toBe("262");
+    expect(r.total).toBe(2); // SdoAttached excluded (standalone:false)
+  });
+
+  it("returns productions for a non-terminal", async () => {
+    const r = await specGrammar(env(), { nonterminal: "BindingIdentifier" });
+    if (r.mode !== "by_nonterminal") throw new Error("expected by_nonterminal");
+    expect(r.productions[0]!.nonterminal).toBe("BindingIdentifier");
+  });
+
+  it("filters by RHS substring with contains", async () => {
+    const r = await specGrammar(env(), { contains: "yield" });
+    if (r.mode !== "contains") throw new Error("expected contains mode");
+    expect(r.total).toBe(1);
+  });
+
+  it("returns an empty list when the snapshot predates grammar extraction", async () => {
+    // An old snapshot may have no `grammar` key at all; the `?? []` guard
+    // must keep it from throwing.
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": JSON.stringify({
+            pin: { spec: "262", edition: "es2026", sha: "x" },
+            clauses: {},
+          }),
+        },
+      }),
+    };
+    const r = await specGrammar(env, {});
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.total).toBe(0);
+  });
+});
+
+// ─── specTables ───────────────────────────────────────────────────
+
+describe("specTables", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          tables: {
+            "table-wki": {
+              id: "table-wki",
+              caption: "Well-Known Intrinsic Objects",
+              columns: ["Name"],
+              rows: [["%Array%"], ["%Object%"]],
+            },
+            "table-locale": {
+              id: "table-locale",
+              caption: "Locale Data",
+              columns: ["Key"],
+              rows: [["nu"]],
+            },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("fetches a table by id", async () => {
+    const r = await specTables(env(), { id: "table-wki" });
+    if (r.mode !== "get") throw new Error("expected get mode");
+    expect(r.spec).toBe("262");
+    expect(r.table!.rows.length).toBe(2);
+  });
+
+  it("lists tables when no id is given", async () => {
+    const r = await specTables(env(), {});
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.total).toBe(2);
+  });
+
+  it("filters the list by caption substring", async () => {
+    const r = await specTables(env(), { filter: "locale" });
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.total).toBe(1);
+    expect(r.tables[0]!.id).toBe("table-locale");
+  });
+
+  it("returns an empty list when the snapshot predates table extraction", async () => {
+    // An old snapshot may have no `tables` key at all; the `?? {}` guard
+    // must keep it from throwing.
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": JSON.stringify({
+            pin: { spec: "262", edition: "es2026", sha: "x" },
+            clauses: {},
+          }),
+        },
+      }),
+    };
+    const r = await specTables(env, {});
+    if (r.mode !== "list") throw new Error("expected list mode");
+    expect(r.total).toBe(0);
+  });
+});
+
+// ─── specSdoIndex ─────────────────────────────────────────────────
+
+describe("specSdoIndex", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          clauses: {
+            "sec-eval-a": {
+              id: "sec-eval-a",
+              title: "Evaluation",
+              algorithms: [{ production: "BindingIdentifier : Identifier" }],
+            },
+            "sec-eval-b": {
+              id: "sec-eval-b",
+              title: "Evaluation",
+              algorithms: [{ production: "Statement : BlockStatement" }],
+            },
+            "sec-prose": { id: "sec-prose", title: "Prose" },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("indexes by production by default", async () => {
+    const r = await specSdoIndex(env(), {});
+    expect(r.spec).toBe("262");
+    expect(r.by).toBe("production");
+    expect(r.pair_count).toBe(2); // sec-prose has no production
+    expect(r.group_count).toBe(2);
+  });
+
+  it("indexes by sdo title", async () => {
+    const r = await specSdoIndex(env(), { by: "sdo" });
+    expect(r.by).toBe("sdo");
+    expect(r.groups["Evaluation"]!.length).toBe(2);
   });
 });
