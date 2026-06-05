@@ -46,10 +46,13 @@ retry; treat empty as "no match found".
 
 Transport differences:
   - The stdio server (npx tc39-mcp) exposes all 19 tools.
-  - The hosted Cloudflare Worker exposes 6 core tools (spec.about,
+  - The hosted Cloudflare Worker exposes 9 tools (spec.about,
     clause.get, clause.list, spec.search, proposal.list,
-    proposal.get). The remaining 13 require filesystem or subprocess
-    access and run stdio-only for now.
+    proposal.get, spec.grammar, spec.tables, spec.sdo_index). The
+    remaining 10 run stdio-only for now: spec.history (git
+    subprocess) and the test262.* tools (the vendored test262 corpus)
+    need a subprocess or the full test sources; the rest are being
+    brought over.
 
 All data is read-only: no tool modifies anything upstream, no tool
 runs user-supplied code. Safe to call freely.

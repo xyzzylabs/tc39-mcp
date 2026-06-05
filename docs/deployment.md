@@ -389,16 +389,17 @@ The model favors simplicity; these are tradeoffs, not correctness gaps:
 - Stale isolates serve old R2 reads from their in-memory cache until
   Cloudflare recycles them (minutes).
 
-### Why only 6 tools in the hosted Worker?
+### Which tools run stdio-only?
 
-The stdio server exposes 19 tools; the Worker ships 6. The other 13
-fall into three buckets:
+The stdio server exposes all 19 tools; the hosted Worker currently
+ships 9 — the six core lookup tools plus `spec.grammar`, `spec.tables`,
+and `spec.sdo_index`. The other 10 fall into two buckets:
 
 | Excluded tool | Reason |
 |---|---|
 | `spec.history` | Shells out to `git log` against a vendored checkout; no FS or subprocess on Workers. |
-| `test262.get` | Reads files from `vendor/test262/`; Workers have no FS. |
-| `spec.crossrefs`, `spec.sdo_index`, `spec.global_search`, `spec.symbol_resolve`, `spec.well_known_intrinsics`, `spec.tables`, `spec.grammar`, `clause.outline`, `spec.diff`, `spec.snapshots`, `test262.search` | Pure functions over R2-backed data, but run stdio-only — the Worker serves the highest-traffic read tools and keeps its hosted surface small. |
+| `test262.get` | Reads test sources from `vendor/test262/`; the full corpus isn't in R2 and Workers have no FS. |
+| `spec.crossrefs`, `spec.diff`, `spec.global_search`, `spec.symbol_resolve`, `spec.well_known_intrinsics`, `clause.outline`, `spec.snapshots`, `test262.search` | Pure functions over data the Worker already loads from R2; being brought to the Worker incrementally (`spec.grammar`, `spec.tables`, `spec.sdo_index` already shipped). |
 
 ### Performance baseline
 

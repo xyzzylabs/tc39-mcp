@@ -17,7 +17,10 @@ import {
   proposalGet,
   proposalList,
   specAbout,
+  specGrammar,
+  specSdoIndex,
   specSearch,
+  specTables,
 } from "./tools.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import type { R2Env } from "./r2.js";
@@ -141,6 +144,86 @@ const TOOL_REGISTRY: {
       required: ["name"],
     },
     handler: async (env, args) => proposalGet(env, args as { name: string }),
+  },
+  {
+    name: "spec.grammar",
+    description:
+      "Query grammar productions captured from the spec's `<emu-grammar>` blocks. `{ nonterminal }` returns every production for that non-terminal (exact match); `{ contains }` filters by RHS / name substring; neither lists all non-terminals + their production counts. `include_sdo` folds in SDO-attached productions (off by default).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        nonterminal: { type: "string" },
+        contains: { type: "string" },
+        include_sdo: { type: "boolean" },
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+    handler: async (env, args) =>
+      specGrammar(
+        env,
+        args as {
+          nonterminal?: string;
+          contains?: string;
+          include_sdo?: boolean;
+          spec?: string;
+          edition?: string;
+          limit?: number;
+        },
+      ),
+  },
+  {
+    name: "spec.tables",
+    description:
+      "List or fetch parsed `<emu-table>` content. `{ id }` returns exactly that table (full columns + rows); otherwise list table summaries, optionally narrowed by a `filter` substring over the caption or id.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        filter: { type: "string" },
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+    handler: async (env, args) =>
+      specTables(
+        env,
+        args as {
+          id?: string;
+          filter?: string;
+          spec?: string;
+          edition?: string;
+          limit?: number;
+        },
+      ),
+  },
+  {
+    name: "spec.sdo_index",
+    description:
+      "Index Syntax-Directed Operations by the grammar production they're defined on. `by: 'production'` (default) groups SDOs under each production; `by: 'sdo'` groups productions under each SDO title. `filter` narrows to keys containing a substring (case-insensitive).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+        by: { type: "string", enum: ["production", "sdo"] },
+        filter: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+    handler: async (env, args) =>
+      specSdoIndex(
+        env,
+        args as {
+          by?: "production" | "sdo";
+          filter?: string;
+          spec?: string;
+          edition?: string;
+          limit?: number;
+        },
+      ),
   },
 ];
 

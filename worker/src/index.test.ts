@@ -66,11 +66,11 @@ describe("dispatch — initialize", () => {
 // ─── tools/list ────────────────────────────────────────────────────
 
 describe("dispatch — tools/list", () => {
-  it("returns 6 tools", async () => {
+  it("returns 9 tools", async () => {
     const env = { SPECS: createFakeR2() };
     const r = await dispatch(env, rpc("tools/list"));
     const result = r.result as { tools: { name: string }[] };
-    expect(result.tools.length).toBe(6);
+    expect(result.tools.length).toBe(9);
   });
 
   it("includes the expected tool names", async () => {
@@ -84,7 +84,10 @@ describe("dispatch — tools/list", () => {
       "proposal.get",
       "proposal.list",
       "spec.about",
+      "spec.grammar",
+      "spec.sdo_index",
       "spec.search",
+      "spec.tables",
     ]);
   });
 

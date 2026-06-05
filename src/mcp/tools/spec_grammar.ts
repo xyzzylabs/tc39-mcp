@@ -19,6 +19,9 @@
 // `include_sdo` controls whether SDO-attached productions are included.
 // By default we return only standalone definitions, which is what most
 // callers want when asking "what does BindingIdentifier look like?".
+//
+// The query logic lives in `src/spec/grammar_query.ts` so the stdio
+// server and the Cloudflare Worker answer it identically.
 
 import { z } from "zod";
 import { specArg, editionArg } from "../_args.js";
@@ -27,7 +30,13 @@ import {
   type Edition,
   type Spec,
 } from "../../editions.js";
-import type { GrammarProduction } from "../../parser/schema.js";
+import {
+  queryGrammar,
+  type GrammarQueryResult,
+  type NonterminalSummary,
+} from "../../spec/grammar_query.js";
+
+export type { NonterminalSummary };
 
 export const specGrammarSchema = {
   nonterminal: z
@@ -70,44 +79,9 @@ export const specGrammarExamples = [
   },
 ] as const;
 
-/** One row in the list-mode summary of `spec.grammar`: one
- *  non-terminal name plus how many productions define it and which
- *  clauses they live in. */
-export interface NonterminalSummary {
-  /** Left-hand side of the production block (e.g. `BindingIdentifier`). */
-  nonterminal: string;
-  /** Total number of standalone productions defining this non-terminal. */
-  production_count: number;
-  /** Spec clause ids that host those productions, deduplicated. */
-  clause_ids: string[];
-}
-
-/** Output of `spec.grammar`. Two discriminated variants:
- *
- *  - `by_nonterminal` / `contains` modes return matching productions.
- *  - `list` mode returns a summary of every known non-terminal. */
-export type SpecGrammarResult =
-  | {
-      /** `by_nonterminal` when the `nonterminal` arg was given;
-       *  `contains` when only the `contains` arg was given. */
-      mode: "by_nonterminal" | "contains";
-      /** Which TC39 spec the productions came from. */
-      spec: Spec;
-      /** Matched productions, capped at `limit`. */
-      productions: GrammarProduction[];
-      /** Total productions matching before the `limit` cap. */
-      total: number;
-    }
-  | {
-      /** `list` when neither filter argument was given. */
-      mode: "list";
-      /** Which TC39 spec the listing came from. */
-      spec: Spec;
-      /** One summary row per non-terminal, capped at `limit`. */
-      nonterminals: NonterminalSummary[];
-      /** Total non-terminals before the `limit` cap. */
-      total: number;
-    };
+/** Output of `spec.grammar`: the shared grammar-query result plus which
+ *  TC39 spec it was drawn from. */
+export type SpecGrammarResult = { spec: Spec } & GrammarQueryResult;
 
 export async function specGrammar(args: {
   nonterminal?: string;
@@ -119,61 +93,11 @@ export async function specGrammar(args: {
 }): Promise<SpecGrammarResult> {
   const spec = args.spec ?? "262";
   const parsed = await loadSpec(spec, args.edition ?? "latest");
-  const limit = args.limit ?? 100;
-  const includeSdo = args.include_sdo ?? false;
-
-  const all = (parsed.grammar ?? []).filter((g) => includeSdo || g.standalone);
-
-  if (args.nonterminal) {
-    const matches = all.filter((g) => g.nonterminal === args.nonterminal);
-    return {
-      mode: "by_nonterminal",
-      spec,
-      total: matches.length,
-      productions: matches.slice(0, limit),
-    };
-  }
-
-  if (args.contains) {
-    const q = args.contains.toLowerCase();
-    const matches = all.filter((g) => {
-      if (g.nonterminal.toLowerCase().includes(q)) return true;
-      for (const r of g.rhs) {
-        if (r.toLowerCase().includes(q)) return true;
-      }
-      return false;
-    });
-    return {
-      mode: "contains",
-      spec,
-      total: matches.length,
-      productions: matches.slice(0, limit),
-    };
-  }
-
-  // List mode: aggregate by non-terminal name.
-  const byNT = new Map<string, NonterminalSummary>();
-  for (const g of all) {
-    if (!byNT.has(g.nonterminal)) {
-      byNT.set(g.nonterminal, {
-        nonterminal: g.nonterminal,
-        production_count: 0,
-        clause_ids: [],
-      });
-    }
-    const s = byNT.get(g.nonterminal)!;
-    s.production_count++;
-    if (g.clause_id && !s.clause_ids.includes(g.clause_id)) {
-      s.clause_ids.push(g.clause_id);
-    }
-  }
-  const list = Array.from(byNT.values()).sort((a, b) =>
-    a.nonterminal.localeCompare(b.nonterminal),
-  );
-  return {
-    mode: "list",
-    spec,
-    total: list.length,
-    nonterminals: list.slice(0, limit),
-  };
+  const core = queryGrammar(parsed.grammar ?? [], {
+    nonterminal: args.nonterminal,
+    contains: args.contains,
+    includeSdo: args.include_sdo,
+    limit: args.limit,
+  });
+  return { spec, ...core };
 }
