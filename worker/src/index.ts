@@ -22,6 +22,7 @@ import {
   specGrammar,
   specSdoIndex,
   specSearch,
+  specSnapshots,
   specTables,
 } from "./tools.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
@@ -264,6 +265,20 @@ const TOOL_REGISTRY: {
         env,
         args as { query: string; search_steps?: boolean; limit?: number },
       ),
+  },
+  {
+    name: "spec.snapshots",
+    description:
+      "List the live (spec, edition, sha, fetched_at) snapshots the hosted Worker is serving from R2. Filter by `spec` ('262'|'402') or `edition` (e.g. 'main', 'es2026'). Historical SHA-pinned copies are reachable via `at:` on clause.get / spec.search but aren't enumerated here.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        spec: { type: "string", enum: ["262", "402"] },
+        edition: { type: "string" },
+      },
+    },
+    handler: async (env, args) =>
+      specSnapshots(env, args as { spec?: string; edition?: string }),
   },
 ];
 

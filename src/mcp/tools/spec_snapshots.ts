@@ -7,9 +7,10 @@
 // snapshots that version baked in — version-pinned reproducibility
 // without any extra plumbing.
 //
-// On the Worker, the analog tool iterates R2 keys matching
-// `spec-{spec}-{edition}-{sha10}.json` so callers can discover
-// historical pins they can reach via `at: "<sha>"`.
+// On the Worker, the analog tool enumerates the live snapshot for each
+// (spec, edition) by listing R2 keys. Historical SHA-pinned copies stay
+// reachable via `at: "<sha>"` on clause.get / spec.search but are not
+// listed here.
 
 import { z } from "zod";
 import {
@@ -51,9 +52,11 @@ export interface SnapshotRow {
   sha: string;
   fetched_at?: string;
   biblio_commit?: string;
-  /** Whether this is the current live snapshot for (spec, edition). On
-   *  stdio this is always true because only the live copy ships in
-   *  build/. On the Worker, false for historical SHA-pinned copies. */
+  /** Whether this is the current live snapshot for (spec, edition).
+   *  Always true today: both transports enumerate only live snapshots
+   *  (stdio ships just the live copy in build/; the Worker lists the
+   *  live R2 keys). Retained to mark historical SHA-pinned copies if a
+   *  future revision enumerates them. */
   live: boolean;
 }
 
@@ -65,9 +68,9 @@ export interface SnapshotsResult {
   spec_filter?: Spec;
   /** Echo of the `edition` argument, if one was supplied. */
   edition_filter?: string;
-  /** Matching snapshot rows. On the stdio server this is whatever
-   *  the installed package version baked in; on the Worker this can
-   *  include historical SHA-pinned copies. */
+  /** Matching snapshot rows. On the stdio server these are whatever the
+   *  installed package version baked in; on the Worker they are the live
+   *  snapshots currently in R2. */
   snapshots: SnapshotRow[];
 }
 

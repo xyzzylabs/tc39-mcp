@@ -10,6 +10,7 @@ import {
   specGrammar,
   specSdoIndex,
   specSearch,
+  specSnapshots,
   specTables,
 } from "./tools.js";
 import { __resetCachesForTests } from "./r2.js";
@@ -768,5 +769,71 @@ describe("specGlobalSearch", () => {
     const hits = await specGlobalSearch(env262Only, { query: "Canonicalize" });
     expect(hits.length).toBe(1);
     expect(hits[0]!.spec).toBe("262");
+  });
+});
+
+// ─── specSnapshots ────────────────────────────────────────────────
+
+describe("specSnapshots", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({ spec: "262", edition: "es2026", sha: "abc262" }),
+        "spec-262-main.json": fakeSpecJson({ spec: "262", edition: "main", sha: "main262" }),
+        "spec-402-es2026.json": fakeSpecJson({ spec: "402", edition: "es2026", sha: "abc402" }),
+        // Historical SHA-pinned copy — must NOT be enumerated.
+        "spec-262-main-abc1234567.json": fakeSpecJson({ spec: "262", edition: "main", sha: "old262" }),
+      },
+    }),
+  });
+
+  it("lists live snapshots with pin metadata, sorted, skipping historical pins", async () => {
+    const r = await specSnapshots(env(), {});
+    expect(r.snapshots.length).toBe(3); // the -abc1234567 historical pin is skipped
+    expect(r.snapshots.every((s) => s.live)).toBe(true);
+    expect(r.snapshots.map((s) => `${s.spec}/${s.edition}`)).toEqual([
+      "262/es2026",
+      "262/main",
+      "402/es2026",
+    ]);
+    expect(r.snapshots[0]!.sha).toBe("abc262");
+  });
+
+  it("filters by spec and echoes the filter", async () => {
+    const r = await specSnapshots(env(), { spec: "402" });
+    expect(r.spec_filter).toBe("402");
+    expect(r.snapshots.map((s) => s.spec)).toEqual(["402"]);
+  });
+
+  it("filters by edition and echoes the filter", async () => {
+    const r = await specSnapshots(env(), { edition: "es2026" });
+    expect(r.edition_filter).toBe("es2026");
+    expect(r.snapshots.map((s) => `${s.spec}/${s.edition}`)).toEqual([
+      "262/es2026",
+      "402/es2026",
+    ]);
+  });
+
+  it("returns empty snapshots when R2 is empty", async () => {
+    const r = await specSnapshots({ SPECS: createFakeR2() }, {});
+    expect(r.snapshots).toEqual([]);
+  });
+
+  it("skips a snapshot whose pin has no sha", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-main.json": fakeSpecJson({ spec: "262", edition: "main", sha: "good" }),
+          // A pin with no `sha` must be skipped, not emitted as a row
+          // with sha: undefined.
+          "spec-402-main.json": JSON.stringify({
+            pin: { spec: "402", edition: "main" },
+            clauses: {},
+          }),
+        },
+      }),
+    };
+    const r = await specSnapshots(env, {});
+    expect(r.snapshots.map((s) => `${s.spec}/${s.edition}`)).toEqual(["262/main"]);
   });
 });

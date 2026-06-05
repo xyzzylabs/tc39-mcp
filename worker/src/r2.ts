@@ -237,6 +237,29 @@ export async function loadParsedSpec(
   return parsed;
 }
 
+/** Read just the `pin` block of a snapshot WITHOUT populating the
+ *  parsed-spec LRU. Parses the full JSON (no streaming parser is
+ *  available) but lets it go straight out of scope — the same
+ *  parse-and-discard the stdio server uses for `spec.snapshots`, so a
+ *  snapshot scan can't evict the hot `clause.get` / `spec.search`
+ *  entries in `specCache`. Returns `null` when the object is missing or
+ *  unparseable. */
+export async function readSnapshotPin(
+  env: R2Env,
+  spec: string,
+  edition: string,
+  at?: string,
+): Promise<ParsedSpec["pin"] | null> {
+  const key = specKey(spec, edition, at);
+  const text = await readTextWithEdgeCache(env, key);
+  if (text === null) return null;
+  try {
+    return (JSON.parse(text) as ParsedSpec).pin ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function loadTest262Index(
   env: R2Env,
 ): Promise<Test262IndexFile | null> {

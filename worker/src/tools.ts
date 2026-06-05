@@ -14,6 +14,7 @@
 
 import {
   loadParsedSpec,
+  readSnapshotPin,
   loadProposalsIndex,
   loadTest262Index,
   listSnapshots,
@@ -445,4 +446,80 @@ export async function specGlobalSearch(
     searchSteps: args.search_steps,
     limit: args.limit,
   });
+}
+
+// ─── spec.snapshots ───────────────────────────────────────────────
+//
+// Lists the live (spec, edition, sha, fetched_at) snapshots the Worker
+// is serving from R2. Like spec.about it reads each present snapshot's
+// `pin`, but returns the leaner snapshot-row shape (no clause counts).
+// Historical SHA-pinned copies (spec-...-{sha10}.json) stay addressable
+// via `at:` but aren't enumerated here.
+
+/** One snapshot the server has available. Mirrors the stdio
+ *  `spec.snapshots` row shape. */
+interface SnapshotRow {
+  spec: string;
+  edition: string;
+  sha: string;
+  fetched_at?: string;
+  biblio_commit?: string;
+  /** Always true here — only the live snapshot for each (spec, edition)
+   *  is enumerated; historical pins are reachable via `at:` but not
+   *  listed. */
+  live: boolean;
+}
+
+interface SnapshotsResult {
+  spec_filter?: string;
+  edition_filter?: string;
+  snapshots: SnapshotRow[];
+}
+
+export async function specSnapshots(
+  env: R2Env,
+  args: { spec?: string; edition?: string },
+): Promise<SnapshotsResult> {
+  const keys = await listSnapshots(env);
+  const rows: SnapshotRow[] = [];
+  for (const key of keys) {
+    // Live snapshot keys only: `spec-{spec}-{edition}.json`. The
+    // historical SHA-pinned copies (`spec-...-{sha10}.json`) carry a
+    // dash before a 10-hex suffix, so the `[a-z0-9]+` edition match
+    // skips them.
+    const m = /^spec-(262|402)-([a-z0-9]+)\.json$/.exec(key);
+    if (!m) continue;
+    const spec = m[1]!;
+    const edition = m[2]!;
+    if (args.spec && args.spec !== spec) continue;
+    if (args.edition && args.edition !== edition) continue;
+    // Read only the pin, parse-and-discard — never populate the hot
+    // specCache LRU (mirrors the stdio tool; keeps a snapshots scan from
+    // evicting live clause.get / spec.search entries). A null pin means
+    // the object is missing (a list-then-delete race) or unparseable (a
+    // corrupt snapshot); skip it rather than fail the whole call or emit
+    // a row with no sha.
+    const pin = await readSnapshotPin(env, spec, edition);
+    if (!pin?.sha) continue;
+    rows.push({
+      spec,
+      edition,
+      sha: pin.sha,
+      live: true,
+      ...(pin.fetched_at ? { fetched_at: pin.fetched_at } : {}),
+      ...(pin.biblio_commit ? { biblio_commit: pin.biblio_commit } : {}),
+    });
+  }
+  // Deterministic order: spec → edition → sha (matches the stdio tool).
+  rows.sort(
+    (a, b) =>
+      a.spec.localeCompare(b.spec) ||
+      a.edition.localeCompare(b.edition) ||
+      a.sha.localeCompare(b.sha),
+  );
+  return {
+    ...(args.spec ? { spec_filter: args.spec } : {}),
+    ...(args.edition ? { edition_filter: args.edition } : {}),
+    snapshots: rows,
+  };
 }
