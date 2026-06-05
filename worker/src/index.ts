@@ -18,6 +18,7 @@ import {
   proposalGet,
   proposalList,
   specAbout,
+  specDiff,
   specGlobalSearch,
   specGrammar,
   specSdoIndex,
@@ -320,6 +321,23 @@ const TOOL_REGISTRY: {
         env,
         args as { spec?: string; edition?: string; filter?: string; limit?: number },
       ),
+  },
+  {
+    name: "spec.diff",
+    description:
+      "Clause-level diff of one clause across two editions of a spec. Reports identical / modified / added / removed plus a field-level breakdown (title, signature, step count, reworded step indices, notes, crossrefs). `from` defaults to the latest stable release, `to` to main.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        spec: { type: "string", enum: ["262", "402"] },
+        from: { type: "string" },
+        to: { type: "string" },
+      },
+      required: ["id"],
+    },
+    handler: async (env, args) =>
+      specDiff(env, args as { id: string; spec?: string; from?: string; to?: string }),
   },
 ];
 

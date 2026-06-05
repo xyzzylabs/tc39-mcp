@@ -6,6 +6,7 @@ import {
   proposalGet,
   proposalList,
   specAbout,
+  specDiff,
   specGlobalSearch,
   specGrammar,
   specSdoIndex,
@@ -965,5 +966,67 @@ describe("specWellKnownIntrinsics", () => {
     const r = await specWellKnownIntrinsics(env, { spec: "402" });
     expect(r.source).toBe("heuristic");
     expect(r.hits.find((h) => h.name === "Array.prototype")!.mention_count).toBe(2);
+  });
+});
+
+// ─── specDiff ─────────────────────────────────────────────────────
+
+describe("specDiff", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        // `from` defaults to latest → es2026 on 262.
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          clauses: {
+            "sec-x": {
+              id: "sec-x",
+              title: "ToNumber",
+              algorithms: [{ steps: [{ text: "Step one." }, { text: "Step two." }] }],
+            },
+          },
+        }),
+        // `to` defaults to main.
+        "spec-262-main.json": fakeSpecJson({
+          spec: "262",
+          edition: "main",
+          clauses: {
+            "sec-x": {
+              id: "sec-x",
+              title: "ToNumber",
+              algorithms: [{ steps: [{ text: "Step one." }, { text: "Step two REWORDED." }] }],
+            },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("diffs a clause across the default from/to editions", async () => {
+    const r = await specDiff(env(), { id: "sec-x" });
+    expect(r.id).toBe("sec-x");
+    expect(r.from).toBe("es2026");
+    expect(r.to).toBe("main");
+    expect(r.status).toBe("modified");
+    expect(r.diffs!.find((d) => d.field === "steps")!.detail).toContain("#2");
+  });
+
+  it("reports `added` when the clause is only in the `to` edition", async () => {
+    const env2 = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": fakeSpecJson({ spec: "262", edition: "es2026", clauses: {} }),
+          "spec-262-main.json": fakeSpecJson({
+            spec: "262",
+            edition: "main",
+            clauses: { "sec-new": { id: "sec-new", title: "New Clause" } },
+          }),
+        },
+      }),
+    };
+    const r = await specDiff(env2, { id: "sec-new" });
+    expect(r.status).toBe("added");
+    expect(r.to_summary?.title).toBe("New Clause");
   });
 });
