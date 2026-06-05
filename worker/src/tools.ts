@@ -53,6 +53,14 @@ import {
   buildSdoIndex,
   type SdoIndexResult,
 } from "../../src/spec/sdo_index.js";
+import {
+  buildOutline,
+  type OutlineTree,
+} from "../../src/spec/outline.js";
+import {
+  searchAcrossSpecs,
+  type GlobalSearchHit,
+} from "../../src/spec/global_search.js";
 
 // ─── tool result shapes ────────────────────────────────────────────
 
@@ -399,4 +407,42 @@ export async function specSdoIndex(
     limit: args.limit,
   });
   return { spec, ...core };
+}
+
+// ─── clause.outline ───────────────────────────────────────────────
+
+export async function clauseOutline(
+  env: R2Env,
+  args: { spec?: string; edition?: string; depth?: number; under?: string },
+): Promise<{ spec: string } & OutlineTree> {
+  const spec = args.spec ?? "262";
+  const p = await getSpec(env, spec, args.edition ?? "latest");
+  const core = buildOutline(p.clauses, { depth: args.depth, under: args.under });
+  return { spec, ...core };
+}
+
+// ─── spec.global_search ───────────────────────────────────────────
+
+export async function specGlobalSearch(
+  env: R2Env,
+  args: { query: string; search_steps?: boolean; limit?: number },
+): Promise<GlobalSearchHit[]> {
+  // Load both specs at their own `latest` in parallel; skip a spec whose
+  // R2 snapshot is missing rather than failing the whole call.
+  const loaded = await Promise.all(
+    (["262", "402"] as const).map(async (spec) => {
+      try {
+        const p = await getSpec(env, spec, "latest");
+        return { spec, clauses: p.clauses };
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const inputs = loaded.filter((x): x is NonNullable<typeof x> => x !== null);
+  return searchAcrossSpecs(inputs, {
+    query: args.query,
+    searchSteps: args.search_steps,
+    limit: args.limit,
+  });
 }

@@ -2,9 +2,11 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   clauseGet,
   clauseList,
+  clauseOutline,
   proposalGet,
   proposalList,
   specAbout,
+  specGlobalSearch,
   specGrammar,
   specSdoIndex,
   specSearch,
@@ -669,5 +671,102 @@ describe("specSdoIndex", () => {
     const r = await specSdoIndex(env(), { by: "sdo" });
     expect(r.by).toBe("sdo");
     expect(r.groups["Evaluation"]!.length).toBe(2);
+  });
+});
+
+// ─── clauseOutline ────────────────────────────────────────────────
+
+describe("clauseOutline", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          clauses: {
+            "sec-7": { id: "sec-7", title: "Abstract Operations", number: "7" },
+            "sec-7-1": { id: "sec-7-1", title: "Type Conversion", number: "7.1" },
+            "sec-7-1-4": { id: "sec-7-1-4", title: "ToNumber", number: "7.1.4" },
+            "sec-8": { id: "sec-8", title: "Executable Code", number: "8" },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("builds the full section tree and echoes spec", async () => {
+    const r = await clauseOutline(env(), {});
+    expect(r.spec).toBe("262");
+    expect(r.node_count).toBe(4);
+    expect(r.roots.map((n) => n.number)).toEqual(["7", "8"]);
+    const seven = r.roots.find((n) => n.number === "7")!;
+    expect(seven.children[0]!.number).toBe("7.1");
+  });
+
+  it("respects depth", async () => {
+    const r = await clauseOutline(env(), { depth: 1 });
+    expect(r.node_count).toBe(2); // 7, 8 only
+  });
+
+  it("scopes to a clause with under", async () => {
+    const r = await clauseOutline(env(), { under: "sec-7" });
+    expect(r.roots.map((n) => n.number)).toEqual(["7.1"]);
+    expect(r.node_count).toBe(2); // 7.1, 7.1.4
+  });
+});
+
+// ─── specGlobalSearch ─────────────────────────────────────────────
+
+describe("specGlobalSearch", () => {
+  const env = () => ({
+    SPECS: createFakeR2({
+      contents: {
+        "spec-262-es2026.json": fakeSpecJson({
+          spec: "262",
+          edition: "es2026",
+          clauses: {
+            "sec-canon": { id: "sec-canon", aoid: "Canonicalize", title: "Canonicalize ( ch )" },
+          },
+        }),
+        "spec-402-es2026.json": fakeSpecJson({
+          spec: "402",
+          edition: "es2026",
+          clauses: {
+            "sec-canon-locale": {
+              id: "sec-canon-locale",
+              aoid: "CanonicalizeLocaleList",
+              title: "CanonicalizeLocaleList ( locales )",
+            },
+          },
+        }),
+      },
+    }),
+  });
+
+  it("returns hits from both specs, tagged and ranked by score", async () => {
+    const hits = await specGlobalSearch(env(), { query: "Canonicalize" });
+    expect(hits.map((h) => h.spec).sort()).toEqual(["262", "402"]);
+    // 262 Canonicalize is aoid-exact (score 100) → ranks first.
+    expect(hits[0]!.spec).toBe("262");
+    expect(hits[0]!.score).toBe(100);
+  });
+
+  it("skips a spec whose snapshot is missing rather than failing", async () => {
+    const env262Only = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": fakeSpecJson({
+            spec: "262",
+            edition: "es2026",
+            clauses: {
+              "sec-canon": { id: "sec-canon", aoid: "Canonicalize", title: "Canonicalize ( ch )" },
+            },
+          }),
+        },
+      }),
+    };
+    const hits = await specGlobalSearch(env262Only, { query: "Canonicalize" });
+    expect(hits.length).toBe(1);
+    expect(hits[0]!.spec).toBe("262");
   });
 });
