@@ -27,6 +27,31 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
+## [0.3.1] — 2026-06-05
+
+The hosted Cloudflare Worker reaches feature parity with the stdio
+server, and the stdio ↔ Worker code is unified so the two can't drift
+apart again.
+
+### Fixed
+
+- **`spec.search` on the hosted Worker now honors `search_steps`.** It
+  previously ranked only aoid / title / id matches; step-text matches
+  (the `steps` tier) were silently dropped. The stdio server already
+  did this — now both transports rank a query identically.
+- **`proposal.list` on the hosted Worker now accepts the `spec` filter**
+  (`262` / `402`). It was stdio-only, so the Worker couldn't narrow
+  proposals to one spec.
+
+### Changed
+
+- **The spec/edition catalog, the `spec.search` ranking, and the
+  `proposal.list` filter are now single shared modules** used by both
+  the stdio server and the Worker, replacing hand-maintained copies
+  that had drifted. The stdio tool surface is unchanged
+  (`docs/tools.md` is identical) — this is internal consolidation plus
+  the two Worker fixes above.
+
 ## [0.3.0] — 2026-06-03
 
 The `es2026` edition lands on both specs.
