@@ -29,6 +29,10 @@ import {
   type Spec,
   type Edition,
 } from "../../src/spec/catalog.js";
+import {
+  searchClauses,
+  type SpecSearchHit,
+} from "../../src/spec/search.js";
 
 async function getSpec(
   env: R2Env,
@@ -189,40 +193,24 @@ export async function specSearch(
     edition?: string;
     at?: string;
     limit?: number;
+    search_steps?: boolean;
   },
-): Promise<unknown> {
-  const limit = args.limit ?? 20;
+): Promise<{ hits: SpecSearchHit[] }> {
   const p = await getSpec(
     env,
     args.spec ?? "262",
     args.edition ?? "latest",
     args.at,
   );
-  const q = args.query.toLowerCase();
-  const hits: { id: string; aoid: string | null; title: string; number: string; kind: string; matched_on: string; score: number }[] = [];
-  for (const [id, c] of Object.entries(p.clauses)) {
-    const aoid = c.meta.aoid;
-    const title = c.meta.title ?? "";
-    let score = 0;
-    let matched_on: string | null = null;
-    if (aoid && aoid.toLowerCase() === q) { score = 100; matched_on = "aoid-exact"; }
-    else if (aoid && aoid.toLowerCase().includes(q)) { score = 80; matched_on = "aoid"; }
-    else if (title.toLowerCase().includes(q)) { score = 60; matched_on = "title"; }
-    else if (id.toLowerCase().includes(q)) { score = 40; matched_on = "id"; }
-    if (matched_on) {
-      hits.push({
-        id,
-        aoid: aoid ?? null,
-        title,
-        number: c.meta.number ?? "",
-        kind: c.meta.kind ?? "unknown",
-        matched_on,
-        score,
-      });
-    }
-  }
-  hits.sort((a, b) => b.score - a.score || a.number.localeCompare(b.number));
-  return { hits: hits.slice(0, limit) };
+  // Same shared ranker the stdio server uses — including `search_steps`,
+  // which the Worker previously couldn't do.
+  return {
+    hits: searchClauses(p.clauses, {
+      query: args.query,
+      searchSteps: args.search_steps,
+      limit: args.limit,
+    }),
+  };
 }
 
 // ─── proposal.list / proposal.get ─────────────────────────────────
