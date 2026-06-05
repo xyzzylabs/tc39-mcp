@@ -70,15 +70,15 @@ interface ToolDoc {
 
 // ─── const resolution: SPEC_VALUES, EDITION_VALUES, etc. ──────────────
 
-/** Read `src/editions.ts` and pull out the string-literal arrays so the
- *  generator can render `"262" | "402"` instead of `SPEC_VALUES` etc. */
+/** Read `src/spec/catalog.ts` and pull out the string-literal arrays so
+ *  the generator can render `"262" | "402"` instead of `SPEC_VALUES` etc. */
 export function readStringConstArrays(
-  editionsPath: string,
+  catalogPath: string,
 ): Map<string, string[]> {
   const out = new Map<string, string[]>();
-  if (!existsSync(editionsPath)) return out;
-  const src = readFileSync(editionsPath, "utf8");
-  const sf = ts.createSourceFile(editionsPath, src, ts.ScriptTarget.Latest, true);
+  if (!existsSync(catalogPath)) return out;
+  const src = readFileSync(catalogPath, "utf8");
+  const sf = ts.createSourceFile(catalogPath, src, ts.ScriptTarget.Latest, true);
 
   // First, capture every top-level `export const X = [...]` whose
   // array elements are plain string literals or spreads of already-
@@ -786,13 +786,13 @@ rather than a stack trace.
 export function renderToolsPage(rootDir: string): string {
   const serverPath = resolve(rootDir, "src", "mcp", "server.ts");
   const toolsDir = resolve(rootDir, "src", "mcp", "tools");
-  const editionsPath = resolve(rootDir, "src", "editions.ts");
+  const catalogPath = resolve(rootDir, "src", "spec", "catalog.ts");
 
   if (!existsSync(serverPath) || !existsSync(toolsDir)) {
     return `# Tool reference\n\n_Source files not found. Run from the repo root._\n`;
   }
 
-  const constArrays = readStringConstArrays(editionsPath);
+  const constArrays = readStringConstArrays(catalogPath);
   const tools = parseServerTools(serverPath);
 
   let md = TOOLS_PAGE_INTRO;

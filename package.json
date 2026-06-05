@@ -14,6 +14,7 @@
     "dist/mcp/",
     "dist/parser/",
     "dist/util/",
+    "dist/spec/",
     "dist/editions.js",
     "dist/editions.d.ts",
     "dist/paths.js",
