@@ -21,7 +21,7 @@ import pkg from "../../package.json";
 export default defineConfig({
   title: "tc39-mcp",
   description:
-    "Structured MCP server for the TC39 specs (ECMA-262 + ECMA-402) — SHA-pinned clauses, AOID-aware search, in+out cross-references, edition diffs, history.",
+    "Unofficial MCP server for the TC39 specs (ECMA-262 + ECMA-402) — SHA-pinned clauses, AOID-aware search, in+out cross-references, edition diffs, history. Not affiliated with Ecma International or TC39.",
 
   // Served from the Worker origin root (e.g. tc39-mcp.workers.dev/),
   // so no path prefix is needed.

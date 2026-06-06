@@ -3,7 +3,7 @@
   "version": "0.4.0",
   "mcpName": "io.github.xyzzylabs/tc39-mcp",
   "private": false,
-  "description": "Structured MCP server for the TC39 specs (ECMA-262 + ECMA-402) — SHA-pinned clauses, AOID-aware search, in+out cross-references, edition diffs, history.",
+  "description": "Unofficial MCP server for the TC39 specs (ECMA-262 + ECMA-402) — SHA-pinned clauses, AOID-aware search, in+out cross-references, edition diffs, history. Not affiliated with Ecma International or TC39.",
   "type": "module",
   "bin": {
     "tc39-mcp": "./dist/mcp/server.js"
