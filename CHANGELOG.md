@@ -27,6 +27,61 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
+## [0.4.0] — 2026-06-05
+
+The hosted Cloudflare Worker grows from 6 to 17 of the 19 tools. Every
+newly-hosted tool shares its logic with the stdio server through a
+dependency-free `src/spec/*` (or `src/index/*`) module, so the two
+transports answer identically and can't drift.
+
+### Added
+
+- **Eleven more tools on the hosted Worker**, each reading the
+  parsed-spec JSON or index it already loads from R2:
+  - `spec.grammar`, `spec.tables`, `spec.sdo_index` — grammar
+    productions from `<emu-grammar>`, `<emu-table>` content, and the
+    Syntax-Directed-Operation-by-production index.
+  - `clause.outline`, `spec.global_search` — the section tree, and one
+    search across both ECMA-262 and ECMA-402.
+  - `spec.snapshots` — the live `(spec, edition, sha, fetched_at)`
+    snapshots the Worker serves from R2.
+  - `spec.symbol_resolve`, `spec.well_known_intrinsics` — resolve
+    notation (`[[Slot]]`, `%Intrinsic%`, `~enum~`) and enumerate
+    well-known intrinsics with their defining clauses.
+  - `spec.diff` — clause-level diff across two editions of a spec.
+  - `spec.crossrefs` — incoming / outgoing references, with the
+    AOID-densified reverse index and the opt-in 262 ↔ 402 cross-spec
+    pass.
+  - `test262.search` — ranked search over the tc39/test262 index,
+    served from the same R2 side-index `spec.about` already reads.
+
+  The two tools that stay stdio-only are `spec.history` (shells out to
+  `git log` against a vendored checkout) and `test262.get` (reads each
+  test's full source from the vendored test262 corpus, which isn't in
+  R2).
+
+### Changed
+
+- **Every ported tool's logic now lives in a shared, dependency-free
+  `src/spec/*` (or `src/index/*`) module** imported by both the stdio
+  server and the bundled Worker, replacing what would otherwise be a
+  hand-maintained second copy. The stdio tool surface — every schema and
+  result shape — is unchanged; this extends the 0.3.1 consolidation
+  across every newly-hosted tool.
+- **The hosted-vs-stdio tool split is a single source of truth.** Both
+  transports' server instructions and the Worker's `tools/list`
+  registry derive their tool lists and counts from one `tool_inventory`
+  module, so a tool crossing over updates every surface at once.
+- **`spec.about`'s metadata scan no longer evicts the Worker's hot
+  parsed-spec cache.** The introspection scan that reads every snapshot
+  for its pin now uses a parse-and-discard path instead of thrashing
+  the capacity-4 LRU that `clause.get` / `spec.search` depend on.
+- **The docs now mark transport availability.** The tool reference
+  carries a per-tool **Availability** line (hosted Worker vs
+  stdio-only), generated from the same `tool_inventory` source of
+  truth, and getting-started splits into self-contained Local (stdio)
+  and Hosted (HTTP) walkthroughs.
+
 ## [0.3.1] — 2026-06-05
 
 The hosted Cloudflare Worker reaches feature parity with the stdio
