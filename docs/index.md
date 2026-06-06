@@ -40,6 +40,8 @@ features:
     details: LRU-bounded memory, IP-bucketed rate limiting (30/60s/IP), structured per-request logging, post-deploy smoke testing, historical SHA addressing via `at:` on the hosted Worker.
 ---
 
+> **Unofficial / community project** — not affiliated with, endorsed by, or maintained by Ecma International or TC39. It reads the publicly published ECMAScript specs.
+
 ## Install + run
 
 ::: code-group
