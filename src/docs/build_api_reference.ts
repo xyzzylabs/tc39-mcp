@@ -16,6 +16,30 @@
 import * as ts from "typescript";
 import { readFileSync, readdirSync, existsSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { HOSTED_TOOLS, STDIO_ONLY_TOOLS } from "../spec/tool_inventory.js";
+
+/** Which transports serve each tool, from the single-source-of-truth
+ *  inventory. The hosted Cloudflare Worker reimplements `HOSTED_TOOLS`
+ *  over R2; the rest need a subprocess or the local test262 corpus and
+ *  run on the stdio server only. */
+const HOSTED_TOOL_SET = new Set<string>(HOSTED_TOOLS);
+
+/** Why each stdio-only tool can't run behind the hosted Worker. Keyed
+ *  by tool name; falls back to a bare "stdio only" if a tool is added
+ *  to `STDIO_ONLY_TOOLS` without a reason here. */
+const STDIO_ONLY_REASON: Record<string, string> = {
+  "spec.history": "shells out to `git log` against a vendored checkout",
+  "test262.get": "reads each test's full source from the vendored test262 corpus",
+};
+
+/** The per-tool Availability line rendered under each tool heading. */
+function availabilityLine(name: string): string {
+  if (HOSTED_TOOL_SET.has(name)) {
+    return "**Availability:** hosted Worker + local stdio.";
+  }
+  const reason = STDIO_ONLY_REASON[name];
+  return `**Availability:** local stdio only${reason ? ` — ${reason}` : ""}.`;
+}
 
 interface ToolReg {
   name: string;
@@ -760,6 +784,7 @@ function renderTool(doc: ToolDoc): string {
   // here so the page builds even when a source has slipped through.
   const desc = escapeAnglesOutsideCode(doc.description.trim());
   let md = `## \`${doc.name}\`\n\n${desc}\n\n`;
+  md += `${availabilityLine(doc.name)}\n\n`;
 
   if (doc.examples.length > 0) {
     md += `### What it answers\n\n`;
@@ -832,10 +857,20 @@ All spec-reading tools accept \`spec\` (\`"262"\` | \`"402"\`) and \`edition\`
 arguments. See [\`editions.md\`](editions.md) for the value set and how
 aliases resolve per spec.
 
+**Transports + availability.** Every tool runs on the local stdio
+server (\`npx tc39-mcp\`). The hosted Cloudflare Worker reimplements
+${HOSTED_TOOLS.length} of the ${HOSTED_TOOLS.length + STDIO_ONLY_TOOLS.length} tools over its
+R2-backed data; ${STDIO_ONLY_TOOLS.map((t) => "\`" + t + "\`").join(" and ")} stay stdio-only because
+they need a subprocess or the local test262 corpus. Each tool's
+**Availability** line below says where it runs — see
+[Get started](getting-started) to pick a transport.
+
 Each tool section below carries:
 
 - **What it answers** — co-located example calls, each tagged with the
   natural-language question it resolves.
+- **Availability** — whether the tool runs on the hosted Worker too, or
+  on the local stdio server only (and why).
 - **Input** — every field from the Zod schema with its type, default,
   and inline help text.
 - **Output** — the handler's declared return type, expanded into a
