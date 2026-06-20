@@ -59,7 +59,7 @@
   "devDependencies": {
     "@tc39/ecma262-biblio": "2.2.3108",
     "@types/node": "^25.9.3",
-    "@typescript/native-preview": "^7.0.0-dev.20260612.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260620.1",
     "cheerio": "^1.0.0",
     "tsx": "^4.19.2",
     "typescript": "^6.0.3",
