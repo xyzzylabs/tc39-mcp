@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260612.1",
+    "@cloudflare/workers-types": "^4.20260615.1",
     "@types/node": "^25.9.3",
     "@typescript/native-preview": "^7.0.0-dev.20260607.1",
     "tsx": "^4.22.4",
