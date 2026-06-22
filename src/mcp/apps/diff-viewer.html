@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TC39 Edition Diff Viewer</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --fg: #e7ecf3;
+      --muted: #8b9bb4;
+      --card: #1a2332;
+      --border: #2a3a52;
+      --accent: #6cb6ff;
+      --ok: #7fd99a;
+      --warn: #e6c07b;
+      --bad: #f07178;
+      --mod: #c792ea;
+      --add-bg: color-mix(in srgb, #7fd99a 12%, var(--card));
+      --rem-bg: color-mix(in srgb, #f07178 12%, var(--card));
+      --mod-bg: color-mix(in srgb, #c792ea 12%, var(--card));
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+        --bg: #f6f8fb;
+        --fg: #1a2332;
+        --muted: #5c6b82;
+        --card: #ffffff;
+        --border: #d0d9e6;
+        --accent: #0969da;
+        --ok: #1a7f37;
+        --warn: #9a6700;
+        --bad: #cf222e;
+        --mod: #8250df;
+      }
+    }
+    [data-theme="light"] {
+      --bg: #f6f8fb;
+      --fg: #1a2332;
+      --muted: #5c6b82;
+      --card: #ffffff;
+      --border: #d0d9e6;
+      --accent: #0969da;
+      --ok: #1a7f37;
+      --warn: #9a6700;
+      --bad: #cf222e;
+      --mod: #8250df;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 12px 14px 20px;
+      font-family: var(--sans);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--fg);
+      background: var(--bg);
+    }
+    .wait, .err { color: var(--muted); padding: 24px 8px; text-align: center; }
+    .err { color: var(--bad); }
+    header {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    h1 { margin: 0 0 8px; font-size: 16px; font-weight: 650; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+    .chip strong { color: var(--fg); font-weight: 600; }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+    .status.identical { background: color-mix(in srgb, var(--ok) 18%, var(--card)); color: var(--ok); }
+    .status.modified { background: color-mix(in srgb, var(--mod) 18%, var(--card)); color: var(--mod); }
+    .status.added { background: color-mix(in srgb, var(--ok) 18%, var(--card)); color: var(--ok); }
+    .status.removed { background: color-mix(in srgb, var(--bad) 18%, var(--card)); color: var(--bad); }
+    .status.missing-from-both { background: color-mix(in srgb, var(--warn) 18%, var(--card)); color: var(--warn); }
+    section { margin-top: 14px; }
+    section h2 {
+      margin: 0 0 8px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    @media (max-width: 520px) { .cols { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .panel h3 {
+      margin: 0 0 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .panel .title { font-weight: 600; margin-bottom: 4px; }
+    .panel .sig {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 6px;
+    }
+    .stat { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+    .diff-list { display: flex; flex-direction: column; gap: 6px; }
+    .diff-item {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--card);
+    }
+    .diff-item header {
+      margin: 0;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .diff-item .field {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fg);
+    }
+    .diff-item .kind {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--mod-bg);
+      color: var(--mod);
+    }
+    .diff-item .kind.added { background: var(--add-bg); color: var(--ok); }
+    .diff-item .kind.removed { background: var(--rem-bg); color: var(--bad); }
+    .diff-body { padding: 8px 10px; font-size: 12px; }
+    .diff-body .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .diff-body .before {
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      background: var(--rem-bg);
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .diff-body .after {
+      padding: 6px 8px;
+      background: var(--add-bg);
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .indices {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    details.raw {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+    details.raw summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 11px;
+      user-select: none;
+    }
+    details.raw pre {
+      margin: 8px 0 0;
+      padding: 10px;
+      overflow: auto;
+      max-height: 240px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"><div class="wait">Waiting for diff data…</div></div>
+  <script>
+(function () {
+  "use strict";
+
+  function esc(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function fmtVal(v) {
+    if (v === undefined || v === null) return "—";
+    if (typeof v === "object") return JSON.stringify(v, null, 2);
+    return String(v);
+  }
+
+  function parsePayload(text) {
+    if (!text || typeof text !== "string") return null;
+    try { return JSON.parse(text.trim()); } catch (_) { return null; }
+  }
+
+  function extractFromToolResult(params) {
+    var content = (params && params.content) || [];
+    for (var i = 0; i < content.length; i++) {
+      var c = content[i];
+      if (c && c.type === "text" && c.text) {
+        var parsed = parsePayload(c.text);
+        if (parsed) return parsed;
+      }
+    }
+    if (params && params.structuredContent) return params.structuredContent;
+    return null;
+  }
+
+  function renderSummary(label, s) {
+    if (!s) return '<div class="panel"><h3>' + esc(label) + '</h3><div class="stat">absent</div></div>';
+    var html = '<div class="panel"><h3>' + esc(label) + "</h3>";
+    if (s.title) html += '<div class="title">' + esc(s.title) + "</div>";
+    if (s.signatureRaw) html += '<div class="sig">' + esc(s.signatureRaw) + "</div>";
+    html += '<div class="stat">steps: ' + esc(s.step_count ?? "—") +
+      " · notes: " + esc(s.note_count ?? "—") + "</div>";
+    html += "</div>";
+    return html;
+  }
+
+  function renderDiff(diff) {
+    var root = document.getElementById("root");
+    if (!diff) {
+      root.innerHTML = '<div class="wait">No diff data yet.</div>';
+      return;
+    }
+
+    var status = diff.status || (diff.same ? "identical" : "modified");
+    var html = "<header>";
+    html += '<div class="eyebrow">Edition diff</div>';
+    html += "<h1>" + esc(diff.id || "clause") + "</h1>";
+    html += '<div class="meta-row">';
+    html += '<span class="chip"><strong>from</strong> ' + esc(diff.from || "?") + "</span>";
+    html += '<span class="chip"><strong>to</strong> ' + esc(diff.to || "?") + "</span>";
+    if (diff.same !== undefined) {
+      html += '<span class="chip"><strong>same</strong> ' + esc(String(diff.same)) + "</span>";
+    }
+    html += "</div>";
+    html += '<div class="status ' + esc(status) + '">' + esc(status) + "</div>";
+    html += "</header>";
+
+    html += "<section><h2>Summaries</h2><div class=\"cols\">";
+    html += renderSummary("from (" + (diff.from || "?") + ")", diff.from_summary);
+    html += renderSummary("to (" + (diff.to || "?") + ")", diff.to_summary);
+    html += "</div></section>";
+
+    var fields = diff.diff || diff.fields || diff.changes || [];
+    if (Array.isArray(fields) && fields.length) {
+      html += "<section><h2>Field changes (" + fields.length + ")</h2><div class=\"diff-list\">";
+      for (var i = 0; i < fields.length; i++) {
+        var f = fields[i] || {};
+        var field = f.field || f.name || f.key || "field";
+        var kind = f.kind || f.change || (f.before !== undefined && f.after !== undefined ? "modified" : "changed");
+        html += '<div class="diff-item"><header>';
+        html += '<span class="field">' + esc(field) + "</span>";
+        html += '<span class="kind ' + esc(kind) + '">' + esc(kind) + "</span>";
+        html += "</header><div class=\"diff-body\">";
+        if (f.reworded_step_indices || f.step_indices) {
+          var idx = f.reworded_step_indices || f.step_indices;
+          html += '<div class="indices">reworded steps: ' + esc(JSON.stringify(idx)) + "</div>";
+        }
+        if (f.before !== undefined || f.from !== undefined) {
+          html += '<div class="label">before</div><div class="before">' + esc(fmtVal(f.before !== undefined ? f.before : f.from)) + "</div>";
+        }
+        if (f.after !== undefined || f.to !== undefined) {
+          html += '<div class="label">after</div><div class="after">' + esc(fmtVal(f.after !== undefined ? f.after : f.to)) + "</div>";
+        }
+        if (f.message) {
+          html += '<div>' + esc(f.message) + "</div>";
+        }
+        // Fallback: dump unknown shape
+        if (f.before === undefined && f.after === undefined && f.from === undefined && f.to === undefined && !f.message && !f.reworded_step_indices) {
+          html += '<div class="before">' + esc(fmtVal(f)) + "</div>";
+        }
+        html += "</div></div>";
+      }
+      html += "</div></section>";
+    } else if (status === "identical") {
+      html += '<section><h2>Field changes</h2><div class="panel"><div class="stat">No structural differences detected.</div></div></section>';
+    }
+
+    html += '<details class="raw"><summary>Raw JSON</summary><pre>' +
+      esc(JSON.stringify(diff, null, 2)) + "</pre></details>";
+
+    root.innerHTML = html;
+  }
+
+  var pending = Object.create(null);
+  var reqId = 1;
+  var initialized = false;
+
+  function post(msg) {
+    try { window.parent.postMessage(msg, "*"); } catch (_) {}
+  }
+
+  function sendRequest(method, params) {
+    var id = reqId++;
+    return new Promise(function (resolve, reject) {
+      pending[id] = { resolve: resolve, reject: reject };
+      post({ jsonrpc: "2.0", id: id, method: method, params: params || {} });
+      setTimeout(function () {
+        if (pending[id]) {
+          delete pending[id];
+          reject(new Error("timeout: " + method));
+        }
+      }, 15000);
+    });
+  }
+
+  function sendNotification(method, params) {
+    post({ jsonrpc: "2.0", method: method, params: params || {} });
+  }
+
+  function applyTheme(ctx) {
+    if (!ctx) return;
+    var theme = ctx.theme || ctx.colorScheme;
+    if (theme === "light" || theme === "dark") {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+  }
+
+  function handleMessage(ev) {
+    var data = ev.data;
+    if (!data || data.jsonrpc !== "2.0") return;
+
+    if (data.id != null && (data.result !== undefined || data.error)) {
+      var p = pending[data.id];
+      if (p) {
+        delete pending[data.id];
+        if (data.error) p.reject(data.error);
+        else p.resolve(data.result);
+      }
+      return;
+    }
+
+    var method = data.method;
+    if (!method) return;
+
+    if (method === "ui/notifications/tool-result") {
+      renderDiff(extractFromToolResult(data.params || {}));
+      return;
+    }
+    if (method === "ui/notifications/host-context-changed") {
+      applyTheme(data.params);
+      return;
+    }
+    if (method === "ui/resource-teardown") {
+      post({ jsonrpc: "2.0", id: data.id, result: {} });
+      return;
+    }
+  }
+
+  window.addEventListener("message", handleMessage);
+
+  async function boot() {
+    try {
+      var result = await sendRequest("ui/initialize", {
+        appInfo: { name: "tc39-diff-viewer", version: "1.0.0" },
+        appCapabilities: {},
+      });
+      initialized = true;
+      if (result && result.hostContext) applyTheme(result.hostContext);
+      sendNotification("ui/notifications/initialized", {});
+      try {
+        var h = Math.max(document.documentElement.scrollHeight, 120);
+        sendNotification("ui/notifications/size-changed", { height: h });
+      } catch (_) {}
+    } catch (e) {
+      document.getElementById("root").innerHTML =
+        '<div class="wait">Open via <code>spec.diff</code> in an MCP Apps host to render the diff here.</div>';
+    }
+
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(function () {
+        if (!initialized) return;
+        try {
+          var h = Math.max(document.documentElement.scrollHeight, 120);
+          sendNotification("ui/notifications/size-changed", { height: h });
+        } catch (_) {}
+      });
+      ro.observe(document.body);
+    }
+  }
+
+  window.__tc39RenderDiff = renderDiff;
+  boot();
+})();
+  </script>
+</body>
+</html>

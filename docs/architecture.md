@@ -108,11 +108,43 @@ All clause text retains its in-spec markup (`_argument_`, `*true*`,
 | **Paths** | Filesystem layout (built JSON, vendor checkouts) | `src/paths.ts` |
 | **Parser** | spec.html → ParsedSpec | `src/parser/{schema,biblio,clause,steps,index,cli}.ts` |
 | **Tools** | One file per MCP tool; each exports a Zod schema + a library function | `src/mcp/tools/*.ts` |
-| **Server** | Wires every tool into the stdio MCP transport | `src/mcp/server.ts` |
+| **Apps** | MCP App HTML (clause / edition-diff viewers) + `ui://` registration | `src/mcp/apps/` |
+| **Server** | Wires tools, resources, and Apps into the stdio MCP transport | `src/mcp/server.ts` |
 
 Dependencies between modules form a DAG. The parser depends on nothing
 in `src/mcp/`. The tools depend on the parser's types and on
-`editions.ts`. The server depends on the tools.
+`editions.ts`. Apps are presentation only — they return HTML and never
+execute other tools inside the server. The server depends on tools and
+apps.
+
+## MCP Apps (interactive UI)
+
+Hosts that implement the [MCP Apps](https://modelcontextprotocol.io)
+extension can render an iframe beside selected tool results. This
+server advertises two `ui://` resources:
+
+| Tool | Resource URI | View |
+|---|---|---|
+| `clause.get` | `ui://tc39-mcp/clause-viewer.html` | Signature, numbered steps, notes, cross-refs |
+| `spec.diff` | `ui://tc39-mcp/diff-viewer.html` | Status, from/to summaries, field-level changes |
+
+Each tool's `tools/list` entry carries `_meta.ui.resourceUri` (and the
+legacy `_meta["ui/resourceUri"]` key for older hosts). The HTML is
+self-contained (inline CSS/JS, no network), HTML-escapes all rendered
+spec text, and speaks the minimal Apps postMessage handshake
+(`ui/initialize`, `ui/notifications/tool-result`, theme, resize).
+
+**stdio:** App HTML is loaded from disk (`src/mcp/apps/` in dev,
+`dist/mcp/apps/` after `npm run build`). Registered via
+`registerAppResources()` in `src/mcp/apps/register.ts`.
+
+**Worker:** The same HTML is copied to `worker/public/apps/` by
+`npm run build:apps` and served through the Workers **Assets**
+binding. `resources/read` for a `ui://` URI fetches `/apps/<file>`
+from that binding — not an inlined copy in the Worker bundle.
+
+The JSON tool result is always returned regardless; the UI is
+additive. Clients without App support see normal JSON only.
 
 ## Spec + edition + alias resolution
 

@@ -5,6 +5,19 @@ All notable changes to `tc39-mcp` are recorded here. Versions follow
 changes that aren't backward-compatible bump the major; new tools or
 optional schema fields bump the minor; internal fixes bump the patch.
 
+## Unreleased
+
+### Added
+
+- **MCP Apps: clause viewer + edition-diff viewer.** `clause.get` and
+  `spec.diff` advertise `_meta.ui.resourceUri` pointing at
+  `ui://tc39-mcp/clause-viewer.html` and `ui://tc39-mcp/diff-viewer.html`.
+  Apps-capable hosts render an interactive iframe (numbered algorithm
+  steps / side-by-side field changes) beside the normal JSON tool
+  result. App HTML lives in `src/mcp/apps/` (stdio loads from disk;
+  Worker serves via Assets at `/apps/`). Clients without App support
+  are unaffected (JSON only).
+
 ## A note on data-refresh versions
 
 This file records **code changes** — new tools, schema tweaks,

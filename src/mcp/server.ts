@@ -24,6 +24,8 @@ import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import { listResources, readResource } from "./resources.js";
+import { registerAppResources } from "./apps/register.js";
+import { toolUiMeta } from "./apps/manifest.js";
 
 // Read version dynamically from the published package.json so the
 // `initialize` response reflects whatever the refresh workflow last
@@ -122,9 +124,10 @@ server.registerTool(
   {
     title: "Get spec clause",
     description:
-      "Fetch a parsed TC39 clause as structured JSON: metadata, signature, algorithm steps, notes, cross-refs. `spec` selects '262' (default) or '402'. `edition` defaults to `latest` (current stable release on both specs — es2026 today).",
+      "Fetch a parsed TC39 clause as structured JSON: metadata, signature, algorithm steps, notes, cross-refs. `spec` selects '262' (default) or '402'. `edition` defaults to `latest` (current stable release on both specs — es2026 today). MCP Apps hosts also render an interactive clause viewer (numbered steps, notes, cross-refs) beside the JSON.",
     inputSchema: clauseGetSchema,
     annotations: { readOnlyHint: true },
+    _meta: toolUiMeta("clause.get"),
   },
   async (args) => {
     const clause = await clauseGet(args);
@@ -214,9 +217,10 @@ server.registerTool(
   {
     title: "Diff spec editions",
     description:
-      "Clause-level diff across any two editions of one spec. Defaults: from='latest', to='main' (working draft). Reports status (identical / modified / added / removed / missing-from-both) plus a field-level diff: title, signature, step count, per-step reworded indices, notes, crossrefs. `spec` selects '262' or '402'.",
+      "Clause-level diff across any two editions of one spec. Defaults: from='latest', to='main' (working draft). Reports status (identical / modified / added / removed / missing-from-both) plus a field-level diff: title, signature, step count, per-step reworded indices, notes, crossrefs. `spec` selects '262' or '402'. MCP Apps hosts also render an interactive side-by-side diff viewer beside the JSON.",
     inputSchema: specDiffSchema,
     annotations: { readOnlyHint: true },
+    _meta: toolUiMeta("spec.diff"),
   },
   async (args) => {
     const r = await specDiff(args);
@@ -439,6 +443,11 @@ for (const def of PROMPT_DEFS) {
     },
   );
 }
+
+// MCP Apps: clause viewer + edition-diff viewer as ui:// resources.
+// `clause.get` and `spec.diff` advertise the matching URI in tool _meta
+// so Apps-capable hosts render the HTML iframe beside the tool result.
+registerAppResources(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

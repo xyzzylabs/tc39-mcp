@@ -175,10 +175,17 @@ for both API and docs.
 |---|---|---|
 | `/` | GET | docs site landing page (rendered HTML) |
 | `/tools`, `/snapshots`, `/architecture`, `/deployment`, `/editions`, `/changelog` | GET | docs site pages |
+| `/apps/clause-viewer.html`, `/apps/diff-viewer.html` | GET | MCP App HTML (also served via `resources/read` on `ui://tc39-mcp/…` for Apps hosts) |
 | `/health` | GET, HEAD | `ok` — liveness probe for uptime monitors |
-| `/mcp` | POST | MCP JSON-RPC dispatcher |
+| `/mcp` | POST | MCP JSON-RPC dispatcher (`tools/*`, `resources/*`) |
 | `/mcp` | OPTIONS | CORS preflight |
 | Anything else | (any) | Falls through to the assets handler; serves the themed 404 page |
+
+MCP App HTML is copied into `worker/public/apps/` by `npm run build:apps`
+(run automatically from the root `npm run build`). Deploy workflows
+that stage VitePress into `worker/public/` should preserve the `apps/`
+subdirectory — `resources/read` for `ui://tc39-mcp/*` fetches those
+paths through the ASSETS binding.
 
 ### Setup (one-time, per Cloudflare account)
 

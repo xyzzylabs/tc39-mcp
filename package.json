@@ -12,6 +12,7 @@
     "dist/data/",
     "dist/index/",
     "dist/mcp/",
+    "dist/mcp/apps/",
     "dist/parser/",
     "dist/util/",
     "dist/spec/",
@@ -30,7 +31,8 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsgo && chmod +x dist/mcp/server.js",
+    "build:apps": "mkdir -p dist/mcp/apps worker/public/apps && cp src/mcp/apps/*.html dist/mcp/apps/ && cp src/mcp/apps/*.html worker/public/apps/",
+    "build": "npm run build:apps && tsgo && chmod +x dist/mcp/server.js",
     "typecheck": "tsgo --noEmit",
     "fetch-spec": "bash scripts/fetch-spec.sh",
     "fetch-test262": "bash scripts/fetch-test262.sh",

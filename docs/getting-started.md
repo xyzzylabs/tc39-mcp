@@ -17,9 +17,10 @@ upstream spec.
 `tc39-mcp` is an MCP server. It exposes 19 tools that answer
 structured questions about ECMA-262 + ECMA-402 — clause text,
 algorithm steps, cross-references, edition diffs, git history,
-test262 search, proposal lookup. If your client already speaks MCP
-— Claude Desktop, Claude Code, Cursor, the official MCP Inspector —
-adding it is one config entry away.
+test262 search, proposal lookup — plus **MCP Apps** (interactive viewers for `clause.get` and
+`spec.diff` on hosts that support the Apps extension). If your client already speaks MCP — Claude Desktop,
+Claude Code, Cursor, the official MCP Inspector — adding it is one
+config entry away.
 
 ## Pick how you run it
 
@@ -31,6 +32,7 @@ Pick **one**:
 | How | `npx tc39-mcp` as a local subprocess | point your client at a URL |
 | Install | Node 20+ | none |
 | **Tools** | **all 19** | **17** — no `spec.history` / `test262.get` |
+| **MCP Apps** | clause + diff viewers (`ui://`) | same (HTML via Worker Assets) |
 | Latency | local subprocess, fast | one network hop per call |
 | Data freshness | live from the Worker on first use, then cached + revalidated ~4 h (bundled subset offline) | live, auto-refreshed every ~4 h |
 | Offline use | ✓ for bundled editions (latest + main); fetched-on-first-use otherwise | ✗ |
@@ -142,6 +144,14 @@ Once the call returns, sanity-check the response:
 If you got back `null` instead, the clause id was probably wrong;
 try [`spec.search`](./tools#spec-search) (`{ query: "ToNumber" }`)
 to find the right id.
+
+## MCP Apps (optional)
+
+On hosts that implement the Apps extension, `clause.get` and
+`spec.diff` render an interactive viewer iframe beside the normal
+JSON (numbered steps / edition-diff fields). The JSON is always
+returned either way; the UI is additive. Details in
+[`architecture.md`](./architecture#mcp-apps-interactive-ui).
 
 If the server didn't respond at all, two things to check:
 
