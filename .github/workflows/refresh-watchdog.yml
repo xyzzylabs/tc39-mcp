@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Inspect .last-refresh.json age
         # If the sentinel file doesn't exist, this is a fresh repo —
