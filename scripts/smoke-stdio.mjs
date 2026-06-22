@@ -162,6 +162,8 @@ try {
 
   // resources/list — capability added alongside tools. Catches a
   // dropped registration of the URI-template resource provider.
+  // Order is not guaranteed: MCP App `ui://` resources may appear
+  // before `tc39://` clause resources depending on registration order.
   send(3, "resources/list");
   const resList = await waitFor(3);
   let sampleUri = null;
@@ -174,12 +176,24 @@ try {
     } else if (resources.length === 0) {
       fail(`resources/list: 0 resources advertised`);
     } else {
-      const sample = resources[0];
-      if (typeof sample?.uri !== "string" || !sample.uri.startsWith("tc39://")) {
-        fail(`resources/list: first uri doesn't look like tc39:// (got ${sample?.uri})`);
+      const uris = resources.map((r) => r?.uri).filter((u) => typeof u === "string");
+      const tc39Uris = uris.filter((u) => u.startsWith("tc39://"));
+      const uiUris = uris.filter((u) => u.startsWith("ui://tc39-mcp/"));
+      const bad = uris.filter((u) => !u.startsWith("tc39://") && !u.startsWith("ui://"));
+      if (bad.length > 0) {
+        fail(`resources/list: unexpected uri scheme(s): ${bad.slice(0, 3).join(", ")}`);
+      } else if (tc39Uris.length === 0) {
+        fail(`resources/list: expected at least one tc39:// clause resource`);
       } else {
-        sampleUri = sample.uri;
-        ok(`resources/list → ${resources.length} resources, first=${sample.uri}`);
+        sampleUri = tc39Uris[0];
+        if (uiUris.length === 0) {
+          fail(`resources/list: expected at least one ui://tc39-mcp/ MCP App resource`);
+        } else {
+          ok(
+            `resources/list → ${resources.length} resources ` +
+              `(${tc39Uris.length} tc39://, ${uiUris.length} ui://)`,
+          );
+        }
       }
     }
   }
@@ -187,8 +201,9 @@ try {
   // resources/read — the other half of the resources capability.
   // Use a known URI (sec-tonumber) rather than the listed sample so
   // we don't depend on the first-listed clause having useful content.
-  // Falls back to the sample if the canonical URI errors (different
-  // edition aliases, future spec moves, etc.).
+  // Falls back to a listed tc39:// sample if the canonical URI errors
+  // (different edition aliases, future spec moves, etc.). Never falls
+  // back to ui:// — App HTML is not clause JSON.
   const readUri = "tc39://262/latest/sec-tonumber";
   send(6, "resources/read", { uri: readUri });
   const read = await waitFor(6);
@@ -217,6 +232,54 @@ try {
       } else {
         ok(`resources/read ${readUri} → ${first.text.length} chars`);
       }
+    }
+  }
+
+  // resources/read for an MCP App ui:// resource — HTML viewer shell.
+  const appUri = "ui://tc39-mcp/clause-viewer.html";
+  send(8, "resources/read", { uri: appUri });
+  const appRead = await waitFor(8);
+  if (appRead.error) {
+    fail(`resources/read ${appUri}: ${appRead.error.message}`);
+  } else {
+    const contents = appRead.result?.contents ?? [];
+    const text = contents[0]?.text;
+    if (typeof text !== "string" || !text.includes("TC39 Clause Viewer")) {
+      fail(`resources/read ${appUri}: missing clause-viewer HTML`);
+    } else if (!String(contents[0]?.mimeType ?? "").includes("mcp-app")) {
+      fail(`resources/read ${appUri}: mimeType not mcp-app (got ${contents[0]?.mimeType})`);
+    } else {
+      ok(`resources/read ${appUri} → ${text.length} chars (mcp-app)`);
+    }
+  }
+
+  // prompts/list + prompts/get — workflow templates added alongside tools.
+  send(9, "prompts/list");
+  const promptsList = await waitFor(9);
+  if (promptsList.error) {
+    fail(`prompts/list returned error: ${promptsList.error.message}`);
+  } else {
+    const prompts = promptsList.result?.prompts ?? [];
+    const names = new Set(prompts.map((p) => p?.name));
+    if (!names.has("explain-clause") || !names.has("cite-reproducibly")) {
+      fail(`prompts/list: missing explain-clause or cite-reproducibly (got ${prompts.length} prompts)`);
+    } else {
+      ok(`prompts/list → ${prompts.length} prompts`);
+    }
+  }
+  send(10, "prompts/get", {
+    name: "explain-clause",
+    arguments: { id: "sec-tonumber" },
+  });
+  const promptGet = await waitFor(10);
+  if (promptGet.error) {
+    fail(`prompts/get explain-clause: ${promptGet.error.message}`);
+  } else {
+    const msg = promptGet.result?.messages?.[0]?.content?.text ?? "";
+    if (!msg.includes("clause.get") || !msg.includes("sec-tonumber")) {
+      fail(`prompts/get explain-clause: message missing clause.get / sec-tonumber`);
+    } else {
+      ok(`prompts/get explain-clause → ${msg.length} chars`);
     }
   }
 
