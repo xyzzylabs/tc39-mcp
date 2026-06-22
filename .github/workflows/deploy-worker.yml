@@ -47,6 +47,11 @@ jobs:
           mkdir -p worker/public
           cp -r docs/.vitepress/dist/. worker/public/
 
+      # MCP App HTML lives under worker/public/apps/ (gitignored). VitePress
+      # staging above wipes worker/public/, so re-copy apps after docs.
+      - name: Stage MCP App assets
+        run: npm run build:apps
+
       - name: Install worker dependencies
         working-directory: worker
         run: npm install
@@ -168,6 +173,17 @@ jobs:
           if 'github.com/tc39/ecma262/commit/' not in body:
             print('snapshots page has no commit links — generator regression?', file=sys.stderr); sys.exit(1)
           print(f'snapshots page OK ({len(body)} bytes HTML)')
+          "
+
+          # 6. MCP App assets — clause viewer HTML reachable via ASSETS
+          # (resources/read fetches /apps/<file> through the same binding).
+          app=$(curl -fsS "$DEPLOY_URL/apps/clause-viewer.html" -H "accept: text/html")
+          echo "$app" | python3 -c "
+          import sys
+          body = sys.stdin.read()
+          if 'mcp-app' not in body and 'tc39-clause-viewer' not in body:
+            print('clause-viewer App HTML missing or wrong content', file=sys.stderr); sys.exit(1)
+          print(f'clause-viewer App OK ({len(body)} bytes HTML)')
           "
 
       - name: Rollback on smoke failure

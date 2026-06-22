@@ -182,10 +182,10 @@ for both API and docs.
 | Anything else | (any) | Falls through to the assets handler; serves the themed 404 page |
 
 MCP App HTML is copied into `worker/public/apps/` by `npm run build:apps`
-(run automatically from the root `npm run build`). Deploy workflows
-that stage VitePress into `worker/public/` should preserve the `apps/`
-subdirectory — `resources/read` for `ui://tc39-mcp/*` fetches those
-paths through the ASSETS binding.
+(also run from the root `npm run build`). `.github/workflows/deploy-worker.yml`
+stages VitePress into `worker/public/` then runs `build:apps` so the
+`apps/` subdirectory is present in the assets bundle — `resources/read`
+for `ui://tc39-mcp/*` fetches those paths through the ASSETS binding.
 
 ### Setup (one-time, per Cloudflare account)
 
@@ -254,15 +254,18 @@ same JSON shape the stdio server returns.
    the `/snapshots` page from the freshly parsed JSONs.
 3. Stages the docs into `worker/public/` so wrangler bundles them as
    Worker static assets.
-4. Uploads parsed JSONs + indexes to R2 (ordered: historical pins +
+4. **Stages MCP App HTML** (`npm run build:apps`) into
+   `worker/public/apps/` (after the docs stage, which wipes
+   `worker/public/`).
+5. Uploads parsed JSONs + indexes to R2 (ordered: historical pins +
    side indices first, live mains last — see "Atomic-ish deploys"
    below).
-5. Deploys the Worker (code + assets in one atomic deploy).
-6. Smokes against `vars.WORKER_URL`: `/health`, MCP `initialize`,
-   `tools/call spec.about`, plus the docs landing page and the
-   `/snapshots` page render. Catches "deployed but R2 contents or
-   docs are broken."
-7. **Auto-rollback on smoke failure** — if smoke fails and there's a
+6. Deploys the Worker (code + assets in one atomic deploy).
+7. Smokes against `vars.WORKER_URL`: `/health`, MCP `initialize`,
+   `tools/call spec.about`, docs landing + `/snapshots`, plus
+   `/apps/clause-viewer.html`. Catches "deployed but R2 contents,
+   docs, or App assets are broken."
+8. **Auto-rollback on smoke failure** — if smoke fails and there's a
    prior version available, runs `wrangler rollback` to revert the
    Worker. R2 contents stay updated (they're idempotent), so the
    reverted Worker reads the freshest data — only the code rolls

@@ -305,13 +305,15 @@
     html += renderSummary("to (" + (diff.to || "?") + ")", diff.to_summary);
     html += "</div></section>";
 
-    var fields = diff.diff || diff.fields || diff.changes || [];
+    // spec.diff emits `diffs` (plural); accept a few alternate keys for robustness.
+    var fields = diff.diffs || diff.diff || diff.fields || diff.changes || [];
     if (Array.isArray(fields) && fields.length) {
       html += "<section><h2>Field changes (" + fields.length + ")</h2><div class=\"diff-list\">";
       for (var i = 0; i < fields.length; i++) {
         var f = fields[i] || {};
         var field = f.field || f.name || f.key || "field";
         var kind = f.kind || f.change || (f.before !== undefined && f.after !== undefined ? "modified" : "changed");
+        var detail = f.detail || f.message;
         html += '<div class="diff-item"><header>';
         html += '<span class="field">' + esc(field) + "</span>";
         html += '<span class="kind ' + esc(kind) + '">' + esc(kind) + "</span>";
@@ -326,11 +328,11 @@
         if (f.after !== undefined || f.to !== undefined) {
           html += '<div class="label">after</div><div class="after">' + esc(fmtVal(f.after !== undefined ? f.after : f.to)) + "</div>";
         }
-        if (f.message) {
-          html += '<div>' + esc(f.message) + "</div>";
+        if (detail) {
+          html += '<div>' + esc(detail) + "</div>";
         }
         // Fallback: dump unknown shape
-        if (f.before === undefined && f.after === undefined && f.from === undefined && f.to === undefined && !f.message && !f.reworded_step_indices) {
+        if (f.before === undefined && f.after === undefined && f.from === undefined && f.to === undefined && !detail && !f.reworded_step_indices) {
           html += '<div class="before">' + esc(fmtVal(f)) + "</div>";
         }
         html += "</div></div>";
@@ -344,6 +346,7 @@
       esc(JSON.stringify(diff, null, 2)) + "</pre></details>";
 
     root.innerHTML = html;
+    reportSize();
   }
 
   var pending = Object.create(null);
@@ -370,6 +373,14 @@
 
   function sendNotification(method, params) {
     post({ jsonrpc: "2.0", method: method, params: params || {} });
+  }
+
+  function reportSize() {
+    if (!initialized) return;
+    try {
+      var h = Math.max(document.documentElement.scrollHeight, 120);
+      sendNotification("ui/notifications/size-changed", { height: h });
+    } catch (_) {}
   }
 
   function applyTheme(ctx) {
@@ -422,10 +433,7 @@
       initialized = true;
       if (result && result.hostContext) applyTheme(result.hostContext);
       sendNotification("ui/notifications/initialized", {});
-      try {
-        var h = Math.max(document.documentElement.scrollHeight, 120);
-        sendNotification("ui/notifications/size-changed", { height: h });
-      } catch (_) {}
+      reportSize();
     } catch (e) {
       document.getElementById("root").innerHTML =
         '<div class="wait">Open via <code>spec.diff</code> in an MCP Apps host to render the diff here.</div>';
@@ -433,11 +441,7 @@
 
     if (window.ResizeObserver) {
       var ro = new ResizeObserver(function () {
-        if (!initialized) return;
-        try {
-          var h = Math.max(document.documentElement.scrollHeight, 120);
-          sendNotification("ui/notifications/size-changed", { height: h });
-        } catch (_) {}
+        reportSize();
       });
       ro.observe(document.body);
     }

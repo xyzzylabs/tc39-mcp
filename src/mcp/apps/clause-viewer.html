@@ -334,7 +334,13 @@
     if (notes.length) {
       html += "<section><h2>Notes</h2>";
       for (var n = 0; n < notes.length; n++) {
-        html += '<div class="note">' + renderMarkup(notes[n]) + "</div>";
+        var note = notes[n];
+        var noteText = typeof note === "string" ? note : (note && note.text) || "";
+        var noteHtml = renderMarkup(noteText);
+        if (note && typeof note === "object" && note.id) {
+          noteHtml = '<span class="xref">' + esc(note.id) + "</span> " + noteHtml;
+        }
+        html += '<div class="note">' + noteHtml + "</div>";
       }
       html += "</section>";
     }
@@ -351,6 +357,7 @@
       esc(JSON.stringify(clause, null, 2)) + "</pre></details>";
 
     root.innerHTML = html;
+    reportSize();
   }
 
   // Minimal MCP Apps host protocol (postMessage JSON-RPC dialect).
@@ -378,6 +385,14 @@
 
   function sendNotification(method, params) {
     post({ jsonrpc: "2.0", method: method, params: params || {} });
+  }
+
+  function reportSize() {
+    if (!initialized) return;
+    try {
+      var h = Math.max(document.documentElement.scrollHeight, 120);
+      sendNotification("ui/notifications/size-changed", { height: h });
+    } catch (_) {}
   }
 
   function applyTheme(ctx) {
@@ -434,11 +449,7 @@
       initialized = true;
       if (result && result.hostContext) applyTheme(result.hostContext);
       sendNotification("ui/notifications/initialized", {});
-      // Report an initial size so hosts can size the iframe.
-      try {
-        var h = Math.max(document.documentElement.scrollHeight, 120);
-        sendNotification("ui/notifications/size-changed", { height: h });
-      } catch (_) {}
+      reportSize();
     } catch (e) {
       // Standalone / non-App hosts: show a helpful wait state.
       document.getElementById("root").innerHTML =
@@ -447,11 +458,7 @@
 
     if (window.ResizeObserver) {
       var ro = new ResizeObserver(function () {
-        if (!initialized) return;
-        try {
-          var h = Math.max(document.documentElement.scrollHeight, 120);
-          sendNotification("ui/notifications/size-changed", { height: h });
-        } catch (_) {}
+        reportSize();
       });
       ro.observe(document.body);
     }
