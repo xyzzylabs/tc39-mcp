@@ -39,6 +39,19 @@ export const APP_DESCRIPTORS: readonly AppDescriptor[] = [
   },
 ] as const;
 
+/** Resource-level `_meta.ui` advertised for every MCP App, at both the
+ *  resources/list and resources/read layers. The viewers are fully
+ *  self-contained — they render the tool's JSON result and make no
+ *  network calls — so the CSP locks out every external resource +
+ *  connect domain; `prefersBorder` is a host rendering hint. Shared by
+ *  the stdio resource registration and the Worker so the two can't drift. */
+export const APP_RESOURCE_META = {
+  ui: {
+    csp: { resourceDomains: [] as string[], connectDomains: [] as string[] },
+    prefersBorder: true,
+  },
+};
+
 /** Tool name → UI resource URI for tools that render an MCP App. */
 export const TOOL_APP_URI: Readonly<Record<string, string>> = {
   "clause.get": CLAUSE_VIEWER_URI,

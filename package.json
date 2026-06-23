@@ -12,7 +12,6 @@
     "dist/data/",
     "dist/index/",
     "dist/mcp/",
-    "dist/mcp/apps/",
     "dist/parser/",
     "dist/util/",
     "dist/spec/",

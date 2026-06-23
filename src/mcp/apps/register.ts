@@ -3,7 +3,7 @@
 // that support MCP Apps render the matching HTML iframe beside the tool result.
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { APP_DESCRIPTORS, APP_MIME_TYPE } from "./manifest.js";
+import { APP_DESCRIPTORS, APP_MIME_TYPE, APP_RESOURCE_META } from "./manifest.js";
 import { loadAppHtml } from "./load.js";
 
 /** Register every MCP App as a `ui://` resource on the given server. */
@@ -16,15 +16,7 @@ export function registerAppResources(server: McpServer): void {
         description: app.description,
         mimeType: APP_MIME_TYPE,
         // Listing-level UI metadata: strict CSP, no network, read-only view.
-        _meta: {
-          ui: {
-            csp: {
-              resourceDomains: [],
-              connectDomains: [],
-            },
-            prefersBorder: true,
-          },
-        },
+        _meta: APP_RESOURCE_META,
       },
       async (uri) => ({
         contents: [
@@ -32,15 +24,7 @@ export function registerAppResources(server: McpServer): void {
             uri: uri.href,
             mimeType: APP_MIME_TYPE,
             text: loadAppHtml(app.file),
-            _meta: {
-              ui: {
-                csp: {
-                  resourceDomains: [],
-                  connectDomains: [],
-                },
-                prefersBorder: true,
-              },
-            },
+            _meta: APP_RESOURCE_META,
           },
         ],
       }),

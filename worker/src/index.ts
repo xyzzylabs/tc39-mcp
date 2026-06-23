@@ -37,6 +37,7 @@ import rootPkg from "../../package.json";
 import {
   APP_DESCRIPTORS,
   APP_MIME_TYPE,
+  APP_RESOURCE_META,
   toolUiMeta,
 } from "../../src/mcp/apps/manifest.js";
 
@@ -401,26 +402,19 @@ const TOOL_REGISTRY: {
 // src/mcp/apps/ during `npm run build:apps`). resources/read fetches
 // through the ASSETS binding — same source the public site serves.
 
-const APP_UI_META = {
-  ui: {
-    csp: { resourceDomains: [] as string[], connectDomains: [] as string[] },
-    prefersBorder: true,
-  },
-};
-
 function listAppResources(): {
   uri: string;
   name: string;
   description: string;
   mimeType: string;
-  _meta: typeof APP_UI_META;
+  _meta: typeof APP_RESOURCE_META;
 }[] {
   return APP_DESCRIPTORS.map((a) => ({
     uri: a.uri,
     name: a.title,
     description: a.description,
     mimeType: APP_MIME_TYPE,
-    _meta: APP_UI_META,
+    _meta: APP_RESOURCE_META,
   }));
 }
 
@@ -446,7 +440,7 @@ async function readAppResource(
     uri: string;
     mimeType: string;
     text: string;
-    _meta: typeof APP_UI_META;
+    _meta: typeof APP_RESOURCE_META;
   }[];
 } | null> {
   const app = APP_DESCRIPTORS.find((a) => a.uri === uri);
@@ -459,7 +453,7 @@ async function readAppResource(
         uri,
         mimeType: APP_MIME_TYPE,
         text: html,
-        _meta: APP_UI_META,
+        _meta: APP_RESOURCE_META,
       },
     ],
   };
