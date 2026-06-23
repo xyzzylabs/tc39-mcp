@@ -19,6 +19,12 @@
       --add-bg: color-mix(in srgb, #7fd99a 12%, var(--card));
       --rem-bg: color-mix(in srgb, #f07178 12%, var(--card));
       --mod-bg: color-mix(in srgb, #c792ea 12%, var(--card));
+      --tok-var: #82aaff;
+      --tok-val: #c3e88d;
+      --tok-code-fg: #e7ecf3;
+      --tok-slot: #c792ea;
+      --tok-intrinsic: #f78c6c;
+      --tok-enum: #89ddff;
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
       --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
     }
@@ -34,6 +40,12 @@
         --warn: #9a6700;
         --bad: #cf222e;
         --mod: #8250df;
+        --tok-var: #0550ae;
+        --tok-val: #1a7f37;
+        --tok-code-fg: #1a2332;
+        --tok-slot: #8250df;
+        --tok-intrinsic: #bc4c00;
+        --tok-enum: #0598bc;
       }
     }
     [data-theme="light"] {
@@ -47,6 +59,12 @@
       --warn: #9a6700;
       --bad: #cf222e;
       --mod: #8250df;
+      --tok-var: #0550ae;
+      --tok-val: #1a7f37;
+      --tok-code-fg: #1a2332;
+      --tok-slot: #8250df;
+      --tok-intrinsic: #bc4c00;
+      --tok-enum: #0598bc;
     }
     * { box-sizing: border-box; }
     body {
@@ -73,20 +91,25 @@
       margin-bottom: 4px;
     }
     h1 { margin: 0 0 8px; font-size: 16px; font-weight: 650; }
-    .meta-row { display: flex; flex-wrap: wrap; gap: 6px; }
-    .chip {
-      display: inline-flex;
+    /* from → to lockup makes the edition pair read at a glance. */
+    .editions {
+      display: flex;
       align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      border-radius: 999px;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .ed {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 6px;
       border: 1px solid var(--border);
       background: var(--card);
-      font-size: 11px;
-      color: var(--muted);
-      font-family: var(--mono);
+      color: var(--fg);
     }
-    .chip strong { color: var(--fg); font-weight: 600; }
+    .ed .lbl { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 5px; }
+    .arrow { color: var(--muted); font-size: 14px; }
     .status {
       display: inline-block;
       padding: 4px 12px;
@@ -123,6 +146,8 @@
       border-radius: 8px;
       padding: 10px;
     }
+    .panel.from { border-top: 2px solid var(--bad); }
+    .panel.to { border-top: 2px solid var(--ok); }
     .panel h3 {
       margin: 0 0 8px;
       font-size: 11px;
@@ -200,11 +225,32 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-    .indices {
+    .detail { margin-top: 4px; color: var(--muted); }
+    /* Reworded-step indices as compact chips. */
+    .idx-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+    .idx-chips .idx {
       font-family: var(--mono);
-      font-size: 11px;
-      color: var(--muted);
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--mod-bg);
+      color: var(--mod);
     }
+    /* Spec-notation tokens (shared with the clause viewer). */
+    .tok { font-size: 0.96em; }
+    .tok-var { font-style: italic; color: var(--tok-var); }
+    .tok-val { font-weight: 600; color: var(--tok-val); }
+    .tok-code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      color: var(--tok-code-fg);
+      background: color-mix(in srgb, var(--fg) 9%, transparent);
+      padding: 0 3px;
+      border-radius: 3px;
+    }
+    .tok-slot { font-family: var(--mono); color: var(--tok-slot); }
+    .tok-intrinsic { font-family: var(--mono); color: var(--tok-intrinsic); }
+    .tok-enum { font-style: italic; color: var(--tok-enum); }
     details.raw {
       margin-top: 16px;
       border-top: 1px solid var(--border);
@@ -244,10 +290,33 @@
       .replace(/"/g, "&quot;");
   }
 
+  // Render ecmarkup spec notation as distinct, delimiter-stripped tokens
+  // (shared with the clause viewer): _var_, *value*, `code`, [[Slot]],
+  // %Intrinsic%, ~enum~. Operates on already-escaped text.
+  function renderMarkup(text) {
+    var t = esc(text);
+    t = t.replace(/\[\[([^\]]+)\]\]/g, '<span class="tok tok-slot">[[$1]]</span>');
+    t = t.replace(/%([^%\s][^%]*)%/g, '<span class="tok tok-intrinsic">%$1%</span>');
+    t = t.replace(/`([^`]+)`/g, '<code class="tok tok-code">$1</code>');
+    t = t.replace(/\*([^*]+)\*/g, '<span class="tok tok-val">$1</span>');
+    t = t.replace(/(^|[\s([])_([^_]+)_(?=$|[\s.,;:)\]])/g, '$1<span class="tok tok-var">$2</span>');
+    t = t.replace(/~([^~\s]+)~/g, '<span class="tok tok-enum">$1</span>');
+    return t;
+  }
+
   function fmtVal(v) {
     if (v === undefined || v === null) return "—";
     if (typeof v === "object") return JSON.stringify(v, null, 2);
     return String(v);
+  }
+
+  // Numeric/count fields render plain; text fields (title, signatures,
+  // reworded step text) get spec-notation styling.
+  function fmtRich(v) {
+    if (v === undefined || v === null) return "—";
+    if (typeof v === "number") return esc(String(v));
+    if (typeof v === "object") return esc(JSON.stringify(v, null, 2));
+    return renderMarkup(String(v));
   }
 
   function parsePayload(text) {
@@ -268,11 +337,11 @@
     return null;
   }
 
-  function renderSummary(label, s) {
-    if (!s) return '<div class="panel"><h3>' + esc(label) + '</h3><div class="stat">absent</div></div>';
-    var html = '<div class="panel"><h3>' + esc(label) + "</h3>";
+  function renderSummary(label, side, s) {
+    if (!s) return '<div class="panel ' + side + '"><h3>' + esc(label) + '</h3><div class="stat">absent</div></div>';
+    var html = '<div class="panel ' + side + '"><h3>' + esc(label) + "</h3>";
     if (s.title) html += '<div class="title">' + esc(s.title) + "</div>";
-    if (s.signatureRaw) html += '<div class="sig">' + esc(s.signatureRaw) + "</div>";
+    if (s.signatureRaw) html += '<div class="sig">' + renderMarkup(s.signatureRaw) + "</div>";
     html += '<div class="stat">steps: ' + esc(s.step_count ?? "—") +
       " · notes: " + esc(s.note_count ?? "—") + "</div>";
     html += "</div>";
@@ -290,19 +359,17 @@
     var html = "<header>";
     html += '<div class="eyebrow">Edition diff</div>';
     html += "<h1>" + esc(diff.id || "clause") + "</h1>";
-    html += '<div class="meta-row">';
-    html += '<span class="chip"><strong>from</strong> ' + esc(diff.from || "?") + "</span>";
-    html += '<span class="chip"><strong>to</strong> ' + esc(diff.to || "?") + "</span>";
-    if (diff.same !== undefined) {
-      html += '<span class="chip"><strong>same</strong> ' + esc(String(diff.same)) + "</span>";
-    }
+    html += '<div class="editions">';
+    html += '<span class="ed"><span class="lbl">from</span>' + esc(diff.from || "?") + "</span>";
+    html += '<span class="arrow">→</span>';
+    html += '<span class="ed"><span class="lbl">to</span>' + esc(diff.to || "?") + "</span>";
     html += "</div>";
     html += '<div class="status ' + esc(status) + '">' + esc(status) + "</div>";
     html += "</header>";
 
     html += "<section><h2>Summaries</h2><div class=\"cols\">";
-    html += renderSummary("from (" + (diff.from || "?") + ")", diff.from_summary);
-    html += renderSummary("to (" + (diff.to || "?") + ")", diff.to_summary);
+    html += renderSummary("from (" + (diff.from || "?") + ")", "from", diff.from_summary);
+    html += renderSummary("to (" + (diff.to || "?") + ")", "to", diff.to_summary);
     html += "</div></section>";
 
     // spec.diff emits `diffs` (plural); accept a few alternate keys for robustness.
@@ -318,21 +385,23 @@
         html += '<span class="field">' + esc(field) + "</span>";
         html += '<span class="kind ' + esc(kind) + '">' + esc(kind) + "</span>";
         html += "</header><div class=\"diff-body\">";
-        if (f.reworded_step_indices || f.step_indices) {
-          var idx = f.reworded_step_indices || f.step_indices;
-          html += '<div class="indices">reworded steps: ' + esc(JSON.stringify(idx)) + "</div>";
+        var idx = f.reworded_step_indices || f.step_indices;
+        if (idx && Array.isArray(idx) && idx.length) {
+          html += '<div class="label">reworded steps</div><div class="idx-chips">';
+          for (var k = 0; k < idx.length; k++) html += '<span class="idx">#' + esc(idx[k]) + "</span>";
+          html += "</div>";
         }
         if (f.before !== undefined || f.from !== undefined) {
-          html += '<div class="label">before</div><div class="before">' + esc(fmtVal(f.before !== undefined ? f.before : f.from)) + "</div>";
+          html += '<div class="label">before</div><div class="before">' + fmtRich(f.before !== undefined ? f.before : f.from) + "</div>";
         }
         if (f.after !== undefined || f.to !== undefined) {
-          html += '<div class="label">after</div><div class="after">' + esc(fmtVal(f.after !== undefined ? f.after : f.to)) + "</div>";
+          html += '<div class="label">after</div><div class="after">' + fmtRich(f.after !== undefined ? f.after : f.to) + "</div>";
         }
         if (detail) {
-          html += '<div>' + esc(detail) + "</div>";
+          html += '<div class="detail">' + renderMarkup(detail) + "</div>";
         }
         // Fallback: dump unknown shape
-        if (f.before === undefined && f.after === undefined && f.from === undefined && f.to === undefined && !detail && !f.reworded_step_indices) {
+        if (f.before === undefined && f.after === undefined && f.from === undefined && f.to === undefined && !detail && !idx) {
           html += '<div class="before">' + esc(fmtVal(f)) + "</div>";
         }
         html += "</div></div>";

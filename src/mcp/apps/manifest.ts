@@ -59,15 +59,8 @@ export const TOOL_APP_URI: Readonly<Record<string, string>> = {
 };
 
 /** Build `_meta` for a tool that has an associated MCP App. */
-export function toolUiMeta(toolName: string):
-  | { ui: { resourceUri: string }; "ui/resourceUri": string }
-  | undefined {
+export function toolUiMeta(toolName: string): { ui: { resourceUri: string } } | undefined {
   const uri = TOOL_APP_URI[toolName];
   if (!uri) return undefined;
-  // Advertise both modern (`ui.resourceUri`) and legacy (`ui/resourceUri`)
-  // keys so older and newer hosts both pick up the App.
-  return {
-    ui: { resourceUri: uri },
-    "ui/resourceUri": uri,
-  };
+  return { ui: { resourceUri: uri } };
 }

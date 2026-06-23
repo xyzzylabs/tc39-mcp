@@ -20,10 +20,9 @@ describe("manifest", () => {
     expect(CLAUSE_VIEWER_URI).not.toBe(DIFF_VIEWER_URI);
   });
 
-  it("toolUiMeta advertises both modern and legacy keys", () => {
+  it("toolUiMeta advertises the App resource URI for app-backed tools only", () => {
     const meta = toolUiMeta("clause.get");
     expect(meta?.ui.resourceUri).toBe(CLAUSE_VIEWER_URI);
-    expect(meta?.["ui/resourceUri"]).toBe(CLAUSE_VIEWER_URI);
     expect(toolUiMeta("spec.about")).toBeUndefined();
   });
 

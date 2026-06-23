@@ -17,6 +17,13 @@
       --note-bg: #1e2a1e;
       --note-border: #3d6b3d;
       --err: #f07178;
+      /* Spec-notation token palette (mirrors ecmarkup conventions). */
+      --tok-var: #82aaff;      /* _variable_     */
+      --tok-val: #c3e88d;      /* *value literal* */
+      --tok-code-fg: #e7ecf3;  /* `code`         */
+      --tok-slot: #c792ea;     /* [[InternalSlot]] */
+      --tok-intrinsic: #f78c6c;/* %Intrinsic%    */
+      --tok-enum: #89ddff;     /* ~spec-enum~    */
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
       --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
     }
@@ -33,6 +40,12 @@
         --note-bg: #f0fff4;
         --note-border: #9ddea8;
         --err: #cf222e;
+        --tok-var: #0550ae;
+        --tok-val: #1a7f37;
+        --tok-code-fg: #1a2332;
+        --tok-slot: #8250df;
+        --tok-intrinsic: #bc4c00;
+        --tok-enum: #0598bc;
       }
     }
     [data-theme="light"] {
@@ -47,6 +60,12 @@
       --note-bg: #f0fff4;
       --note-border: #9ddea8;
       --err: #cf222e;
+      --tok-var: #0550ae;
+      --tok-val: #1a7f37;
+      --tok-code-fg: #1a2332;
+      --tok-slot: #8250df;
+      --tok-intrinsic: #bc4c00;
+      --tok-enum: #0598bc;
     }
     * { box-sizing: border-box; }
     body {
@@ -113,6 +132,7 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
+    .sig .tok { font-family: var(--mono); }
     section { margin-top: 14px; }
     section h2 {
       margin: 0 0 8px;
@@ -122,32 +142,33 @@
       color: var(--muted);
       font-weight: 600;
     }
+    /* Algorithm steps — spec-style nesting: 1. → a. → i. by depth. */
     ol.steps {
       margin: 0;
       padding: 0;
       list-style: none;
       counter-reset: step;
     }
-    ol.steps > li, ol.substeps > li {
+    ol.steps > li {
       counter-increment: step;
       position: relative;
-      padding: 6px 8px 6px 36px;
+      padding: 5px 8px 5px 34px;
       margin-bottom: 2px;
       border-radius: 5px;
       border: 1px solid transparent;
     }
-    ol.steps > li:hover, ol.substeps > li:hover {
+    ol.steps > li:hover {
       background: var(--card);
       border-color: var(--border);
     }
-    ol.steps > li::before, ol.substeps > li::before {
-      content: counter(step);
+    ol.steps > li::before {
       position: absolute;
       left: 6px;
-      top: 6px;
-      min-width: 22px;
-      height: 22px;
-      display: flex;
+      top: 5px;
+      min-width: 21px;
+      padding: 0 4px;
+      height: 20px;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       font-size: 10px;
@@ -156,25 +177,30 @@
       background: color-mix(in srgb, var(--accent) 12%, transparent);
       border-radius: 4px;
     }
-    ol.substeps {
-      margin: 4px 0 0;
-      padding: 0;
-      list-style: none;
-      counter-reset: step;
-    }
-    ol.substeps > li { padding-left: 32px; }
-    ol.substeps > li::before {
-      min-width: 18px;
-      height: 18px;
-      font-size: 9px;
-      top: 7px;
-    }
+    /* Depth markers cycle decimal → lower-alpha → lower-roman, like emu-alg. */
+    ol.steps.lvl0 > li::before { content: counter(step) "."; }
+    ol.steps.lvl1 > li::before { content: counter(step, lower-alpha) "."; }
+    ol.steps.lvl2 > li::before { content: counter(step, lower-roman) "."; }
+    ol.steps.lvl0 { counter-reset: step; }
+    ol.steps ol.steps { margin: 4px 0 0; }
+    ol.steps ol.steps > li { padding-left: 30px; }
+    ol.steps ol.steps > li::before { min-width: 17px; height: 18px; top: 6px; font-size: 9px; }
     .step-text { word-break: break-word; }
-    .step-text .mark {
+    /* Spec-notation tokens. */
+    .tok { font-size: 0.96em; }
+    .tok-var { font-style: italic; color: var(--tok-var); }
+    .tok-val { font-weight: 600; color: var(--tok-val); }
+    .tok-code {
       font-family: var(--mono);
-      font-size: 12px;
-      color: var(--accent);
+      font-size: 0.92em;
+      color: var(--tok-code-fg);
+      background: color-mix(in srgb, var(--fg) 9%, transparent);
+      padding: 0 3px;
+      border-radius: 3px;
     }
+    .tok-slot { font-family: var(--mono); color: var(--tok-slot); }
+    .tok-intrinsic { font-family: var(--mono); color: var(--tok-intrinsic); }
+    .tok-enum { font-style: italic; color: var(--tok-enum); }
     .prod {
       font-family: var(--mono);
       font-size: 11px;
@@ -192,6 +218,14 @@
       border-left: 3px solid var(--note-border);
       border-radius: 0 5px 5px 0;
       font-size: 12px;
+    }
+    .note .note-tag {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--note-border);
+      margin-right: 6px;
     }
     .xrefs {
       display: flex;
@@ -246,25 +280,31 @@
       .replace(/"/g, "&quot;");
   }
 
+  // Render ecmarkup spec notation as distinct, delimiter-stripped tokens so
+  // steps read like the published spec: _var_ (italic), *value* (bold),
+  // `code`, [[InternalSlot]], %Intrinsic%, ~spec-enum~. Operates on
+  // already-escaped text; multi-char delimiters run before single-char ones.
   function renderMarkup(text) {
     var t = esc(text);
-    t = t.replace(/\*([^*]+)\*/g, '<span class="mark">*$1*</span>');
-    t = t.replace(/_([^_]+)_/g, '<span class="mark">_$1_</span>');
-    t = t.replace(/%([^%]+)%/g, '<span class="mark">%$1%</span>');
-    t = t.replace(/\[\[([^\]]+)\]\]/g, '<span class="mark">[[$1]]</span>');
-    t = t.replace(/~([^~]+)~/g, '<span class="mark">~$1~</span>');
+    t = t.replace(/\[\[([^\]]+)\]\]/g, '<span class="tok tok-slot">[[$1]]</span>');
+    t = t.replace(/%([^%\s][^%]*)%/g, '<span class="tok tok-intrinsic">%$1%</span>');
+    t = t.replace(/`([^`]+)`/g, '<code class="tok tok-code">$1</code>');
+    t = t.replace(/\*([^*]+)\*/g, '<span class="tok tok-val">$1</span>');
+    t = t.replace(/(^|[\s([])_([^_]+)_(?=$|[\s.,;:)\]])/g, '$1<span class="tok tok-var">$2</span>');
+    t = t.replace(/~([^~\s]+)~/g, '<span class="tok tok-enum">$1</span>');
     return t;
   }
 
-  function renderSteps(steps, cls) {
+  function renderSteps(steps, depth) {
     if (!steps || !steps.length) return "";
-    var html = '<ol class="' + (cls || "steps") + '">';
+    var lvl = "lvl" + ((depth || 0) % 3);
+    var html = '<ol class="steps ' + lvl + '">';
     for (var i = 0; i < steps.length; i++) {
       var st = steps[i];
       var text = typeof st === "string" ? st : (st && st.text) || "";
       var sub = (st && st.substeps) || [];
       html += "<li><div class=\"step-text\">" + renderMarkup(text) + "</div>";
-      if (sub.length) html += renderSteps(sub, "substeps");
+      if (sub.length) html += renderSteps(sub, (depth || 0) + 1);
       html += "</li>";
     }
     html += "</ol>";
@@ -317,7 +357,7 @@
     if (meta.kind) html += '<span class="chip"><strong>kind</strong> ' + esc(meta.kind) + "</span>";
     html += "</div>";
     if (clause.signatureRaw) {
-      html += '<div class="sig">' + esc(clause.signatureRaw) + "</div>";
+      html += '<div class="sig">' + renderMarkup(clause.signatureRaw) + "</div>";
     }
     html += "</header>";
 
@@ -326,7 +366,7 @@
       for (var a = 0; a < algs.length; a++) {
         var alg = algs[a] || {};
         if (alg.production) html += '<div class="prod">' + esc(alg.production) + "</div>";
-        html += renderSteps(alg.steps || []);
+        html += renderSteps(alg.steps || [], 0);
       }
       html += "</section>";
     }
@@ -336,10 +376,8 @@
       for (var n = 0; n < notes.length; n++) {
         var note = notes[n];
         var noteText = typeof note === "string" ? note : (note && note.text) || "";
-        var noteHtml = renderMarkup(noteText);
-        if (note && typeof note === "object" && note.id) {
-          noteHtml = '<span class="xref">' + esc(note.id) + "</span> " + noteHtml;
-        }
+        var tag = notes.length > 1 ? "Note " + (n + 1) : "Note";
+        var noteHtml = '<span class="note-tag">' + tag + "</span>" + renderMarkup(noteText);
         html += '<div class="note">' + noteHtml + "</div>";
       }
       html += "</section>";
