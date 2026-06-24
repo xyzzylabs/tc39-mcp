@@ -24,8 +24,8 @@ tc39-mcp serves read-only structured data from the TC39 specs
 response is deterministic over data pinned to specific upstream
 SHAs.
 
-Unofficial, community-maintained — not affiliated with, endorsed by,
-or sponsored by Ecma International or TC39.
+Independent project — not an official Ecma International or TC39
+publication.
 
 Common workflow:
   1. \`spec.about\` — call first when you need to cite the spec or

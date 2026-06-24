@@ -6,8 +6,8 @@
 
 📖 **Docs**: [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — [Get started](https://tc39-mcp.chicoxyzzy.workers.dev/getting-started) · [Tools](https://tc39-mcp.chicoxyzzy.workers.dev/tools) · [Cookbook](https://tc39-mcp.chicoxyzzy.workers.dev/cookbook) · [Editions](https://tc39-mcp.chicoxyzzy.workers.dev/editions) · [Architecture](https://tc39-mcp.chicoxyzzy.workers.dev/architecture) · [Hosting](https://tc39-mcp.chicoxyzzy.workers.dev/deployment)
 
-> **Unofficial / community project** — not affiliated with, endorsed
-> by, or maintained by Ecma International or TC39. It reads the publicly
+> **Independent project** — not an official Ecma
+> International or TC39 publication. Reads the publicly
 > published ECMAScript specs (ECMA-262 + ECMA-402).
 
 **Give MCP-speaking AI agents structural access to the JS spec.**
