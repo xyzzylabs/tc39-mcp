@@ -3,7 +3,7 @@
     "tc39": {
       "type": "stdio",
       "command": "npm",
-      "args": ["run", "mcp"]
+      "args": ["run", "--silent", "mcp"]
     }
   }
 }

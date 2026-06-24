@@ -234,12 +234,15 @@ Point Claude Code at your local source instead of the published bin:
     "tc39": {
       "type": "stdio",
       "command": "npm",
-      "args": ["run", "mcp"],
+      "args": ["run", "--silent", "mcp"],
       "cwd": "/abs/path/to/tc39-mcp"
     }
   }
 }
 ```
+
+> `--silent` keeps npm's lifecycle banner off stdout, so the MCP
+> client receives a clean JSON-RPC stream.
 
 ## Docs
 
