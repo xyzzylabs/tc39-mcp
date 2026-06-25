@@ -29,6 +29,7 @@ import {
   RELEASED_262_EDITIONS,
   resolveEdition,
   isSupported,
+  requireSpec,
   type Spec,
   type Edition,
 } from "../../src/spec/catalog.js";
@@ -138,9 +139,13 @@ async function getSpec(
   ed: string,
   at?: string,
 ): Promise<ParsedSpec> {
-  const resolved = resolveEdition(spec as Spec, ed as Edition);
-  if (!isSupported(spec as Spec, resolved)) {
-    throw new Error(`Unsupported (spec, edition): ${spec}/${ed} → ${resolved}`);
+  // Accept `ecma262` / `ecma402` (and friends) as well as the canonical
+  // short forms — agents frequently pass the long name, and we want a
+  // clear error rather than a missing `spec-ecma262-….json` R2 key.
+  const canon = requireSpec(spec);
+  const resolved = resolveEdition(canon, ed as Edition);
+  if (!isSupported(canon, resolved)) {
+    throw new Error(`Unsupported (spec, edition): ${canon}/${ed} → ${resolved}`);
   }
   if (at) {
     // SHA addressing only applies to `main`, the one moving edition we
@@ -149,7 +154,7 @@ async function getSpec(
     // avoids generating R2 keys nobody uploads.
     if (resolved !== "main") {
       throw new Error(
-        `\`at\` is only valid for the 'main' edition. ${spec}/${resolved} is served from a single snapshot key with no per-SHA history; omit \`at\` to query it.`,
+        `\`at\` is only valid for the 'main' edition. ${canon}/${resolved} is served from a single snapshot key with no per-SHA history; omit \`at\` to query it.`,
       );
     }
     if (!/^[a-f0-9]{4,40}$/.test(at)) {
@@ -158,7 +163,7 @@ async function getSpec(
       );
     }
   }
-  const p = await loadParsedSpec(env, spec, resolved, at);
+  const p = await loadParsedSpec(env, canon, resolved, at);
   return p;
 }
 
@@ -378,7 +383,7 @@ export async function specGrammar(
     limit?: number;
   },
 ): Promise<{ spec: string } & GrammarQueryResult> {
-  const spec = args.spec ?? "262";
+  const spec = requireSpec(args.spec);
   const p = await getSpec(env, spec, args.edition ?? "latest");
   // `p.grammar` is typed `unknown[]` in the Worker's local ParsedSpec;
   // the bytes are the parser's structured GrammarProduction[] (see r2.ts).
@@ -403,7 +408,7 @@ export async function specTables(
     limit?: number;
   },
 ): Promise<{ spec: string } & TablesQueryResult> {
-  const spec = args.spec ?? "262";
+  const spec = requireSpec(args.spec);
   const p = await getSpec(env, spec, args.edition ?? "latest");
   // `p.tables` is typed `Record<string, unknown>` in the Worker's local
   // ParsedSpec; the bytes are the parser's structured SpecTable map.
@@ -427,7 +432,7 @@ export async function specSdoIndex(
     limit?: number;
   },
 ): Promise<{ spec: string } & SdoIndexResult> {
-  const spec = args.spec ?? "262";
+  const spec = requireSpec(args.spec);
   const p = await getSpec(env, spec, args.edition ?? "latest");
   const core = buildSdoIndex(p.clauses, {
     by: args.by,
@@ -443,7 +448,7 @@ export async function clauseOutline(
   env: R2Env,
   args: { spec?: string; edition?: string; depth?: number; under?: string },
 ): Promise<{ spec: string } & OutlineTree> {
-  const spec = args.spec ?? "262";
+  const spec = requireSpec(args.spec);
   const p = await getSpec(env, spec, args.edition ?? "latest");
   const core = buildOutline(p.clauses, { depth: args.depth, under: args.under });
   return { spec, ...core };
@@ -508,6 +513,9 @@ export async function specSnapshots(
   args: { spec?: string; edition?: string },
 ): Promise<SnapshotsResult> {
   const keys = await listSnapshots(env);
+  // Normalize the filter the same way getSpec normalizes its input, so
+  // `spec: "ecma262"` filters to 262 rather than matching nothing.
+  const filterSpec = args.spec ? requireSpec(args.spec) : undefined;
   const rows: SnapshotRow[] = [];
   for (const key of keys) {
     // Live snapshot keys only: `spec-{spec}-{edition}.json`. The
@@ -518,7 +526,7 @@ export async function specSnapshots(
     if (!m) continue;
     const spec = m[1]!;
     const edition = m[2]!;
-    if (args.spec && args.spec !== spec) continue;
+    if (filterSpec && filterSpec !== spec) continue;
     if (args.edition && args.edition !== edition) continue;
     // Read the snapshot for its pin via the uncached loader, so this
     // scan never populates the hot specCache LRU (which would evict live
@@ -550,7 +558,7 @@ export async function specSnapshots(
       a.sha.localeCompare(b.sha),
   );
   return {
-    ...(args.spec ? { spec_filter: args.spec } : {}),
+    ...(filterSpec ? { spec_filter: filterSpec } : {}),
     ...(args.edition ? { edition_filter: args.edition } : {}),
     snapshots: rows,
   };
@@ -616,7 +624,7 @@ export async function specCrossrefs(
     limit?: number;
   },
 ): Promise<CrossrefsResult> {
-  const spec = (args.spec ?? "262") as Spec;
+  const spec = requireSpec(args.spec);
   const edition = resolveEdition(spec, (args.edition ?? "latest") as Edition);
   const parsed = await getSpec(env, spec, edition);
   return computeCrossrefs({

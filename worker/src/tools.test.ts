@@ -231,6 +231,34 @@ describe("clauseGet", () => {
     ).rejects.toThrow(/Unsupported/);
   });
 
+  it("accepts ecma262 / ecma402 aliases (agents pass the long form often)", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": fakeSpecJson({
+            spec: "262",
+            edition: "es2026",
+            clauses: { "sec-x": { id: "sec-x", title: "X" } },
+          }),
+        },
+      }),
+    };
+    const c = await clauseGet(env, {
+      id: "sec-x",
+      spec: "ecma262",
+      edition: "latest",
+    });
+    expect(c).not.toBeNull();
+    expect(c!.meta.id).toBe("sec-x");
+  });
+
+  it("rejects unknown spec aliases with a clear error (not a missing R2 key)", async () => {
+    const env = { SPECS: createFakeR2() };
+    await expect(
+      clauseGet(env, { id: "sec-x", spec: "ecma999", edition: "latest" }),
+    ).rejects.toThrow(/Unknown spec/);
+  });
+
   it("with `at` loads from the SHA-pinned R2 key", async () => {
     const env = {
       SPECS: createFakeR2({
