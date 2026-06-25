@@ -9,6 +9,8 @@ import {
   RELEASED_402_EDITIONS,
   SPEC_VALUES,
   isSupported,
+  normalizeSpec,
+  requireSpec,
   resolveEdition,
 } from "./editions.js";
 import { clauseGet, clauseList } from "./mcp/tools/clause.js";
@@ -19,6 +21,26 @@ import { specCrossrefs } from "./mcp/tools/spec_crossrefs.js";
 describe("editions catalog", () => {
   it("SPEC_VALUES = ['262', '402']", () => {
     expect(SPEC_VALUES).toEqual(["262", "402"]);
+  });
+
+  it("normalizeSpec accepts short forms + common agent aliases", () => {
+    expect(normalizeSpec("262")).toBe("262");
+    expect(normalizeSpec("402")).toBe("402");
+    expect(normalizeSpec("ecma262")).toBe("262");
+    expect(normalizeSpec("ecma402")).toBe("402");
+    expect(normalizeSpec("ECMA-262")).toBe("262");
+    expect(normalizeSpec("ecma-402")).toBe("402");
+    expect(normalizeSpec("intl")).toBe("402");
+    expect(normalizeSpec("es")).toBe("262");
+    expect(normalizeSpec("nope")).toBeNull();
+    expect(normalizeSpec(undefined)).toBeNull();
+  });
+
+  it("requireSpec defaults missing/empty to 262 and rejects junk", () => {
+    expect(requireSpec(undefined)).toBe("262");
+    expect(requireSpec("")).toBe("262");
+    expect(requireSpec("ecma262")).toBe("262");
+    expect(() => requireSpec("ecma999")).toThrow(/Unknown spec/);
   });
 
   it("EDITION_VALUES includes every concrete edition + 3 aliases", () => {

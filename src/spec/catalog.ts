@@ -25,6 +25,45 @@
 export const SPEC_VALUES = ["262", "402"] as const;
 export type Spec = (typeof SPEC_VALUES)[number];
 
+/** Common aliases callers pass for `spec`. MCP agents and docs often
+ *  write `ecma262` / `ecma402` even though R2 keys and internal types
+ *  use the short `262` / `402` forms. Accept both so a wrong-but-obvious
+ *  alias never becomes a confusing "Missing … in R2: spec-ecma262-…"
+ *  error. */
+const SPEC_ALIASES: Record<string, Spec> = {
+  "262": "262",
+  "402": "402",
+  ecma262: "262",
+  ecma402: "402",
+  "ecma-262": "262",
+  "ecma-402": "402",
+  es: "262",
+  intl: "402",
+};
+
+/** Coerce a caller-supplied `spec` argument to the canonical `262`/`402`
+ *  form. Returns `null` when the input is unrecognised so callers can
+ *  surface a clear error instead of building a nonsense R2 key. */
+export function normalizeSpec(raw: string | undefined | null): Spec | null {
+  if (raw == null || raw === "") return null;
+  const key = String(raw).trim().toLowerCase();
+  return SPEC_ALIASES[key] ?? null;
+}
+
+/** Like `normalizeSpec`, but falls back to `"262"` (the default spec
+ *  across the tool surface) when the input is missing/empty. Throws on
+ *  an explicit but unrecognised value. */
+export function requireSpec(raw: string | undefined | null, fallback: Spec = "262"): Spec {
+  if (raw == null || raw === "") return fallback;
+  const s = normalizeSpec(raw);
+  if (!s) {
+    throw new Error(
+      `Unknown spec ${JSON.stringify(raw)}. Use '262' (or 'ecma262') / '402' (or 'ecma402').`,
+    );
+  }
+  return s;
+}
+
 // ─── ECMA-262 editions ─────────────────────────────────────────────
 
 /** ECMA-262 released editions, oldest → newest. tc39/ecma262 tags
