@@ -27,6 +27,32 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
+## [0.4.1] — 2026-06-25
+
+A bug-fix and polish release.
+
+### Fixed
+
+- **Spec aliases now resolve instead of 404-ing.** Tools accept the
+  long spec names agents commonly pass — `ecma262` / `ecma402` (plus
+  `ECMA-262`, `es`, `intl`) — and normalize them to the canonical
+  `262` / `402` before building the snapshot key. Previously
+  `spec: "ecma262"` produced a confusing `Missing parsed spec object
+  in R2: spec-ecma262-…` error; an unrecognized spec now returns a
+  clear `Unknown spec …` message.
+- **Clean stdio stream from the documented dev launch config.** The
+  `.mcp.json` wiring that runs the server from local source now passes
+  `npm run --silent mcp`, so npm's lifecycle banner can't leak onto
+  stdout and corrupt the JSON-RPC stream a stdio MCP client reads.
+
+### Changed
+
+- **Reworded the project disclaimer** from "unofficial / community
+  project" to "independent project — not an official Ecma International
+  or TC39 publication," across the README, docs landing page,
+  agent-facing instructions, and the `server.json` registry
+  description.
+
 ## [0.4.0] — 2026-06-05
 
 The hosted Cloudflare Worker grows from 6 to 17 of the 19 tools. Every
