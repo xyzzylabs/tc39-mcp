@@ -228,7 +228,7 @@ Returns `SpecSearchHit[]`.
 
 ## `spec.crossrefs`
 
-For a clause id, return its outgoing references (clauses it cites) and/or incoming references (clauses that cite it — the back-reference index the parse alone doesn't expose). Direction: 'in' | 'out' | 'both' (default). Set `include_cross_spec: true` to also resolve outgoing references from ECMA-262 → ECMA-402 (or vice versa).
+For a clause id, return its outgoing references (clauses it cites) and/or incoming references (clauses that cite it — the back-reference index the parse alone doesn't expose). Direction: 'in' | 'out' | 'both' (default). Outgoing also carries an `external` category: the clause's citations to external specs (Unicode, IETF, WHATWG) as resolvable URLs. Set `include_cross_spec: true` to also resolve outgoing references from ECMA-262 → ECMA-402 (or vice versa).
 
 **Availability:** hosted Worker + local stdio.
 
@@ -238,6 +238,8 @@ For a clause id, return its outgoing references (clauses it cites) and/or incomi
     - _The reverse index is AOID-densified — bare AOID mentions in step text count, not just explicit `<emu-xref>` hrefs._
 - **Every 262 op that Intl.Collator's compare reaches** — `{"id":"sec-intl.collator.prototype.compare","spec":"402","direction":"out","include_cross_spec":true}`
     - _`include_cross_spec` is off by default because it loads both specs into memory. Turn it on when you want the full call graph across 262/402._
+- **What external specs does String.prototype.normalize cite?** — `{"id":"sec-string.prototype.normalize","direction":"out"}`
+    - _Outgoing includes an `external` category — the clause's Unicode/IETF/WHATWG citations as resolvable URLs, alongside the internal hits._
 
 ### Input
 

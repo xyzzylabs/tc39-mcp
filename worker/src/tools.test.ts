@@ -1132,6 +1132,32 @@ describe("specCrossrefs", () => {
     expect(missing.outgoing).toEqual([]);
   });
 
+  it("surfaces a clause's external_refs as the outgoing 'external' category", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2026.json": fakeSpecJson({
+            spec: "262",
+            edition: "es2026",
+            clauses: {
+              "sec-normalize": {
+                id: "sec-normalize",
+                title: "String.prototype.normalize",
+                number: "1",
+                external_refs: [{ url: "https://unicode.org/reports/tr15/", text: "UAX #15" }],
+              },
+            },
+          }),
+        },
+      }),
+    };
+    const out = await specCrossrefs(env, { id: "sec-normalize", direction: "out" });
+    expect(out.external?.map((e) => e.url)).toEqual(["https://unicode.org/reports/tr15/"]);
+    // Outgoing-only category — absent on direction 'in'.
+    const incoming = await specCrossrefs(env, { id: "sec-normalize", direction: "in" });
+    expect(incoming.external).toBeUndefined();
+  });
+
   it("include_cross_spec loads the other spec from R2 and tags its hits", async () => {
     const env = {
       SPECS: createFakeR2({
