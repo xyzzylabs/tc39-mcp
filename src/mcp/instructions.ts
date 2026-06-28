@@ -34,7 +34,10 @@ Common workflow:
   2. \`spec.search\` (single spec) or \`spec.global_search\` (both
      specs) — find a clause from a name or symptom. Hits rank
      aoid-exact > aoid-substring > title > id; follow up with
-     \`clause.get { id }\` to read the full clause.
+     \`clause.get { id }\` to read the full clause. To find clauses by
+     what they DO (e.g. which clauses invoke OrdinaryGetOwnProperty),
+     pass search_steps: true to also scan algorithm step text — off by
+     default since it is slower + noisier.
   3. \`clause.get { id, spec?, edition? }\` — full structured clause:
      signature, numbered steps, notes, crossrefs.
 
