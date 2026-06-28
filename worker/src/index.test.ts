@@ -16,6 +16,32 @@ function rpc(method: string, params?: unknown, id: number | string | null = 1): 
   return { jsonrpc: "2.0", id, method, ...(params !== undefined ? { params } : {}) };
 }
 
+/** Minimal App HTML stubs — enough for resources/read assertions without
+ *  pulling Node fs into the Worker test tsconfig. Production serves the
+ *  real files from `worker/public/apps/` via the ASSETS binding. */
+const STUB_APP_HTML: Record<string, string> = {
+  "clause-viewer.html":
+    "<!DOCTYPE html><html><head><title>TC39 Clause Viewer</title></head>" +
+    "<body><script>/* ui/initialize */</script></body></html>",
+  "diff-viewer.html":
+    "<!DOCTYPE html><html><head><title>TC39 Edition Diff Viewer</title></head>" +
+    "<body><script>/* ui/initialize */</script></body></html>",
+};
+
+/** ASSETS stub that serves `/apps/<file>` like the deployed Worker. */
+function createAppAssets() {
+  return {
+    fetch: async (request: Request) => {
+      const path = new URL(request.url).pathname;
+      const m = /^\/apps\/([^/]+\.html)$/.exec(path);
+      if (!m) return new Response("not found", { status: 404 });
+      const html = STUB_APP_HTML[m[1]!];
+      if (!html) return new Response("not found", { status: 404 });
+      return new Response(html, { headers: { "content-type": "text/html" } });
+    },
+  };
+}
+
 // ─── initialize / handshake ────────────────────────────────────────
 
 describe("dispatch — initialize", () => {
@@ -27,11 +53,14 @@ describe("dispatch — initialize", () => {
     expect(result.protocolVersion).toBe("2024-11-05");
   });
 
-  it("advertises tools capability", async () => {
+  it("advertises tools + resources capabilities", async () => {
     const env = { SPECS: createFakeR2() };
     const r = await dispatch(env, rpc("initialize"));
-    const result = r.result as { capabilities: { tools: unknown } };
+    const result = r.result as {
+      capabilities: { tools: unknown; resources: unknown };
+    };
     expect(result.capabilities.tools).toBeDefined();
+    expect(result.capabilities.resources).toBeDefined();
   });
 
   it("returns serverInfo with the name 'tc39-mcp'", async () => {
@@ -64,9 +93,81 @@ describe("dispatch — initialize", () => {
   });
 });
 
+// ─── resources (MCP Apps) ──────────────────────────────────────────
+
+describe("dispatch — resources", () => {
+  it("lists clause + diff viewer ui:// resources", async () => {
+    const env = { SPECS: createFakeR2() };
+    const r = await dispatch(env, rpc("resources/list"));
+    const result = r.result as { resources: { uri: string; mimeType: string }[] };
+    expect(result.resources.length).toBe(2);
+    const uris = result.resources.map((x) => x.uri).sort();
+    expect(uris).toEqual([
+      "ui://tc39-mcp/clause-viewer.html",
+      "ui://tc39-mcp/diff-viewer.html",
+    ]);
+    for (const res of result.resources) {
+      expect(res.mimeType).toBe("text/html;profile=mcp-app");
+    }
+  });
+
+  it("reads clause-viewer HTML via ASSETS /apps/", async () => {
+    const env = { SPECS: createFakeR2(), ASSETS: createAppAssets() };
+    const r = await dispatch(
+      env,
+      rpc("resources/read", { uri: "ui://tc39-mcp/clause-viewer.html" }),
+    );
+    expect(r.error).toBeUndefined();
+    const result = r.result as { contents: { text: string; mimeType: string }[] };
+    expect(result.contents[0]!.mimeType).toBe("text/html;profile=mcp-app");
+    expect(result.contents[0]!.text).toContain("TC39 Clause Viewer");
+    expect(result.contents[0]!.text).toContain("ui/initialize");
+  });
+
+  it("reads diff-viewer HTML via ASSETS /apps/", async () => {
+    const env = { SPECS: createFakeR2(), ASSETS: createAppAssets() };
+    const r = await dispatch(
+      env,
+      rpc("resources/read", { uri: "ui://tc39-mcp/diff-viewer.html" }),
+    );
+    expect(r.error).toBeUndefined();
+    const result = r.result as { contents: { text: string }[] };
+    expect(result.contents[0]!.text).toContain("TC39 Edition Diff Viewer");
+  });
+
+  it("errors when ASSETS is missing for a known app uri", async () => {
+    const env = { SPECS: createFakeR2() };
+    const r = await dispatch(
+      env,
+      rpc("resources/read", { uri: "ui://tc39-mcp/clause-viewer.html" }),
+    );
+    expect(r.error?.code).toBe(-32602);
+    expect(r.error?.message).toMatch(/ASSETS|unavailable/i);
+  });
+
+  it("errors on unknown resource uri", async () => {
+    const env = { SPECS: createFakeR2(), ASSETS: createAppAssets() };
+    const r = await dispatch(env, rpc("resources/read", { uri: "ui://nope" }));
+    expect(r.error?.code).toBe(-32602);
+    expect(r.error?.message).toMatch(/Unknown resource/);
+  });
+});
+
 // ─── tools/list ────────────────────────────────────────────────────
 
 describe("dispatch — tools/list", () => {
+  it("attaches MCP App _meta on clause.get and spec.diff", async () => {
+    const env = { SPECS: createFakeR2() };
+    const r = await dispatch(env, rpc("tools/list"));
+    const result = r.result as {
+      tools: { name: string; _meta?: { ui?: { resourceUri?: string } } }[];
+    };
+    const clause = result.tools.find((t) => t.name === "clause.get");
+    const diff = result.tools.find((t) => t.name === "spec.diff");
+    expect(clause?._meta?.ui?.resourceUri).toBe("ui://tc39-mcp/clause-viewer.html");
+    expect(diff?._meta?.ui?.resourceUri).toBe("ui://tc39-mcp/diff-viewer.html");
+  });
+
   it("registers exactly the hosted-tool inventory count", async () => {
     const env = { SPECS: createFakeR2() };
     const r = await dispatch(env, rpc("tools/list"));

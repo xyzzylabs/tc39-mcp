@@ -134,8 +134,10 @@ ships **17 tools** (`spec.about`, `clause.get`, `clause.list`,
 `spec.tables`, `spec.sdo_index`, `clause.outline`,
 `spec.global_search`, `spec.snapshots`, `spec.symbol_resolve`,
 `spec.well_known_intrinsics`, `spec.diff`, `spec.crossrefs`,
-`test262.search`). The bundled Worker gzips to
-**~8 KB**.
+`test262.search`). It also serves the two MCP App viewers and seven
+workflow prompts. The bundled Worker gzips to **~21 KB** — the viewer
+HTML is served as static assets (Workers Assets), not bundled, so it
+doesn't add to the worker code size.
 
 The same Worker also serves the **documentation site** as static
 assets (Cloudflare Workers Assets). One origin, one deploy, one URL
@@ -175,10 +177,17 @@ for both API and docs.
 |---|---|---|
 | `/` | GET | docs site landing page (rendered HTML) |
 | `/tools`, `/snapshots`, `/architecture`, `/deployment`, `/editions`, `/changelog` | GET | docs site pages |
+| `/apps/clause-viewer.html`, `/apps/diff-viewer.html` | GET | MCP App HTML (also served via `resources/read` on `ui://tc39-mcp/…` for Apps hosts) |
 | `/health` | GET, HEAD | `ok` — liveness probe for uptime monitors |
-| `/mcp` | POST | MCP JSON-RPC dispatcher |
+| `/mcp` | POST | MCP JSON-RPC dispatcher (`tools/*`, `resources/*`) |
 | `/mcp` | OPTIONS | CORS preflight |
 | Anything else | (any) | Falls through to the assets handler; serves the themed 404 page |
+
+MCP App HTML is copied into `worker/public/apps/` by `npm run build:apps`
+(also run from the root `npm run build`). `.github/workflows/deploy-worker.yml`
+stages VitePress into `worker/public/` then runs `build:apps` so the
+`apps/` subdirectory is present in the assets bundle — `resources/read`
+for `ui://tc39-mcp/*` fetches those paths through the ASSETS binding.
 
 ### Setup (one-time, per Cloudflare account)
 
@@ -247,15 +256,18 @@ same JSON shape the stdio server returns.
    the `/snapshots` page from the freshly parsed JSONs.
 3. Stages the docs into `worker/public/` so wrangler bundles them as
    Worker static assets.
-4. Uploads parsed JSONs + indexes to R2 (ordered: historical pins +
+4. **Stages MCP App HTML** (`npm run build:apps`) into
+   `worker/public/apps/` (after the docs stage, which wipes
+   `worker/public/`).
+5. Uploads parsed JSONs + indexes to R2 (ordered: historical pins +
    side indices first, live mains last — see "Atomic-ish deploys"
    below).
-5. Deploys the Worker (code + assets in one atomic deploy).
-6. Smokes against `vars.WORKER_URL`: `/health`, MCP `initialize`,
-   `tools/call spec.about`, plus the docs landing page and the
-   `/snapshots` page render. Catches "deployed but R2 contents or
-   docs are broken."
-7. **Auto-rollback on smoke failure** — if smoke fails and there's a
+6. Deploys the Worker (code + assets in one atomic deploy).
+7. Smokes against `vars.WORKER_URL`: `/health`, MCP `initialize`,
+   `tools/call spec.about`, docs landing + `/snapshots`, plus
+   `/apps/clause-viewer.html`. Catches "deployed but R2 contents,
+   docs, or App assets are broken."
+8. **Auto-rollback on smoke failure** — if smoke fails and there's a
    prior version available, runs `wrangler rollback` to revert the
    Worker. R2 contents stay updated (they're idempotent), so the
    reverted Worker reads the freshest data — only the code rolls

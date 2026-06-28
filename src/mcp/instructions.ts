@@ -69,6 +69,14 @@ compare-editions, find-and-read, trace-crossrefs, proposal-status,
 test262-for-feature, cite-reproducibly. Call prompts/list for their
 argument shapes.
 
+MCP Apps (interactive UI). Hosts that support the MCP Apps extension
+render an inline viewer for two tools:
+  - \`clause.get\` → clause viewer (numbered steps, notes, cross-refs).
+  - \`spec.diff\`  → edition-diff viewer (status, summaries, field changes).
+The JSON tool result is always returned regardless; the UI is additive
+presentation, not a separate capability. Clients without App support
+see the normal JSON only.
+
 All data is read-only: no tool modifies anything upstream, no tool
 runs user-supplied code. Safe to call freely.
 `.trim();

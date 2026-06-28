@@ -97,7 +97,7 @@ Returns `SnapshotsResult`.
 
 ## `clause.get`
 
-Fetch a parsed TC39 clause as structured JSON: metadata, signature, algorithm steps, notes, cross-refs. `spec` selects '262' (default) or '402'. `edition` defaults to `latest` (current stable release on both specs — es2026 today).
+Fetch a parsed TC39 clause as structured JSON: metadata, signature, algorithm steps, notes, cross-refs. `spec` selects '262' (default) or '402'. `edition` defaults to `latest` (current stable release on both specs — es2026 today). MCP Apps hosts also render an interactive clause viewer (numbered steps, notes, cross-refs) beside the JSON.
 
 **Availability:** hosted Worker + local stdio.
 
@@ -256,7 +256,7 @@ Returns `CrossrefsResult`.
 
 ## `spec.diff`
 
-Clause-level diff across any two editions of one spec. Defaults: from='latest', to='main' (working draft). Reports status (identical / modified / added / removed / missing-from-both) plus a field-level diff: title, signature, step count, per-step reworded indices, notes, crossrefs. `spec` selects '262' or '402'.
+Clause-level diff across any two editions of one spec. Defaults: from='latest', to='main' (working draft). Reports status (identical / modified / added / removed / missing-from-both) plus a field-level diff: title, signature, step count, per-step reworded indices, notes, crossrefs. `spec` selects '262' or '402'. MCP Apps hosts also render an interactive side-by-side diff viewer beside the JSON.
 
 **Availability:** hosted Worker + local stdio.
 

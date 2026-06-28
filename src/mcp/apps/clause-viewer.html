@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TC39 Clause Viewer</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --fg: #e7ecf3;
+      --muted: #8b9bb4;
+      --card: #1a2332;
+      --border: #2a3a52;
+      --accent: #6cb6ff;
+      --accent-dim: #3d6f99;
+      --sig: #c3e88d;
+      --note-bg: #1e2a1e;
+      --note-border: #3d6b3d;
+      --err: #f07178;
+      /* Spec-notation token palette (mirrors ecmarkup conventions). */
+      --tok-var: #82aaff;      /* _variable_     */
+      --tok-val: #c3e88d;      /* *value literal* */
+      --tok-code-fg: #e7ecf3;  /* `code`         */
+      --tok-slot: #c792ea;     /* [[InternalSlot]] */
+      --tok-intrinsic: #f78c6c;/* %Intrinsic%    */
+      --tok-enum: #89ddff;     /* ~spec-enum~    */
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+        --bg: #f6f8fb;
+        --fg: #1a2332;
+        --muted: #5c6b82;
+        --card: #ffffff;
+        --border: #d0d9e6;
+        --accent: #0969da;
+        --accent-dim: #539bf5;
+        --sig: #1a7f37;
+        --note-bg: #f0fff4;
+        --note-border: #9ddea8;
+        --err: #cf222e;
+        --tok-var: #0550ae;
+        --tok-val: #1a7f37;
+        --tok-code-fg: #1a2332;
+        --tok-slot: #8250df;
+        --tok-intrinsic: #bc4c00;
+        --tok-enum: #0598bc;
+      }
+    }
+    [data-theme="light"] {
+      --bg: #f6f8fb;
+      --fg: #1a2332;
+      --muted: #5c6b82;
+      --card: #ffffff;
+      --border: #d0d9e6;
+      --accent: #0969da;
+      --accent-dim: #539bf5;
+      --sig: #1a7f37;
+      --note-bg: #f0fff4;
+      --note-border: #9ddea8;
+      --err: #cf222e;
+      --tok-var: #0550ae;
+      --tok-val: #1a7f37;
+      --tok-code-fg: #1a2332;
+      --tok-slot: #8250df;
+      --tok-intrinsic: #bc4c00;
+      --tok-enum: #0598bc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 12px 14px 20px;
+      font-family: var(--sans);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--fg);
+      background: var(--bg);
+    }
+    .wait, .err {
+      color: var(--muted);
+      padding: 24px 8px;
+      text-align: center;
+    }
+    .err { color: var(--err); }
+    header {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      font-weight: 650;
+      line-height: 1.35;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+    .chip strong { color: var(--fg); font-weight: 600; }
+    .sig {
+      margin: 10px 0 0;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--sig);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .sig .tok { font-family: var(--mono); }
+    section { margin-top: 14px; }
+    section h2 {
+      margin: 0 0 8px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    /* Algorithm steps — spec-style nesting: 1. → a. → i. by depth. */
+    ol.steps {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: step;
+    }
+    ol.steps > li {
+      counter-increment: step;
+      position: relative;
+      padding: 5px 8px 5px 34px;
+      margin-bottom: 2px;
+      border-radius: 5px;
+      border: 1px solid transparent;
+    }
+    ol.steps > li:hover {
+      background: var(--card);
+      border-color: var(--border);
+    }
+    ol.steps > li::before {
+      position: absolute;
+      left: 6px;
+      top: 5px;
+      min-width: 21px;
+      padding: 0 4px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      border-radius: 4px;
+    }
+    /* Depth markers cycle decimal → lower-alpha → lower-roman, like emu-alg. */
+    ol.steps.lvl0 > li::before { content: counter(step) "."; }
+    ol.steps.lvl1 > li::before { content: counter(step, lower-alpha) "."; }
+    ol.steps.lvl2 > li::before { content: counter(step, lower-roman) "."; }
+    ol.steps.lvl0 { counter-reset: step; }
+    ol.steps ol.steps { margin: 4px 0 0; }
+    ol.steps ol.steps > li { padding-left: 30px; }
+    ol.steps ol.steps > li::before { min-width: 17px; height: 18px; top: 6px; font-size: 9px; }
+    .step-text { word-break: break-word; }
+    /* Spec-notation tokens. */
+    .tok { font-size: 0.96em; }
+    .tok-var { font-style: italic; color: var(--tok-var); }
+    .tok-val { font-weight: 600; color: var(--tok-val); }
+    .tok-code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      color: var(--tok-code-fg);
+      background: color-mix(in srgb, var(--fg) 9%, transparent);
+      padding: 0 3px;
+      border-radius: 3px;
+    }
+    .tok-slot { font-family: var(--mono); color: var(--tok-slot); }
+    .tok-intrinsic { font-family: var(--mono); color: var(--tok-intrinsic); }
+    .tok-enum { font-style: italic; color: var(--tok-enum); }
+    .prod {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      padding: 4px 8px;
+      background: var(--card);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .note {
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      background: var(--note-bg);
+      border-left: 3px solid var(--note-border);
+      border-radius: 0 5px 5px 0;
+      font-size: 12px;
+    }
+    .note .note-tag {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--note-border);
+      margin-right: 6px;
+    }
+    .xrefs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .xref {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--accent);
+    }
+    details.raw {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+    details.raw summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 11px;
+      user-select: none;
+    }
+    details.raw pre {
+      margin: 8px 0 0;
+      padding: 10px;
+      overflow: auto;
+      max-height: 240px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"><div class="wait">Waiting for clause data…</div></div>
+  <script>
+(function () {
+  "use strict";
+
+  function esc(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // Render ecmarkup spec notation as distinct, delimiter-stripped tokens so
+  // steps read like the published spec: _var_ (italic), *value* (bold),
+  // `code`, [[InternalSlot]], %Intrinsic%, ~spec-enum~. Operates on
+  // already-escaped text; multi-char delimiters run before single-char ones.
+  function renderMarkup(text) {
+    var t = esc(text);
+    t = t.replace(/\[\[([^\]]+)\]\]/g, '<span class="tok tok-slot">[[$1]]</span>');
+    t = t.replace(/%([^%\s][^%]*)%/g, '<span class="tok tok-intrinsic">%$1%</span>');
+    t = t.replace(/`([^`]+)`/g, '<code class="tok tok-code">$1</code>');
+    t = t.replace(/\*([^*]+)\*/g, '<span class="tok tok-val">$1</span>');
+    t = t.replace(/(^|[\s([])_([^_]+)_(?=$|[\s.,;:)\]])/g, '$1<span class="tok tok-var">$2</span>');
+    t = t.replace(/~([^~\s]+)~/g, '<span class="tok tok-enum">$1</span>');
+    return t;
+  }
+
+  function renderSteps(steps, depth) {
+    if (!steps || !steps.length) return "";
+    var lvl = "lvl" + ((depth || 0) % 3);
+    var html = '<ol class="steps ' + lvl + '">';
+    for (var i = 0; i < steps.length; i++) {
+      var st = steps[i];
+      var text = typeof st === "string" ? st : (st && st.text) || "";
+      var sub = (st && st.substeps) || [];
+      html += "<li><div class=\"step-text\">" + renderMarkup(text) + "</div>";
+      if (sub.length) html += renderSteps(sub, (depth || 0) + 1);
+      html += "</li>";
+    }
+    html += "</ol>";
+    return html;
+  }
+
+  function parsePayload(text) {
+    if (!text || typeof text !== "string") return null;
+    var trimmed = text.trim();
+    if (trimmed.startsWith("No such clause")) return { error: trimmed };
+    try { return JSON.parse(trimmed); } catch (_) { return null; }
+  }
+
+  function extractFromToolResult(params) {
+    var content = (params && params.content) || [];
+    for (var i = 0; i < content.length; i++) {
+      var c = content[i];
+      if (c && c.type === "text" && c.text) {
+        var parsed = parsePayload(c.text);
+        if (parsed) return parsed;
+      }
+    }
+    if (params && params.structuredContent) return params.structuredContent;
+    return null;
+  }
+
+  function renderClause(clause) {
+    var root = document.getElementById("root");
+    if (!clause) {
+      root.innerHTML = '<div class="wait">No clause data yet.</div>';
+      return;
+    }
+    if (clause.error) {
+      root.innerHTML = '<div class="err">' + esc(clause.error) + "</div>";
+      return;
+    }
+
+    var meta = clause.meta || {};
+    var algs = clause.algorithms || [];
+    var notes = clause.notes || [];
+    var xrefs = clause.crossrefs || [];
+
+    var html = "<header>";
+    html += '<div class="eyebrow">ECMA clause</div>';
+    html += "<h1>" + esc(meta.title || meta.id || "Clause") + "</h1>";
+    html += '<div class="meta-row">';
+    if (meta.id) html += '<span class="chip"><strong>id</strong> ' + esc(meta.id) + "</span>";
+    if (meta.number) html += '<span class="chip"><strong>§</strong> ' + esc(meta.number) + "</span>";
+    if (meta.aoid) html += '<span class="chip"><strong>aoid</strong> ' + esc(meta.aoid) + "</span>";
+    if (meta.kind) html += '<span class="chip"><strong>kind</strong> ' + esc(meta.kind) + "</span>";
+    html += "</div>";
+    if (clause.signatureRaw) {
+      html += '<div class="sig">' + renderMarkup(clause.signatureRaw) + "</div>";
+    }
+    html += "</header>";
+
+    if (algs.length) {
+      html += "<section><h2>Algorithm" + (algs.length > 1 ? "s (" + algs.length + ")" : "") + "</h2>";
+      for (var a = 0; a < algs.length; a++) {
+        var alg = algs[a] || {};
+        if (alg.production) html += '<div class="prod">' + esc(alg.production) + "</div>";
+        html += renderSteps(alg.steps || [], 0);
+      }
+      html += "</section>";
+    }
+
+    if (notes.length) {
+      html += "<section><h2>Notes</h2>";
+      for (var n = 0; n < notes.length; n++) {
+        var note = notes[n];
+        var noteText = typeof note === "string" ? note : (note && note.text) || "";
+        var tag = notes.length > 1 ? "Note " + (n + 1) : "Note";
+        var noteHtml = '<span class="note-tag">' + tag + "</span>" + renderMarkup(noteText);
+        html += '<div class="note">' + noteHtml + "</div>";
+      }
+      html += "</section>";
+    }
+
+    if (xrefs.length) {
+      html += "<section><h2>Cross-references</h2><div class=\"xrefs\">";
+      for (var x = 0; x < xrefs.length; x++) {
+        html += '<span class="xref">' + esc(xrefs[x]) + "</span>";
+      }
+      html += "</div></section>";
+    }
+
+    html += '<details class="raw"><summary>Raw JSON</summary><pre>' +
+      esc(JSON.stringify(clause, null, 2)) + "</pre></details>";
+
+    root.innerHTML = html;
+    reportSize();
+  }
+
+  // Minimal MCP Apps host protocol (postMessage JSON-RPC dialect).
+  var pending = Object.create(null);
+  var reqId = 1;
+  var initialized = false;
+
+  function post(msg) {
+    try { window.parent.postMessage(msg, "*"); } catch (_) {}
+  }
+
+  function sendRequest(method, params) {
+    var id = reqId++;
+    return new Promise(function (resolve, reject) {
+      pending[id] = { resolve: resolve, reject: reject };
+      post({ jsonrpc: "2.0", id: id, method: method, params: params || {} });
+      setTimeout(function () {
+        if (pending[id]) {
+          delete pending[id];
+          reject(new Error("timeout: " + method));
+        }
+      }, 15000);
+    });
+  }
+
+  function sendNotification(method, params) {
+    post({ jsonrpc: "2.0", method: method, params: params || {} });
+  }
+
+  function reportSize() {
+    if (!initialized) return;
+    try {
+      var h = Math.max(document.documentElement.scrollHeight, 120);
+      sendNotification("ui/notifications/size-changed", { height: h });
+    } catch (_) {}
+  }
+
+  function applyTheme(ctx) {
+    if (!ctx) return;
+    var theme = ctx.theme || ctx.colorScheme;
+    if (theme === "light" || theme === "dark") {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+  }
+
+  function handleMessage(ev) {
+    var data = ev.data;
+    if (!data || data.jsonrpc !== "2.0") return;
+
+    if (data.id != null && (data.result !== undefined || data.error)) {
+      var p = pending[data.id];
+      if (p) {
+        delete pending[data.id];
+        if (data.error) p.reject(data.error);
+        else p.resolve(data.result);
+      }
+      return;
+    }
+
+    var method = data.method;
+    if (!method) return;
+
+    if (method === "ui/notifications/tool-result") {
+      renderClause(extractFromToolResult(data.params || {}));
+      return;
+    }
+    if (method === "ui/notifications/tool-input") {
+      // Host may send args early; we render only from tool-result.
+      return;
+    }
+    if (method === "ui/notifications/host-context-changed") {
+      applyTheme(data.params);
+      return;
+    }
+    if (method === "ui/resource-teardown") {
+      post({ jsonrpc: "2.0", id: data.id, result: {} });
+      return;
+    }
+  }
+
+  window.addEventListener("message", handleMessage);
+
+  async function boot() {
+    try {
+      var result = await sendRequest("ui/initialize", {
+        appInfo: { name: "tc39-clause-viewer", version: "1.0.0" },
+        appCapabilities: {},
+      });
+      initialized = true;
+      if (result && result.hostContext) applyTheme(result.hostContext);
+      sendNotification("ui/notifications/initialized", {});
+      reportSize();
+    } catch (e) {
+      // Standalone / non-App hosts: show a helpful wait state.
+      document.getElementById("root").innerHTML =
+        '<div class="wait">Open via <code>clause.get</code> in an MCP Apps host to render the clause here.</div>';
+    }
+
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(function () {
+        reportSize();
+      });
+      ro.observe(document.body);
+    }
+  }
+
+  // Expose for local/manual testing: renderClause({meta:{title:"x"},...})
+  window.__tc39RenderClause = renderClause;
+  boot();
+})();
+  </script>
+</body>
+</html>

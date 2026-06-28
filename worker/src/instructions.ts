@@ -50,6 +50,12 @@ Missing data is never an error. Tools return null, empty arrays, or
 a \`hint:\` field. \`source: "none"\` on \`proposal.list\` means the
 offline index isn't present in R2 — surface the hint to the user.
 
+MCP Apps (interactive UI). Hosts that support the MCP Apps extension
+render an inline viewer for two tools:
+  - \`clause.get\` → clause viewer (numbered steps, notes, cross-refs).
+  - \`spec.diff\`  → edition-diff viewer (status, summaries, field changes).
+The JSON tool result is always returned regardless; the UI is additive.
+
 MCP prompts (workflow templates) — prefer these when the user wants a
 guided multi-tool sequence. Available prompts: explain-clause,
 compare-editions, find-and-read, trace-crossrefs, proposal-status,

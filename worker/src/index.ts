@@ -34,6 +34,12 @@ import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import { getPrompt, listPrompts } from "../../src/mcp/prompts.js";
 import type { R2Env } from "./r2.js";
 import rootPkg from "../../package.json";
+import {
+  APP_DESCRIPTORS,
+  APP_MIME_TYPE,
+  APP_RESOURCE_META,
+  toolUiMeta,
+} from "../../src/mcp/apps/manifest.js";
 
 // Package version — bumped by the refresh workflow + baked into the
 // bundle every `wrangler deploy` via the JSON import below (esbuild
@@ -61,6 +67,7 @@ const TOOL_REGISTRY: {
   name: string;
   description: string;
   inputSchema: unknown;
+  _meta?: Record<string, unknown>;
   handler: (env: R2Env, args: Record<string, unknown>) => Promise<unknown>;
 }[] = [
   {
@@ -73,7 +80,7 @@ const TOOL_REGISTRY: {
   {
     name: "clause.get",
     description:
-      "Fetch a parsed TC39 clause as structured JSON. `spec` selects '262' (default) or '402'. `edition` defaults to 'latest'. `at: '<sha>'` pins to a historical main snapshot (only valid for edition='main'); omit to query the live snapshot.",
+      "Fetch a parsed TC39 clause as structured JSON. `spec` selects '262' (default) or '402'. `edition` defaults to 'latest'. `at: '<sha>'` pins to a historical main snapshot (only valid for edition='main'); omit to query the live snapshot. MCP Apps hosts also render an interactive clause viewer beside the JSON.",
     inputSchema: {
       type: "object",
       properties: {
@@ -88,6 +95,7 @@ const TOOL_REGISTRY: {
       },
       required: ["id"],
     },
+    _meta: toolUiMeta("clause.get"),
     handler: async (env, args) =>
       clauseGet(env, args as { id: string; spec?: string; edition?: string; at?: string }),
   },
@@ -328,7 +336,7 @@ const TOOL_REGISTRY: {
   {
     name: "spec.diff",
     description:
-      "Clause-level diff of one clause across two editions of a spec. Reports identical / modified / added / removed plus a field-level breakdown (title, signature, step count, reworded step indices, notes, crossrefs). `from` defaults to the latest stable release, `to` to main.",
+      "Clause-level diff of one clause across two editions of a spec. Reports identical / modified / added / removed plus a field-level breakdown (title, signature, step count, reworded step indices, notes, crossrefs). `from` defaults to the latest stable release, `to` to main. MCP Apps hosts also render an interactive side-by-side diff viewer beside the JSON.",
     inputSchema: {
       type: "object",
       properties: {
@@ -339,6 +347,7 @@ const TOOL_REGISTRY: {
       },
       required: ["id"],
     },
+    _meta: toolUiMeta("spec.diff"),
     handler: async (env, args) =>
       specDiff(env, args as { id: string; spec?: string; from?: string; to?: string }),
   },
@@ -388,6 +397,68 @@ const TOOL_REGISTRY: {
   },
 ];
 
+// ─── MCP Apps (ui:// resources) ────────────────────────────────────
+// App HTML lives in Workers Assets at /apps/<file> (copied from
+// src/mcp/apps/ during `npm run build:apps`). resources/read fetches
+// through the ASSETS binding — same source the public site serves.
+
+function listAppResources(): {
+  uri: string;
+  name: string;
+  description: string;
+  mimeType: string;
+  _meta: typeof APP_RESOURCE_META;
+}[] {
+  return APP_DESCRIPTORS.map((a) => ({
+    uri: a.uri,
+    name: a.title,
+    description: a.description,
+    mimeType: APP_MIME_TYPE,
+    _meta: APP_RESOURCE_META,
+  }));
+}
+
+/** Fetch one MCP App's HTML from the Workers Assets `/apps/` tree. */
+async function loadAppHtmlFromAssets(
+  env: R2Env,
+  file: string,
+): Promise<string | null> {
+  if (!env.ASSETS) return null;
+  // Origin is irrelevant to the assets fetcher; only the path matters.
+  const res = await env.ASSETS.fetch(
+    new Request(`https://assets.local/apps/${file}`),
+  );
+  if (!res.ok) return null;
+  return res.text();
+}
+
+async function readAppResource(
+  env: R2Env,
+  uri: string,
+): Promise<{
+  contents: {
+    uri: string;
+    mimeType: string;
+    text: string;
+    _meta: typeof APP_RESOURCE_META;
+  }[];
+} | null> {
+  const app = APP_DESCRIPTORS.find((a) => a.uri === uri);
+  if (!app) return null;
+  const html = await loadAppHtmlFromAssets(env, app.file);
+  if (!html) return null;
+  return {
+    contents: [
+      {
+        uri,
+        mimeType: APP_MIME_TYPE,
+        text: html,
+        _meta: APP_RESOURCE_META,
+      },
+    ],
+  };
+}
+
 // ─── JSON-RPC dispatcher ───────────────────────────────────────────
 
 export async function dispatch(
@@ -403,7 +474,8 @@ export async function dispatch(
           id,
           result: {
             protocolVersion: "2024-11-05",
-            capabilities: { tools: {}, prompts: {} },
+            // Advertise resources so hosts can fetch ui:// MCP App HTML.
+            capabilities: { tools: {}, prompts: {}, resources: {} },
             serverInfo: { name: "tc39-mcp", version: SERVER_VERSION },
             instructions: SERVER_INSTRUCTIONS,
           },
@@ -419,9 +491,42 @@ export async function dispatch(
               name: t.name,
               description: t.description,
               inputSchema: t.inputSchema,
+              ...(t._meta ? { _meta: t._meta } : {}),
             })),
           },
         };
+      case "resources/list":
+        return {
+          jsonrpc: "2.0",
+          id,
+          result: { resources: listAppResources() },
+        };
+      case "resources/read": {
+        const p = (req.params ?? {}) as { uri?: string };
+        if (!p.uri) {
+          return {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32602, message: "resources/read requires params.uri" },
+          };
+        }
+        const app = await readAppResource(env, p.uri);
+        if (!app) {
+          const known = APP_DESCRIPTORS.some((a) => a.uri === p.uri);
+          return {
+            jsonrpc: "2.0",
+            id,
+            error: {
+              code: -32602,
+              message: known
+                ? `App HTML unavailable for ${p.uri} (ASSETS binding missing or /apps/ asset not deployed)`
+                : `Unknown resource: ${p.uri}`,
+            },
+          };
+        }
+        return { jsonrpc: "2.0", id, result: app };
+      }
+      
       case "tools/call": {
         const p = (req.params ?? {}) as { name?: string; arguments?: Record<string, unknown> };
         const tool = TOOL_REGISTRY.find((t) => t.name === p.name);
