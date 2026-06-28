@@ -76,7 +76,7 @@ support for older editions:
   the move to GitHub + ecmarkup), but the repo doesn't carry an
   `es2015` or `es6` git tag. You could pin a commit close to the
   ES2015 publication date (June 2015) by hand if you needed it, but
-  that's an unofficial pin, not an upstream-blessed one.
+  that's a manual pin, not an upstream-blessed one.
 
 If you genuinely need older editions, file an issue describing the use
 case — we'll either provide a hand-pin recipe or be honest that the

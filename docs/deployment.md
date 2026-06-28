@@ -134,8 +134,8 @@ ships **17 tools** (`spec.about`, `clause.get`, `clause.list`,
 `spec.tables`, `spec.sdo_index`, `clause.outline`,
 `spec.global_search`, `spec.snapshots`, `spec.symbol_resolve`,
 `spec.well_known_intrinsics`, `spec.diff`, `spec.crossrefs`,
-`test262.search`). The bundled Worker gzips to
-**~8 KB**.
+`test262.search`). The bundled Worker is just dispatch + parse logic — tens of KB
+gzipped, since the spec data lives in R2, not in the bundle.
 
 The same Worker also serves the **documentation site** as static
 assets (Cloudflare Workers Assets). One origin, one deploy, one URL
