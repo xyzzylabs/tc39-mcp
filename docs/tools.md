@@ -97,7 +97,7 @@ Returns `SnapshotsResult`.
 
 ## `clause.get`
 
-Fetch a parsed TC39 clause as structured JSON: metadata, signature, algorithm steps, notes, cross-refs. `spec` selects '262' (default) or '402'. `edition` defaults to `latest` (current stable release on both specs — es2026 today).
+Fetch a parsed TC39 clause as structured JSON: metadata, signature, algorithm steps, notes, cross-refs, and outward citations to external specs (Unicode, IETF, WHATWG). `spec` selects '262' (default) or '402'. `edition` defaults to `latest` (current stable release on both specs — es2026 today).
 
 **Availability:** hosted Worker + local stdio.
 

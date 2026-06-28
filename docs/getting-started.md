@@ -127,7 +127,9 @@ triggers a call equivalent to:
 
 The response is a structured `Clause` object: `meta` (id, aoid,
 title, section number, kind), `signatureRaw`, `algorithms[].steps`,
-`notes`, and `crossrefs`. The full field list lives on
+`notes`, `crossrefs`, and `external_refs` — outward citations to other
+specs (Unicode, IETF, WHATWG), present only when the clause links to
+them. The full field list lives on
 [`tools.md → clause.get`](./tools#clause-get).
 
 ## Verify it's working
