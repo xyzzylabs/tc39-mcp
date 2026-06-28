@@ -12,7 +12,7 @@ import type { LatestPointer } from "./cache.js";
 /** Default origin for the public /r2/ proxy. Pointed at the canonical
  *  hosted deployment. Overridable via `TC39_MCP_BASE_URL` (e.g. to
  *  test against a staging Worker or a self-hosted copy). */
-const DEFAULT_BASE_URL = "https://tc39-mcp.chicoxyzzy.workers.dev";
+const DEFAULT_BASE_URL = "https://mcp.xyzzylabs.ai/tc39";
 
 /** Resolve the base URL to fetch snapshots from. */
 export function resolveBaseUrl(envBaseUrl?: string): string {

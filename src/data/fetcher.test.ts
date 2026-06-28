@@ -34,7 +34,7 @@ describe("resolveBaseUrl", () => {
 
   it("returns the canonical hosted URL when nothing is set", () => {
     delete process.env.TC39_MCP_BASE_URL;
-    expect(resolveBaseUrl()).toBe("https://tc39-mcp.chicoxyzzy.workers.dev");
+    expect(resolveBaseUrl()).toBe("https://mcp.xyzzylabs.ai/tc39");
   });
 
   it("honors TC39_MCP_BASE_URL env var", () => {

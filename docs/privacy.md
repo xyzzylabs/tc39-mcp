@@ -26,7 +26,7 @@ snapshot it doesn't have cached. On the first call for a given
 snapshot — or once a cached copy is older than ~4 hours — it
 issues an HTTPS request to the configured snapshot endpoint (by
 default the hosted Cloudflare Worker at
-`https://tc39-mcp.chicoxyzzy.workers.dev/r2/<key>`, overridable
+`https://mcp.xyzzylabs.ai/tc39/r2/<key>`, overridable
 via `TC39_MCP_BASE_URL`). A stale copy is revalidated with a
 conditional `If-None-Match` request — a `304 Not Modified` when
 nothing changed, so usually no bytes move; a cold cache fetches
@@ -38,7 +38,7 @@ network entirely, point `TC39_MCP_BASE_URL` at a private mirror,
 or restrict yourself to the bundled editions and block egress.
 
 **The hosted Cloudflare Worker
-([tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev))
+([mcp.xyzzylabs.ai/tc39](https://mcp.xyzzylabs.ai/tc39))
 collects only the standard request metadata that any
 internet-reachable Cloudflare Worker receives:**
 

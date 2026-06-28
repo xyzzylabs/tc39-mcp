@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/tc39-mcp.svg)](https://www.npmjs.com/package/tc39-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-📖 **Docs**: [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev) — [Get started](https://tc39-mcp.chicoxyzzy.workers.dev/getting-started) · [Tools](https://tc39-mcp.chicoxyzzy.workers.dev/tools) · [Cookbook](https://tc39-mcp.chicoxyzzy.workers.dev/cookbook) · [Editions](https://tc39-mcp.chicoxyzzy.workers.dev/editions) · [Architecture](https://tc39-mcp.chicoxyzzy.workers.dev/architecture) · [Hosting](https://tc39-mcp.chicoxyzzy.workers.dev/deployment)
+📖 **Docs**: [mcp.xyzzylabs.ai/tc39](https://mcp.xyzzylabs.ai/tc39) — [Get started](https://mcp.xyzzylabs.ai/tc39/getting-started) · [Tools](https://mcp.xyzzylabs.ai/tc39/tools) · [Cookbook](https://mcp.xyzzylabs.ai/tc39/cookbook) · [Editions](https://mcp.xyzzylabs.ai/tc39/editions) · [Architecture](https://mcp.xyzzylabs.ai/tc39/architecture) · [Hosting](https://mcp.xyzzylabs.ai/tc39/deployment)
 
 > **Independent project** — not an official Ecma
 > International or TC39 publication. Reads the publicly
@@ -94,7 +94,7 @@ Five-minute walkthrough: [`docs/getting-started.md`](docs/getting-started.md).
   "mcpServers": {
     "tc39": {
       "type": "http",
-      "url": "https://tc39-mcp.chicoxyzzy.workers.dev/mcp"
+      "url": "https://mcp.xyzzylabs.ai/tc39/mcp"
     }
   }
 }
@@ -184,7 +184,7 @@ Full table + how to add new releases: [`docs/editions.md`](docs/editions.md).
 ## Self-hosting snapshots
 
 The stdio server fetches snapshots from the public hosted Worker
-at `https://tc39-mcp.chicoxyzzy.workers.dev/r2/<key>` (cache →
+at `https://mcp.xyzzylabs.ai/tc39/r2/<key>` (cache →
 Worker → bundled fallback), so on a strict-egress network it falls
 back to the bundled editions and can't reach the others. Override
 the base URL via `TC39_MCP_BASE_URL` to point at a private mirror
@@ -246,7 +246,7 @@ Point Claude Code at your local source instead of the published bin:
 
 ## Docs
 
-Hosted at [tc39-mcp.chicoxyzzy.workers.dev](https://tc39-mcp.chicoxyzzy.workers.dev)
+Hosted at [mcp.xyzzylabs.ai/tc39](https://mcp.xyzzylabs.ai/tc39)
 — searchable, dark-mode-friendly, auto-rebuilt on every refresh so
 `/snapshots` always reflects the live SHAs.
 
@@ -283,7 +283,7 @@ request metadata (IP for rate limiting, timestamps, request
 headers); it does not log request bodies, set cookies, or share
 data with third parties.
 
-Full policy: [tc39-mcp.chicoxyzzy.workers.dev/privacy](https://tc39-mcp.chicoxyzzy.workers.dev/privacy)
+Full policy: [mcp.xyzzylabs.ai/tc39/privacy](https://mcp.xyzzylabs.ai/tc39/privacy)
 
 For privacy questions, open an issue with the `privacy` label on
 [GitHub](https://github.com/xyzzylabs/tc39-mcp/issues).

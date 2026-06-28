@@ -98,7 +98,7 @@ subprocess) and `test262.get` (needs the on-disk test262 corpus).
   "mcpServers": {
     "tc39": {
       "type": "http",
-      "url": "https://tc39-mcp.chicoxyzzy.workers.dev/mcp"
+      "url": "https://mcp.xyzzylabs.ai/tc39/mcp"
     }
   }
 }
