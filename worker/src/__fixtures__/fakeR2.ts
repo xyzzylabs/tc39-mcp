@@ -141,6 +141,7 @@ export function fakeSpecJson(opts: {
       number?: string;
       kind?: string;
       algorithms?: { production?: string; steps?: { text: string; substeps?: unknown[] }[] }[];
+      external_refs?: { url: string; text: string }[];
     }
   >;
   tables?: Record<
@@ -174,6 +175,7 @@ export function fakeSpecJson(opts: {
       })),
       notes: [],
       crossrefs: [],
+      ...(c.external_refs ? { external_refs: c.external_refs } : {}),
     };
   }
   const tables: Record<string, unknown> = {};

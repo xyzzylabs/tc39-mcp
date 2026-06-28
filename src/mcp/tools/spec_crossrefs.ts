@@ -56,6 +56,11 @@ export const specCrossrefsExamples = [
     },
     note: "`include_cross_spec` is off by default because it loads both specs into memory. Turn it on when you want the full call graph across 262/402.",
   },
+  {
+    q: "What external specs does String.prototype.normalize cite?",
+    input: { id: "sec-string.prototype.normalize", direction: "out" },
+    note: "Outgoing includes an `external` category — the clause's Unicode/IETF/WHATWG citations as resolvable URLs, alongside the internal hits.",
+  },
 ] as const;
 
 export async function specCrossrefs(args: {

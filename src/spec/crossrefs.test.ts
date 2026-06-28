@@ -19,7 +19,13 @@ function step(text: string, substeps: ClauseTextStep[] = []): ClauseTextStep {
 
 function clause(
   meta: { aoid?: string | null; title?: string; number?: string },
-  opts: { steps?: string[]; notes?: string[]; crossrefs?: string[]; signatureRaw?: string | null } = {},
+  opts: {
+    steps?: string[];
+    notes?: string[];
+    crossrefs?: string[];
+    signatureRaw?: string | null;
+    external_refs?: { url: string; text: string }[];
+  } = {},
 ): CrossrefClause {
   return {
     meta,
@@ -27,6 +33,7 @@ function clause(
     notes: (opts.notes ?? []).map((text) => ({ text })),
     algorithms: [{ steps: (opts.steps ?? []).map((t) => step(t)) }],
     crossrefs: opts.crossrefs,
+    external_refs: opts.external_refs,
   };
 }
 
@@ -249,5 +256,72 @@ describe("computeCrossrefs — cross-spec", () => {
     });
     // No cross-spec hits, but the call still succeeds with same-spec out.
     expect(r.outgoing?.every((h) => h.spec === "402")).toBe(true);
+  });
+});
+
+describe("computeCrossrefs — external category (Slice B)", () => {
+  const specExt: CrossrefSpec = {
+    clauses: {
+      "sec-normalize": clause(
+        { aoid: null, title: "String.prototype.normalize", number: "1" },
+        {
+          steps: ["Let ns be the result, as specified in the Unicode Standard."],
+          external_refs: [
+            { url: "https://unicode.org/reports/tr15/", text: "UAX #15" },
+            { url: "https://www.unicode.org/versions/latest/", text: "Unicode" },
+          ],
+        },
+      ),
+      "sec-plain": clause({ title: "Plain", number: "2" }),
+    },
+  };
+
+  it("direction 'out' surfaces the clause's external_refs in order", async () => {
+    const r = await computeCrossrefs({
+      spec: "262", edition: "fixture-ext-out", parsed: specExt,
+      id: "sec-normalize", direction: "out", limit: 100,
+      includeCrossSpec: false, loadOther: noOther,
+    });
+    expect(r.external?.map((e) => e.url)).toEqual([
+      "https://unicode.org/reports/tr15/",
+      "https://www.unicode.org/versions/latest/",
+    ]);
+    expect(r.external?.[0]?.text).toBe("UAX #15");
+  });
+
+  it("direction 'both' includes external alongside outgoing", async () => {
+    const r = await computeCrossrefs({
+      spec: "262", edition: "fixture-ext-both", parsed: specExt,
+      id: "sec-normalize", direction: "both", limit: 100,
+      includeCrossSpec: false, loadOther: noOther,
+    });
+    expect(r.external?.length).toBe(2);
+  });
+
+  it("direction 'in' omits external — it's an outgoing-only category", async () => {
+    const r = await computeCrossrefs({
+      spec: "262", edition: "fixture-ext-in", parsed: specExt,
+      id: "sec-normalize", direction: "in", limit: 100,
+      includeCrossSpec: false, loadOther: noOther,
+    });
+    expect(r.external).toBeUndefined();
+  });
+
+  it("omits external when the clause cites nothing external", async () => {
+    const r = await computeCrossrefs({
+      spec: "262", edition: "fixture-ext-none", parsed: specExt,
+      id: "sec-plain", direction: "out", limit: 100,
+      includeCrossSpec: false, loadOther: noOther,
+    });
+    expect(r.external).toBeUndefined();
+  });
+
+  it("caps external at limit", async () => {
+    const r = await computeCrossrefs({
+      spec: "262", edition: "fixture-ext-limit", parsed: specExt,
+      id: "sec-normalize", direction: "out", limit: 1,
+      includeCrossSpec: false, loadOther: noOther,
+    });
+    expect(r.external?.length).toBe(1);
   });
 });

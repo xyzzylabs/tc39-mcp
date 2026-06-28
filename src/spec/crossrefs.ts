@@ -23,6 +23,10 @@ export interface CrossrefClause {
   notes: { text: string }[];
   algorithms: { steps: ClauseTextStep[] }[];
   crossrefs?: string[];
+  /** Outward citations to external specs (Unicode, IETF, WHATWG, …),
+   *  captured from the clause's normative-host `<a href>` links. Surfaced
+   *  by `spec.crossrefs` as the `external` outgoing category. */
+  external_refs?: CrossrefExternalRef[];
 }
 
 /** The minimal parsed-spec shape: a clause map keyed by id, plus the
@@ -49,8 +53,16 @@ export interface CrossrefHit {
   spec: Spec;
 }
 
-/** Output of `spec.crossrefs`. `incoming` / `outgoing` are present
- *  according to the `direction` argument. */
+/** One outward citation to an external spec: destination URL + the
+ *  link's visible text. Mirrors the parser's `ExternalRef`, kept local
+ *  so the shared index stays dependency-free. */
+export interface CrossrefExternalRef {
+  url: string;
+  text: string;
+}
+
+/** Output of `spec.crossrefs`. `incoming` / `outgoing` / `external` are
+ *  present according to the `direction` argument. */
 export interface CrossrefsResult {
   /** Clauses that reference the requested id (back-refs). Present
    *  when `direction` is `in` or `both`. */
@@ -58,6 +70,11 @@ export interface CrossrefsResult {
   /** Clauses the requested id references. Present when `direction`
    *  is `out` or `both`. */
   outgoing?: CrossrefHit[];
+  /** Outward citations to external specs (Unicode, IETF, WHATWG, …) the
+   *  requested clause makes — the external counterpart to `outgoing`.
+   *  Present when `direction` is `out` or `both` and the clause cites at
+   *  least one external spec; omitted otherwise. */
+  external?: CrossrefExternalRef[];
 }
 
 /** Forward (clause → ids it references) + reverse (clause → ids that
@@ -235,6 +252,12 @@ function assembleCrossrefs(args: {
       hits.push(...cross);
     }
     out.outgoing = hits.slice(0, limit);
+
+    // External-spec citations are an outgoing category too: surface the
+    // source clause's captured external_refs (Unicode/IETF/WHATWG links)
+    // alongside the internal outgoing hits. Omitted when nothing external.
+    const ext = parsed.clauses[id]?.external_refs ?? [];
+    if (ext.length) out.external = ext.slice(0, limit);
   }
 
   if (direction === "in" || direction === "both") {
