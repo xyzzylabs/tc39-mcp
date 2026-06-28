@@ -39,7 +39,9 @@ Common workflow:
      pass search_steps: true to also scan algorithm step text — off by
      default since it is slower + noisier.
   3. \`clause.get { id, spec?, edition? }\` — full structured clause:
-     signature, numbered steps, notes, crossrefs.
+     signature, numbered steps, notes, crossrefs. A clause id is also a
+     test262 esid — test262.search { esid: <clause-id> } returns the
+     conformance tests for that clause.
 
 Edition semantics. \`latest\` is spec-aware:
   - On 262, \`latest\` → current stable release (es2026 today).
@@ -60,8 +62,8 @@ retry; treat empty as "no match found".
 
 Transport differences:
   - The stdio server (npx tc39-mcp) exposes all ${TOTAL_TOOL_COUNT} tools.
-  - The hosted Cloudflare Worker exposes ${HOSTED_TOOLS.length} of them
-    (${HOSTED_TOOLS.join(", ")}). The remaining ${STDIO_ONLY_TOOLS.length}
+  - The hosted Cloudflare Worker exposes ${HOSTED_TOOLS.length} of
+    them (call tools/list for the set). The remaining ${STDIO_ONLY_TOOLS.length}
     run stdio-only — each needs the filesystem or a subprocess the
     Worker can't provide: \`spec.history\` shells out to git, and
     \`test262.get\` reads each test's full source from the vendored corpus.
