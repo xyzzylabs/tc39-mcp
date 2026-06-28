@@ -21,10 +21,10 @@ SHAs.
 Independent project — not an official Ecma International or TC39
 publication.
 
-This is the hosted Cloudflare Worker deployment. It exposes ${HOSTED_TOOLS.length} tools:
-${HOSTED_TOOLS.join(", ")}. The full ${TOTAL_TOOL_COUNT}-tool surface
-(additionally ${STDIO_ONLY_TOOLS.join(", ")}) is available via the stdio
-server (npx tc39-mcp).
+This is the hosted Cloudflare Worker deployment — ${HOSTED_TOOLS.length} of the
+${TOTAL_TOOL_COUNT} tools (call tools/list for the set). The
+${STDIO_ONLY_TOOLS.length} stdio-only ones (spec.history, test262.get) are
+available via the stdio server (npx tc39-mcp).
 
 Common workflow:
   1. \`spec.about\` — call first to see what SHAs and editions the
@@ -35,7 +35,9 @@ Common workflow:
      what they DO (e.g. which clauses invoke OrdinaryGetOwnProperty),
      pass search_steps: true to also scan algorithm step text — off by
      default since it is slower + noisier.
-  3. \`clause.get { id, spec?, edition? }\` — full structured clause.
+  3. \`clause.get { id, spec?, edition? }\` — full structured clause. A clause id is also a test262
+     esid — test262.search { esid: <clause-id> } returns the
+     conformance tests for that clause.
 
 Edition semantics. \`latest\` is spec-aware:
   - On 262, \`latest\` → current stable release (es2026 today).
