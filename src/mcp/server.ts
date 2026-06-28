@@ -62,6 +62,8 @@ import {
   proposalList,
   proposalListSchema,
 } from "./tools/proposal.js";
+import { z } from "zod";
+import { getPrompt, PROMPT_DEFS } from "./prompts.js";
 
 const server = new McpServer(
   {
@@ -403,6 +405,40 @@ server.registerResource(
   },
   async (uri) => readResource(uri.href),
 );
+
+// MCP prompts: reusable workflow templates (explain-clause, compare-editions,
+// find-and-read, …). Hosts inject the returned messages; the model then calls
+// tools. All prompts are pure string templates — no tool execution inside the
+// prompt handler itself. Shared catalog with the Worker via prompts.ts.
+function optionalStringArg(description: string) {
+  return z.string().optional().describe(description);
+}
+
+for (const def of PROMPT_DEFS) {
+  const argsSchema: Record<string, z.ZodTypeAny> = {};
+  for (const a of def.arguments) {
+    argsSchema[a.name] = optionalStringArg(a.description);
+  }
+  server.registerPrompt(
+    def.name,
+    {
+      title: def.title,
+      description: def.description,
+      argsSchema,
+    },
+    async (args) => {
+      // Normalize the SDK's arg map to a flat string record; getPrompt()
+      // enforces required args so errors match the Worker path.
+      const flat: Record<string, string> = {};
+      if (args && typeof args === "object") {
+        for (const [k, v] of Object.entries(args)) {
+          if (v !== undefined && v !== null) flat[k] = String(v);
+        }
+      }
+      return { ...getPrompt(def.name, flat) };
+    },
+  );
+}
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
