@@ -63,6 +63,12 @@ Transport differences:
     Worker can't provide: \`spec.history\` shells out to git, and
     \`test262.get\` reads each test's full source from the vendored corpus.
 
+MCP prompts (workflow templates) — prefer these when the user wants a
+guided multi-tool sequence. Available prompts: explain-clause,
+compare-editions, find-and-read, trace-crossrefs, proposal-status,
+test262-for-feature, cite-reproducibly. Call prompts/list for their
+argument shapes.
+
 All data is read-only: no tool modifies anything upstream, no tool
 runs user-supplied code. Safe to call freely.
 `.trim();

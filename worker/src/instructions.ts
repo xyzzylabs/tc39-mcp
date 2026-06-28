@@ -50,6 +50,12 @@ Missing data is never an error. Tools return null, empty arrays, or
 a \`hint:\` field. \`source: "none"\` on \`proposal.list\` means the
 offline index isn't present in R2 — surface the hint to the user.
 
+MCP prompts (workflow templates) — prefer these when the user wants a
+guided multi-tool sequence. Available prompts: explain-clause,
+compare-editions, find-and-read, trace-crossrefs, proposal-status,
+test262-for-feature, cite-reproducibly. Call prompts/list for their
+argument shapes.
+
 All data is read-only: no tool modifies anything upstream, no tool
 runs user-supplied code. Safe to call freely.
 `.trim();

@@ -31,6 +31,7 @@ import {
   test262Search,
 } from "./tools.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
+import { getPrompt, listPrompts } from "../../src/mcp/prompts.js";
 import type { R2Env } from "./r2.js";
 import rootPkg from "../../package.json";
 
@@ -402,7 +403,7 @@ export async function dispatch(
           id,
           result: {
             protocolVersion: "2024-11-05",
-            capabilities: { tools: {} },
+            capabilities: { tools: {}, prompts: {} },
             serverInfo: { name: "tc39-mcp", version: SERVER_VERSION },
             instructions: SERVER_INSTRUCTIONS,
           },
@@ -439,6 +440,35 @@ export async function dispatch(
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           },
         };
+      }
+      case "prompts/list":
+        return {
+          jsonrpc: "2.0",
+          id,
+          result: listPrompts(),
+        };
+      case "prompts/get": {
+        const p = (req.params ?? {}) as {
+          name?: string;
+          arguments?: Record<string, string>;
+        };
+        if (!p.name) {
+          return {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32602, message: "prompts/get requires params.name" },
+          };
+        }
+        try {
+          const result = getPrompt(p.name, p.arguments ?? {});
+          return { jsonrpc: "2.0", id, result };
+        } catch (e) {
+          return {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32602, message: e instanceof Error ? e.message : String(e) },
+          };
+        }
       }
       default:
         return {
