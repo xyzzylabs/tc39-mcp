@@ -9,7 +9,9 @@ import {
   RELEASED_402_EDITIONS,
   SPEC_VALUES,
   isSupported,
+  normalizeEdition,
   normalizeSpec,
+  requireEdition,
   requireSpec,
   resolveEdition,
 } from "./editions.js";
@@ -41,6 +43,28 @@ describe("editions catalog", () => {
     expect(requireSpec("")).toBe("262");
     expect(requireSpec("ecma262")).toBe("262");
     expect(() => requireSpec("ecma999")).toThrow(/Unknown spec/);
+  });
+
+  it("normalizeEdition accepts cased + long edition forms", () => {
+    expect(normalizeEdition("es2025")).toBe("es2025");
+    expect(normalizeEdition("ES2025")).toBe("es2025");
+    expect(normalizeEdition("2025")).toBe("es2025");
+    expect(normalizeEdition("es-2025")).toBe("es2025");
+    expect(normalizeEdition("Latest")).toBe("latest");
+    expect(normalizeEdition("current")).toBe("latest");
+    expect(normalizeEdition("MAIN")).toBe("main");
+    expect(normalizeEdition("head")).toBe("main");
+    // Valid form but below the es2016 floor → not a known edition.
+    expect(normalizeEdition("es2015")).toBeNull();
+    expect(normalizeEdition("notanedition")).toBeNull();
+    expect(normalizeEdition(undefined)).toBeNull();
+  });
+
+  it("requireEdition defaults missing/empty to latest and rejects junk", () => {
+    expect(requireEdition(undefined)).toBe("latest");
+    expect(requireEdition("")).toBe("latest");
+    expect(requireEdition("ES2025")).toBe("es2025");
+    expect(() => requireEdition("notanedition")).toThrow(/Unknown edition/);
   });
 
   it("EDITION_VALUES includes every concrete edition + 3 aliases", () => {
@@ -86,6 +110,16 @@ describe("resolveEdition is spec-aware", () => {
     expect(resolveEdition("262", "main")).toBe("main");
     expect(resolveEdition("402", "es2025")).toBe("es2025");
     expect(resolveEdition("402", "main")).toBe("main");
+  });
+
+  it("accepts cased / bare-year / synonym edition forms", () => {
+    expect(resolveEdition("262", "ES2025")).toBe("es2025");
+    expect(resolveEdition("262", "2025")).toBe("es2025");
+    expect(resolveEdition("262", "es-2024")).toBe("es2024");
+    expect(resolveEdition("262", "Latest")).toBe(LATEST_262_RELEASE);
+    expect(resolveEdition("402", "current")).toBe(LATEST_402_RELEASE);
+    expect(resolveEdition("262", "MAIN")).toBe("main");
+    expect(resolveEdition("262", "head")).toBe("main");
   });
 });
 

@@ -259,6 +259,25 @@ describe("clauseGet", () => {
     ).rejects.toThrow(/Unknown spec/);
   });
 
+  it("accepts cased / bare-year edition aliases (ES2025, 2025 → es2025)", async () => {
+    const env = {
+      SPECS: createFakeR2({
+        contents: {
+          "spec-262-es2025.json": fakeSpecJson({
+            spec: "262",
+            edition: "es2025",
+            clauses: { "sec-x": { id: "sec-x", title: "X" } },
+          }),
+        },
+      }),
+    };
+    for (const edition of ["ES2025", "2025", "es-2025"]) {
+      const c = await clauseGet(env, { id: "sec-x", spec: "262", edition });
+      expect(c, edition).not.toBeNull();
+      expect(c!.meta.id).toBe("sec-x");
+    }
+  });
+
   it("with `at` loads from the SHA-pinned R2 key", async () => {
     const env = {
       SPECS: createFakeR2({
