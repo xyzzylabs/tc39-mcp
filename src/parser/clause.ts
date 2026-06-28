@@ -8,7 +8,7 @@
  */
 
 import type { CheerioAPI } from "cheerio";
-import type { Algorithm, Clause, ClauseMeta, Note } from "./schema.js";
+import type { Algorithm, Clause, ClauseMeta, ExternalRef, Note } from "./schema.js";
 import { parseAlgorithm } from "./steps.js";
 
 function normalizeWhitespace(s: string): string {
@@ -18,6 +18,19 @@ function normalizeWhitespace(s: string): string {
 function escapeAttr(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
+
+// External specs whose citations clause.get surfaces as outward links.
+// Tunable — deliberately excludes acknowledgment/community links (github,
+// twitter, mailing lists) that also render as <a href> in the spec.
+const EXTERNAL_NORMATIVE_HOSTS = [
+  "unicode.org",
+  "ietf.org",
+  "rfc-editor.org",
+  "whatwg.org",
+  "w3.org",
+  "iana.org",
+  "ecma-international.org",
+];
 
 export function extractClause(
   $: CheerioAPI,
@@ -79,5 +92,32 @@ export function extractClause(
     if (href) crossrefs.push(href);
   });
 
-  return { meta, signatureRaw, algorithms, notes, crossrefs };
+  // External-spec citations: `<a href="https://…">` links to a normative
+  // host (Unicode, IETF, WHATWG, …). Excludes acknowledgment/community
+  // links that also appear as anchors. Surfaced raw by clause.get.
+  const external_refs: ExternalRef[] = [];
+  const seenExternal = new Set<string>();
+  el.find("a[href]").each((_, a) => {
+    const href = $(a).attr("href");
+    if (!href || !/^https?:\/\//i.test(href)) return;
+    let host: string;
+    try {
+      host = new URL(href).hostname.toLowerCase();
+    } catch {
+      return;
+    }
+    const normative = EXTERNAL_NORMATIVE_HOSTS.some(
+      (h) => host === h || host.endsWith("." + h),
+    );
+    if (!normative || seenExternal.has(href)) return;
+    seenExternal.add(href);
+    external_refs.push({
+      url: href,
+      text: normalizeWhitespace($(a).text()) || href,
+    });
+  });
+
+  return external_refs.length
+    ? { meta, signatureRaw, algorithms, notes, crossrefs, external_refs }
+    : { meta, signatureRaw, algorithms, notes, crossrefs };
 }

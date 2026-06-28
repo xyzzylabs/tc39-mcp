@@ -99,6 +99,17 @@ export interface Clause {
   /** Hrefs from `<emu-xref href="...">` anywhere inside the clause.
    *  Used by `spec.crossrefs` to build the forward index. */
   crossrefs: string[];
+  /** Outward citations to external specs (Unicode, IETF, WHATWG, …) —
+   *  `<a href="https://…">` links filtered to a normative-host allowlist.
+   *  Omitted when the clause cites nothing external. */
+  external_refs?: ExternalRef[];
+}
+
+/** One external-spec citation captured from a clause: the destination
+ *  URL and the link's visible text. */
+export interface ExternalRef {
+  url: string;
+  text: string;
 }
 
 export interface SpecPin {
