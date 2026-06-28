@@ -142,17 +142,62 @@ export const EDITION_VALUES = [
 ] as const;
 export type Edition = (typeof EDITION_VALUES)[number];
 
+/** Canonicalize edition spelling only — lowercase, bare-year → `esYYYY`,
+ *  `es-YYYY`/`es YYYY` → `esYYYY`, and synonyms (`current`/`stable` →
+ *  `latest`, `head`/`working` → `main`). Range validity is left to
+ *  `isSupported`, so an out-of-range form like `es2015` passes through
+ *  unchanged rather than being rejected. */
+function canonicalEditionSpelling(raw: string): string {
+  let key = raw.trim().toLowerCase();
+  if (/^\d{4}$/.test(key)) key = `es${key}`; // 2025 → es2025
+  key = key.replace(/^es[\s_-](\d{4})$/, "es$1"); // es-2025 / es 2025 → es2025
+  if (key === "current" || key === "stable") return "latest";
+  if (key === "head" || key === "working") return "main";
+  return key;
+}
+
+/** Map a caller-supplied `edition` to a canonical EDITION_VALUES form, or
+ *  `null` when it isn't a recognized edition/alias. Accepts the long/cased
+ *  forms agents pass (`ES2025`, `2025`, `Latest`, `draft`, …). */
+export function normalizeEdition(raw: string | undefined | null): Edition | null {
+  if (raw == null || raw === "") return null;
+  const key = canonicalEditionSpelling(String(raw));
+  return (EDITION_VALUES as readonly string[]).includes(key)
+    ? (key as Edition)
+    : null;
+}
+
+/** Like `normalizeEdition`, but falls back to `latest` when missing/empty
+ *  and throws a clear error on an explicit but unrecognized value. */
+export function requireEdition(
+  raw: string | undefined | null,
+  fallback: Edition = "latest",
+): Edition {
+  if (raw == null || raw === "") return fallback;
+  const e = normalizeEdition(raw);
+  if (!e) {
+    throw new Error(
+      `Unknown edition ${JSON.stringify(raw)}. Use 'latest', 'main', or es2016…es2026 (also accepts e.g. 'ES2025', '2025', 'draft').`,
+    );
+  }
+  return e;
+}
+
 /** Resolve aliases + spec context to a concrete edition. `latest` is
  *  spec-aware — it points at each spec's newest annual edition:
  *    - ECMA-262 → `LATEST_262_RELEASE` (es2026 today).
  *    - ECMA-402 → `LATEST_402_RELEASE` (es2026 today).
  *  `draft` / `next` → `main` on both. */
-export function resolveEdition(spec: Spec, e: Edition): ConcreteEdition {
-  if (e === "latest") {
+export function resolveEdition(spec: Spec, e: Edition | string): ConcreteEdition {
+  // Canonicalize the spelling + resolve aliases. Range/validity stays with
+  // isSupported downstream, so an out-of-range `es2015` still surfaces as an
+  // "unsupported" error rather than being silently rewritten or rejected.
+  const ed = canonicalEditionSpelling(String(e));
+  if (ed === "latest") {
     return spec === "262" ? LATEST_262_RELEASE : LATEST_402_RELEASE;
   }
-  if (e === "draft" || e === "next") return "main";
-  return e;
+  if (ed === "draft" || ed === "next") return "main";
+  return ed as ConcreteEdition;
 }
 
 /** True if (spec, concrete edition) is a supported combination. Both
