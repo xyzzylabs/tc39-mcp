@@ -27,6 +27,36 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
+## [0.5.0] — 2026-06-28
+
+Adds the MCP `prompts` capability and moves the hosted deployment to its
+own domain.
+
+### Added
+
+- **MCP prompts (workflow templates).** Seven reusable prompts —
+  `explain-clause`, `compare-editions`, `find-and-read`,
+  `trace-crossrefs`, `proposal-status`, `test262-for-feature`,
+  `cite-reproducibly` — that steer an agent through the right tool
+  sequence. Pure string templates (no execution); advertised on both the
+  stdio server and the hosted Worker via `prompts/list` + `prompts/get`.
+
+### Changed
+
+- **Hosted deployment moved to `mcp.xyzzylabs.ai/tc39`.** The docs site,
+  the registry MCP endpoint, and the npm package's R2-fetch origin point
+  there now. The old `*.workers.dev` URL still serves identical data.
+- **Edition aliases normalize.** `ES2025`, `2025`, `es-2025`, `Latest`,
+  `MAIN` resolve to canonical editions instead of 404-ing on a missing
+  snapshot key — the same tolerance the `ecma262` / `ecma402` spec
+  aliases got in 0.4.1. A well-formed but out-of-range edition (`es2015`)
+  still reports "unsupported".
+- **Discoverability: step-text + test262 linkage.** The server
+  instructions now point agents at `spec.search { search_steps: true }`
+  for "where is X invoked" queries and at `test262.search { esid }` for a
+  clause's conformance tests (a clause id is its esid), and drop the
+  hard-coded tool list — the live set comes from `tools/list`.
+
 ## [0.4.1] — 2026-06-25
 
 A bug-fix and polish release.
