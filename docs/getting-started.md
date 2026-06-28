@@ -151,6 +151,27 @@ If the server didn't respond at all, two things to check:
    handshake. Most MCP clients log this; if you see nothing, the
    stdio server probably never launched, or the hosted URL is wrong.
 
+## Workflow prompts
+
+Beyond tools, the server advertises **MCP prompts** — reusable
+templates that steer an agent through a multi-tool workflow. In a client
+that supports prompts (`prompts/list` + `prompts/get`), pick one instead
+of hand-assembling the tool sequence:
+
+| Prompt | What it does |
+|---|---|
+| `explain-clause` | read a clause and explain its steps in plain language |
+| `compare-editions` | diff a clause across two editions |
+| `find-and-read` | search by name/symptom, then read the top hit |
+| `trace-crossrefs` | map a clause's incoming/outgoing references |
+| `proposal-status` | look up a TC39 proposal's stage + details |
+| `test262-for-feature` | find the conformance tests for a feature or clause |
+| `cite-reproducibly` | produce a SHA-pinned citation block |
+
+Each is a pure text template — it returns guidance the model then acts
+on by calling tools normally; the prompt never runs anything itself.
+Both transports advertise the same set.
+
 ## Next steps
 
 - **[Tool reference](./tools)** — every tool, every input field,
