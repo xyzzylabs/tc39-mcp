@@ -234,9 +234,11 @@ the next org-admin click.
    - **Homepage URL**: the org URL (or this repo) is fine.
    - **Webhook**: uncheck "Active" (no webhook needed; this
      removes the need for a webhook secret too).
-   - **Repository permissions**: **Contents: Read and write** to
-     start. Nothing else for refresh.yml. Add other scopes
-     (`Pull requests: write`, `Issues: write`, …) later as new
+   - **Repository permissions**: **Contents: Read and write** (push
+     the refreshed sentinel) **and Actions: Read and write** (dispatch
+     `deploy-worker.yml` to refresh R2 — without it the dispatch
+     `403`s even though the sentinel push still succeeds). Add other
+     scopes (`Pull requests: write`, `Issues: write`, …) later as new
      automation lands.
    - **Where can this GitHub App be installed?**: "Only on this
      account".
@@ -290,7 +292,7 @@ If you don't want the App setup, the legacy PAT path still works:
    | Resource owner | the org/user that owns this repo (`xyzzylabs`) |
    | Expiration | 1 year |
    | Repository access | **Only select repositories** → `tc39-mcp` |
-   | Repository permissions | **Contents: Read and write**, **Workflows: Read and write** |
+   | Repository permissions | **Contents: Read and write** + **Actions: Read and write** (the latter dispatches `deploy-worker.yml`; the "Workflows" permission governs *editing* workflow files and is **not** enough to trigger one) |
 3. **Generate token** → copy the value (starts with `github_pat_…`).
 4. Save it to the repo:
    ```sh

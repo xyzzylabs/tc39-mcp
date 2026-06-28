@@ -258,6 +258,7 @@ jobs:
           fi
 
       - name: Refresh R2 (data-only runs, after the sentinel is pushed)
+        id: dispatch_r2
         # Ordering is load-bearing: deploy-worker's build-spec-data
         # caches vendor/ + build/ keyed on hashFiles('.last-refresh.json').
         # It only re-fetches + re-parses (→ uploads fresh data to R2)
@@ -265,12 +266,72 @@ jobs:
         # BEFORE dispatching. On a publishing run we skip this entirely:
         # the v* tag pushed above already triggers deploy-worker the same
         # way, and double-firing would just redeploy the Worker twice.
+        #
+        # continue-on-error so the next step can convert a dispatch
+        # failure into a durable, actionable issue (a red scheduled run
+        # alone notifies no one) before re-failing the job.
         if: steps.decide.outputs.needs_refresh == 'true' && steps.decide.outputs.should_publish != 'true'
+        continue-on-error: true
         env:
           # Only the App token / PAT can trigger another workflow;
-          # GITHUB_TOKEN cannot.
+          # GITHUB_TOKEN cannot (GitHub's anti-recursion rule).
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.WORKFLOW_PAT || secrets.GITHUB_TOKEN }}
-        run: gh workflow run deploy-worker.yml --ref main
+        run: |
+          # Retry so a transient API blip doesn't trip the issue-filer.
+          for attempt in 1 2 3; do
+            if gh workflow run deploy-worker.yml --ref main; then
+              echo "Dispatched deploy-worker.yml (attempt $attempt)."
+              exit 0
+            fi
+            echo "::warning::deploy-worker dispatch attempt $attempt failed; retrying in 5s." >&2
+            sleep 5
+          done
+          echo "deploy-worker dispatch failed after 3 attempts." >&2
+          exit 1
+
+      - name: Surface a failed R2 dispatch as a tracking issue
+        # The sentinel is already on main, so R2 now lags until a deploy
+        # runs — and a red scheduled run is easy to miss. File a deduped,
+        # actionable issue (same durable-signal pattern as the 402-drift
+        # step) AND re-fail the job so the run still goes red. The dispatch
+        # needs the App token / PAT, but filing an issue is fine on
+        # GITHUB_TOKEN (job has issues: write).
+        if: steps.dispatch_r2.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create refresh-dispatch-failed --color B60205 \
+            --description "Refresh couldn't trigger the R2 deploy; manual redeploy + token fix needed" 2>/dev/null || true
+          if gh issue list --state open --label refresh-dispatch-failed --json number --jq '.[].number' | grep -q .; then
+            echo "An open refresh-dispatch-failed issue already tracks this; not filing another."
+          else
+            # shellcheck disable=SC2016  # the backticks below are literal markdown for the issue body, not shell expansion
+            body=$(printf '%s\n' \
+              'The scheduled **Refresh** detected upstream movement and pushed the new sentinel to `main`, but could not dispatch `deploy-worker.yml` to re-parse the data into R2. The sentinel is now ahead of R2 until a deploy runs.' \
+              '' \
+              '### Immediate fix' \
+              'Run the deploy manually (re-parses the current upstream into R2):' \
+              '' \
+              '    gh workflow run deploy-worker.yml --ref main' \
+              '' \
+              '### Durable fix' \
+              'The dispatch needs a credential that can create a workflow-dispatch event — `GITHUB_TOKEN` cannot, by design. Provide one of:' \
+              '' \
+              '- **`WORKFLOW_PAT` with the `workflow` scope** (classic PAT) or **Actions: read/write** (fine-grained PAT scoped to this repo). It already needs Contents: read/write to push the sentinel, so only the Actions/workflow grant is missing.' \
+              '- **The App path:** org/repo var `BOT_APP_ID` + secret `BOT_APP_PRIVATE_KEY` for a GitHub App with **Contents + Actions: write** installed on this repo. The mint step then activates automatically and the PAT is no longer used.' \
+              '' \
+              'See `CONTRIBUTING.md` → "Maintainer setup: refresh.yml authentication". Close once a deploy has run and the credential is fixed.')
+            gh issue create --label refresh-dispatch-failed \
+              --title "Refresh couldn't trigger the R2 deploy (manual redeploy + token fix needed)" \
+              --body "$body"
+            echo "Filed a refresh-dispatch-failed issue."
+          fi
+          {
+            echo "### ❌ R2 deploy dispatch failed"
+            echo
+            echo "The sentinel was pushed but \`deploy-worker.yml\` could not be dispatched, so R2 is stale until a deploy runs. A \`refresh-dispatch-failed\` issue tracks the fix."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
       - name: No-op summary
         if: steps.decide.outputs.needs_refresh != 'true'
