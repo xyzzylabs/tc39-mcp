@@ -21,11 +21,12 @@ import pkg from "../../package.json";
 export default defineConfig({
   title: "tc39-mcp",
   description:
-    "Unofficial MCP server for the TC39 specs (ECMA-262 + ECMA-402) — SHA-pinned clauses, AOID-aware search, in+out cross-references, edition diffs, history. Not affiliated with Ecma International or TC39.",
+    "Independent MCP server for the TC39 specs (ECMA-262 + ECMA-402) — SHA-pinned clauses, AOID-aware search, in+out cross-references, edition diffs, history.",
 
-  // Served from the Worker origin root (e.g. tc39-mcp.workers.dev/),
-  // so no path prefix is needed.
-  base: "/",
+  // Served under the `/tc39/` path on mcp.xyzzylabs.ai (one origin,
+  // multiple MCP servers), so the build needs that base prefix for its
+  // asset URLs to resolve.
+  base: "/tc39/",
 
   // Clean URLs (no .html suffix) — VitePress emits them as
   // directory-with-index pages so static hosts serve them right.

@@ -3,7 +3,7 @@
   "name": "io.github.xyzzylabs/tc39-mcp",
   "title": "tc39-mcp",
   "description": "Independent MCP server for the TC39 specs (ECMA-262 + ECMA-402): clauses, search, diffs, history.",
-  "websiteUrl": "https://tc39-mcp.chicoxyzzy.workers.dev",
+  "websiteUrl": "https://mcp.xyzzylabs.ai/tc39",
   "repository": {
     "url": "https://github.com/xyzzylabs/tc39-mcp",
     "source": "github"
@@ -22,7 +22,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://tc39-mcp.chicoxyzzy.workers.dev/mcp"
+      "url": "https://mcp.xyzzylabs.ai/tc39/mcp"
     }
   ]
 }
