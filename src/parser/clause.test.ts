@@ -238,3 +238,48 @@ describe("extractClause — preserves meta", () => {
     expect(r!.meta).toEqual(m);
   });
 });
+
+describe("extractClause — external_refs", () => {
+  it("captures normative external links, filtered by host allowlist", () => {
+    const r = extractClause(
+      $(
+        `<emu-clause id="sec-x"><h1>x</h1><p>See ` +
+          `<a href="https://unicode.org/reports/tr15/">UAX #15</a> and ` +
+          `<a href="https://www.rfc-editor.org/rfc/rfc8259">RFC 8259</a>. ` +
+          `Thanks <a href="https://github.com/tc39/ecma262">repo</a> and ` +
+          `<a href="https://twitter.com/x">someone</a>.</p></emu-clause>`,
+      ),
+      meta("sec-x"),
+    );
+    const urls = r!.external_refs?.map((e) => e.url) ?? [];
+    expect(urls).toContain("https://unicode.org/reports/tr15/");
+    expect(urls).toContain("https://www.rfc-editor.org/rfc/rfc8259");
+    // Acknowledgment / community links are filtered out.
+    expect(urls).not.toContain("https://github.com/tc39/ecma262");
+    expect(urls.some((u) => u.includes("twitter"))).toBe(false);
+    // Link text is captured.
+    expect(r!.external_refs?.find((e) => e.url.includes("tr15"))?.text).toBe(
+      "UAX #15",
+    );
+  });
+
+  it("omits external_refs when the clause cites nothing external", () => {
+    const r = extractClause(
+      $(`<emu-clause id="sec-y"><h1>y</h1><p>no links</p></emu-clause>`),
+      meta("sec-y"),
+    );
+    expect(r!.external_refs).toBeUndefined();
+  });
+
+  it("dedupes a repeated external link", () => {
+    const r = extractClause(
+      $(
+        `<emu-clause id="sec-z"><h1>z</h1>` +
+          `<a href="https://unicode.org/reports/tr10/">UTS10</a>` +
+          `<a href="https://unicode.org/reports/tr10/">again</a></emu-clause>`,
+      ),
+      meta("sec-z"),
+    );
+    expect(r!.external_refs).toHaveLength(1);
+  });
+});
