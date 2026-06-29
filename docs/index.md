@@ -16,7 +16,7 @@ hero:
 features:
   - icon: 🤖
     title: Spec lookup for AI agents
-    details: Any MCP client (Claude Code, Claude Desktop, Cursor, MCP Inspector) gets `clause.get`, `spec.search`, `spec.crossrefs`, and 16 more tools — structural JSON answers grounded on real spec text instead of grep'd HTML. Every citation resolves to a specific clause id at a specific SHA.
+    details: Any MCP client gets `clause.get`, `spec.search`, `spec.crossrefs`, and 16 more tools — structural JSON answers grounded on real spec text instead of grep'd HTML. Every citation resolves to a specific clause id at a specific SHA.
   - icon: 🎯
     title: 19 tools across 5 namespaces
     details: clause.get / list / outline · spec.about / snapshots / search / global_search / crossrefs / diff / history / symbol_resolve / tables / grammar / sdo_index / well_known_intrinsics · test262.search / get · proposal.list / get
@@ -27,8 +27,8 @@ features:
     title: Cached locally, offline-capable
     details: The stdio transport (`npx tc39-mcp`) serves snapshots from a local cache under `~/.cache/tc39-mcp/`, fetching from the hosted Worker on a cold cache and revalidating only after a ~4-hour freshness window; the bundled latest-stable + main editions (plus the proposals and test262 indexes) keep answering offline. Network requests carry R2 object keys, never clause ids. The hosted Worker is the HTTP alternative.
   - icon: 🔌
-    title: Three ways to run it
-    details: Local stdio via `npx tc39-mcp` (the default), a global CLI, or the hosted Cloudflare Worker over HTTP. Same MCP protocol, three transports.
+    title: Two ways to run it
+    details: Local stdio via `npx tc39-mcp` (the default — a global install works too) or the hosted Cloudflare Worker over HTTP. Same MCP protocol either way.
   - icon: 🔄
     title: Auto-refreshing
     details: A scheduled CI workflow refreshes the hosted Worker from upstream tc39/* every ~4 hours; the npm package re-bakes its bundled snapshots at most monthly (new annual editions ship immediately). Stay current without lifting a finger.
@@ -44,10 +44,12 @@ features:
 
 ## Install + run
 
+The stdio launch command is the same for every MCP client; only the
+config file's location differs (check your client's MCP docs).
+
 ::: code-group
 
-```sh [stdio (npx, recommended)]
-# Wire into Claude Code via .mcp.json:
+```json [stdio (npx)]
 {
   "mcpServers": {
     "tc39": { "command": "npx", "args": ["tc39-mcp"] }
@@ -55,24 +57,21 @@ features:
 }
 ```
 
-```sh [global CLI]
-npm i -g tc39-mcp
-tc39-mcp                     # reads stdio
-```
-
-```sh [hosted Worker]
-# .mcp.json:
+```json [HTTP (hosted)]
 {
   "mcpServers": {
     "tc39": {
       "type": "http",
-      "url": "https://tc39-mcp.<account>.workers.dev/mcp"
+      "url": "https://mcp.xyzzylabs.ai/tc39/mcp"
     }
   }
 }
 ```
 
 :::
+
+A global install works too: `npm i -g tc39-mcp`, then run `tc39-mcp`
+(same stdio transport).
 
 ## What it's for
 
