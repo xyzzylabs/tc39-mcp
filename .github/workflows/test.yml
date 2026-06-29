@@ -65,7 +65,7 @@ jobs:
       # the worker install (and vice versa).
       - name: Cache worker/node_modules
         id: cache-worker-node-modules
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: worker/node_modules
           key: worker-nm-v1-${{ runner.os }}-node22-${{ hashFiles('worker/package-lock.json') }}
