@@ -27,6 +27,33 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
+## [0.6.0] — 2026-06-29
+
+Surfaces a clause's citations to external specs (Unicode, IETF, WHATWG)
+as structured, resolvable URLs.
+
+### Added
+
+- **External-spec citations on `clause.get`.** A new optional
+  `external_refs` field on the returned `Clause` lists a clause's outward
+  links to normative external specs — Unicode TRs, IETF RFCs, WHATWG — as
+  `{ url, text }`, filtered to a normative-host allowlist. Present only
+  when the clause cites something external (e.g.
+  `sec-string.prototype.normalize` → the Unicode Normalization Forms
+  reference).
+- **`external` category on `spec.crossrefs`.** The crossref graph now
+  carries the same citations as an outgoing `external` category alongside
+  the internal in/out hits, so tracing a clause's references surfaces both
+  internal targets and outward spec links in one call. Present on
+  `direction: "out"` / `"both"`.
+
+### Changed
+
+- **Install + run docs are now agent-agnostic.** The setup instructions
+  present the two transports — stdio (`npx`) and hosted HTTP
+  (`mcp.xyzzylabs.ai/tc39`) — for any MCP client, instead of leading with
+  one specific client's config.
+
 ## [0.5.0] — 2026-06-28
 
 Adds the MCP `prompts` capability and moves the hosted deployment to its
