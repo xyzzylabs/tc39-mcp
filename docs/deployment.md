@@ -4,7 +4,7 @@
 
 | Shape | Use case | Status |
 |---|---|---|
-| **Local stdio** | Wired into Claude Code via `.mcp.json` | ✅ shipped |
+| **Local stdio** | Wired into an MCP client via its config | ✅ shipped |
 | **Local CLI / npm package** | `npx tc39-mcp` | ✅ shipped |
 | **Hosted HTTP** (Cloudflare Worker) | Public endpoint for unaffiliated agents | ✅ shipped |
 
@@ -27,7 +27,7 @@ lockfile so its bundle never pulls in the Node-shaped source tree.
 ## Local stdio (the default)
 
 Used when an agent on the same machine wants to consult the spec.
-This is how Claude Code talks to the server.
+This is how a local MCP client talks to the server.
 
 ```json
 {
@@ -220,7 +220,7 @@ curl -s -X POST https://<your-worker-url>/mcp \
 
 ### Wire into an MCP client
 
-For Claude Code's `.mcp.json`:
+In your MCP client's config (e.g. `.mcp.json`):
 
 ```json
 {

@@ -17,8 +17,7 @@ upstream spec.
 `tc39-mcp` is an MCP server. It exposes 19 tools that answer
 structured questions about ECMA-262 + ECMA-402 — clause text,
 algorithm steps, cross-references, edition diffs, git history,
-test262 search, proposal lookup. If your client already speaks MCP
-— Claude Desktop, Claude Code, Cursor, the official MCP Inspector —
+test262 search, proposal lookup. If your client already speaks MCP,
 adding it is one config entry away.
 
 ## Pick how you run it
@@ -46,11 +45,11 @@ a subprocess or the on-disk test262 corpus, so they run locally only.
 
 Runs `tc39-mcp` as a subprocess of your MCP client through `npx` — no
 global install, **all 19 tools**, and the bundled editions answer
-offline. Wire it into your client:
+offline. The launch command is identical across MCP clients; only the
+config file's location differs (check your client's MCP docs). Add the
+server:
 
-::: code-group
-
-```json [Claude Code (.mcp.json)]
+```json
 {
   "mcpServers": {
     "tc39": {
@@ -61,25 +60,12 @@ offline. Wire it into your client:
 }
 ```
 
-```json [Claude Desktop (claude_desktop_config.json)]
-{
-  "mcpServers": {
-    "tc39": {
-      "command": "npx",
-      "args": ["tc39-mcp"]
-    }
-  }
-}
-```
+Clients that take a bare stdio command instead of a `mcpServers` map
+(e.g. the MCP Inspector) use:
 
-```json [MCP Inspector / generic stdio client]
-{
-  "command": "npx",
-  "args": ["tc39-mcp"]
-}
+```json
+{ "command": "npx", "args": ["tc39-mcp"] }
 ```
-
-:::
 
 The first call for a given snapshot fetches it from the hosted Worker
 and caches it on disk; later calls are served locally, revalidated

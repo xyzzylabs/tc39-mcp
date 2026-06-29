@@ -11,8 +11,7 @@
 > published ECMAScript specs (ECMA-262 + ECMA-402).
 
 **Give MCP-speaking AI agents structural access to the JS spec.**
-Claude Code, Claude Desktop, Cursor, MCP Inspector, and anything
-else that speaks the Model Context Protocol can now call
+Any client that speaks the Model Context Protocol can call
 `clause.get sec-tonumber` and get back parsed JSON (algorithm
 steps as discrete arrays, cross-references as ids, signatures as
 typed values) instead of being handed a 4 MB `spec.html` to grep
@@ -38,8 +37,8 @@ endpoint; its R2 data refreshes from upstream every ~4 hours.
 
 ## Install + first call
 
-Wire into Claude Code, Claude Desktop, Cursor, or any MCP-speaking
-client via `.mcp.json`:
+Wire it into any MCP client — the stdio launch command is the same
+everywhere, only the config file differs:
 
 ```json
 {
@@ -48,6 +47,8 @@ client via `.mcp.json`:
   }
 }
 ```
+
+A global install works too — `npm i -g tc39-mcp`, then run `tc39-mcp`.
 
 The first run downloads the npm package (latest stable + main
 editions plus the proposals and test262 indexes are bundled). The
@@ -85,9 +86,10 @@ You should see structured JSON back:
 
 Five-minute walkthrough: [`docs/getting-started.md`](docs/getting-started.md).
 
-## Other transports
+## Hosted HTTP
 
-### Hosted Cloudflare Worker (HTTP)
+Point your client at the hosted Cloudflare Worker instead of running a
+local subprocess — same MCP protocol, no install:
 
 ```json
 {
@@ -101,13 +103,6 @@ Five-minute walkthrough: [`docs/getting-started.md`](docs/getting-started.md).
 ```
 
 Traffic is rate-limited to 30 req/min per IP.
-
-### Global CLI
-
-```sh
-npm i -g tc39-mcp
-tc39-mcp                     # reads stdio
-```
 
 ## What it's good at
 
@@ -226,7 +221,7 @@ npm run build-proposals-index
 npm run mcp                      # start the stdio MCP server against your source
 ```
 
-Point Claude Code at your local source instead of the published bin:
+Point your MCP client at your local source instead of the published bin:
 
 ```json
 {
