@@ -57,7 +57,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tc39/ecma262-biblio": "2.2.3108",
+    "@tc39/ecma262-biblio": "2.2.3110",
     "@types/node": "^26.0.0",
     "@typescript/native-preview": "^7.0.0-dev.20260622.1",
     "cheerio": "^1.0.0",
