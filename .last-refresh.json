@@ -1,12 +1,12 @@
 {
-  "refreshed_at": "2026-06-29T18:13:01.065Z",
+  "refreshed_at": "2026-07-01T18:03:28.463Z",
   "last_npm_publish": {
     "version": "0.3.1",
     "at": "2026-06-05T00:00:00Z"
   },
   "specs": {
     "262/main": "45a667175d5ac359968d8a2aa7eef62a65bb7988",
-    "402/main": "f345d745093804598e375a958b361d08272cbc28",
+    "402/main": "04087cb1b0df8fbc5c476c3181f16e7ad989dd25",
     "402/latest": "8ea5ed5bab7165d1ef8ca2612a88582bf2b1ac94"
   },
   "test262": "6eec1ac9ee144dafd8f344d73a21f36bfc9f6755",
