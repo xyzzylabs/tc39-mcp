@@ -1,5 +1,5 @@
 {
-  "refreshed_at": "2026-07-08T14:28:39.197Z",
+  "refreshed_at": "2026-07-08T21:14:37.183Z",
   "last_npm_publish": {
     "version": "0.6.1",
     "at": "2026-07-07T18:05:27.039Z"
@@ -10,5 +10,5 @@
     "402/latest": "8ea5ed5bab7165d1ef8ca2612a88582bf2b1ac94"
   },
   "test262": "250f204f23a9249ff204be2baec29600faae7b75",
-  "proposals": "1eb7ced36bcb794e75af0b0a24c8199fba6bc6f3"
+  "proposals": "cae61138d3872cb9748effe04b729b7152f71369"
 }
