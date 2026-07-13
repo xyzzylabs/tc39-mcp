@@ -30,8 +30,8 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsgo && chmod +x dist/mcp/server.js",
-    "typecheck": "tsgo --noEmit",
+    "build": "tsc && chmod +x dist/mcp/server.js",
+    "typecheck": "tsc --noEmit",
     "fetch-spec": "bash scripts/fetch-spec.sh",
     "fetch-test262": "bash scripts/fetch-test262.sh",
     "parse": "tsx src/parser/cli.ts",
@@ -59,10 +59,10 @@
   "devDependencies": {
     "@tc39/ecma262-biblio": "2.2.3118",
     "@types/node": "^26.0.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260622.1",
     "cheerio": "^1.0.0",
     "tsx": "^4.19.2",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
+    "typescript-api": "npm:typescript@^6.0.3",
     "vitepress": "^1.6.4",
     "vitest": "^4.1.9"
   },

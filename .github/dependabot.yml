@@ -2,9 +2,13 @@
 # (root + worker) and the GitHub Actions used in workflows.
 #
 # Grouped updates keep the PR count manageable: one PR per package
-# manager / scope rather than one PR per dependency. Patch / minor
-# bumps land grouped; major bumps stay separate so they get individual
-# review attention.
+# manager / scope rather than one PR per dependency. Root + actions
+# group patch / minor and keep majors separate for individual review.
+# The worker group takes ALL update types together so tightly-coupled
+# Cloudflare packages — `wrangler` and `@cloudflare/workers-types`, which
+# share a peer-dependency range — can never land out of sync (a split
+# major bump of workers-types once broke `npm ci` against wrangler's
+# `^4` peer).
 #
 # See https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot-yml-file
 
@@ -46,7 +50,8 @@ updates:
     open-pull-requests-limit: 5
     groups:
       worker:
-        update-types: [minor, patch]
+        patterns:
+          - "*"
     commit-message:
       prefix: deps(worker)
       include: scope

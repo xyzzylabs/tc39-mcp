@@ -11,9 +11,15 @@
 // shapes — those use the TypeScript Compiler API to stay correct
 // across formatting variations. Only the JSDoc reduction is text-y.
 //
+// The compiler API comes from `typescript-api` (an npm alias for
+// `typescript@6`), not `typescript` directly: the repo compiles with
+// TypeScript 7 (native `tsc`), which moved the classic AST API to the
+// in-flux `typescript/unstable/*` surface. Pinning the stable classic
+// API here keeps this generator working without a rewrite.
+//
 // Run via `npm run docs:data` (build_data.ts wires us in).
 
-import * as ts from "typescript";
+import * as ts from "typescript-api";
 import { readFileSync, readdirSync, existsSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { HOSTED_TOOLS, STDIO_ONLY_TOOLS } from "../spec/tool_inventory.js";

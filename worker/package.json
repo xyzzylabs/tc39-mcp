@@ -7,16 +7,15 @@
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "upload-r2": "tsx scripts/upload-r2.ts",
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260711.1",
     "@types/node": "^26.1.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "tsx": "^4.23.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.9",
-    "wrangler": "^4.107.0"
+    "wrangler": "^4.110.0"
   }
 }
