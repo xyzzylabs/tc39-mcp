@@ -32,6 +32,32 @@ export default defineConfig({
   // directory-with-index pages so static hosts serve them right.
   cleanUrls: true,
 
+  vite: {
+    build: {
+      rollupOptions: {
+        output: {
+          // Cache epoch for the shared runtime chunks. Their filenames
+          // are content hashes of VitePress's own runtime, so they stay
+          // identical across data-only redeploys — which means a bad copy
+          // served under one of these names (e.g. a gateway that rewrote
+          // the router incorrectly) stays pinned in browser caches under
+          // `immutable` with no way to force a refresh: the name never
+          // changes. Bumping this token renames every shared chunk in one
+          // build, so the always-revalidated HTML points returning
+          // visitors at URLs they never cached and they re-fetch cleanly.
+          // Page chunks are exempt: the client router resolves them by
+          // `assets/<name>.<hash>.js`, so their shape must not change.
+          chunkFileNames(chunk) {
+            const isPage = /\.md$/.test(chunk.name ?? "");
+            return isPage
+              ? "assets/[name].[hash].js"
+              : "assets/chunks/[name].e1.[hash].js";
+          },
+        },
+      },
+    },
+  },
+
   // Don't break the build on intentional outbound links that may
   // 404 briefly (e.g., tc39.es link rot).
   ignoreDeadLinks: [/^https?:\/\/(?!github\.com\/xyzzylabs\/tc39-mcp)/],
