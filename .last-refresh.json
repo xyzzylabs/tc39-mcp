@@ -1,14 +1,14 @@
 {
-  "refreshed_at": "2026-07-22T17:25:34.543Z",
+  "refreshed_at": "2026-07-22T21:20:05.773Z",
   "last_npm_publish": {
     "version": "0.6.1",
     "at": "2026-07-07T18:05:27.039Z"
   },
   "specs": {
     "262/main": "994b48ed0c0940edaa0e4ce4d9e358fa3ba91edb",
-    "402/main": "5273ed81c1a81cd87aaaaf87df48e7084d38259c",
+    "402/main": "b7dfc3c9832914b15e3befb6b195bc504ef03d88",
     "402/latest": "8ea5ed5bab7165d1ef8ca2612a88582bf2b1ac94"
   },
   "test262": "9e61c12835c5e4a3bdba93850427e6742c4f64c4",
-  "proposals": "e9c32619109175c6d88b68df6ab9d1e822992f34"
+  "proposals": "1a24fe10460f83f1abfbce36f1c8246a9258e57a"
 }
