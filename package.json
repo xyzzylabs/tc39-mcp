@@ -57,7 +57,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tc39/ecma262-biblio": "2.2.3121",
+    "@tc39/ecma262-biblio": "2.2.3126",
     "@types/node": "^26.0.0",
     "cheerio": "^1.0.0",
     "tsx": "^4.19.2",
