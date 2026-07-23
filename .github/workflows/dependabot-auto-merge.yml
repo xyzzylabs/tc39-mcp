@@ -61,11 +61,19 @@ jobs:
           # the test workflow, so an update that also touches the deploy or
           # release path is not fully exercised by the green check that got
           # us here — actions/setup-node v6 -> v7 was exactly that shape.
-          # Dependabot states every version change as "from X to Y" in the
-          # title and body, including inside grouped updates.
-          changes=$(gh pr view "$pr" --repo "$REPO" --json title,body \
-                      --jq '.title + "\n" + .body' \
-                    | grep -oE 'from [0-9]+(\.[0-9]+)* to [0-9]+(\.[0-9]+)*' || true)
+          #
+          # Only Dependabot's own declarations are read: the title, plus
+          # the body lines it opens with "Bumps ..." (single) or
+          # "Updates ..." (grouped). The rest of the body embeds the
+          # upstream changelog, which routinely quotes unrelated bumps —
+          # body-parser 2.2.2 -> 2.3.0 ships release notes mentioning
+          # "actions/download-artifact from 6.0.0 to 7.0.0", which would
+          # otherwise read as a major and hold a patch release forever.
+          title=$(gh pr view "$pr" --repo "$REPO" --json title --jq '.title')
+          body=$(gh pr view "$pr" --repo "$REPO" --json body --jq '.body')
+          changes=$( { printf '%s\n' "$title"
+                       printf '%s\n' "$body" | grep -E '^(Bumps |Updates )' || true
+                     } | grep -oE 'from [0-9]+(\.[0-9]+)* to [0-9]+(\.[0-9]+)*' || true)
 
           while read -r _ from _ to; do
             from=${from:-}
