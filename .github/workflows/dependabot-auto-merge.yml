@@ -1,0 +1,81 @@
+name: Dependabot auto-merge
+
+# Merges routine Dependabot updates once CI has actually passed.
+#
+# Keyed off the test workflow finishing rather than the `pull_request`
+# event, because GitHub's native auto-merge only waits for *required*
+# status checks — and making a check required means branch protection,
+# which would also block `refresh.yml`'s automated data commits to main
+# (pushed by an app, not an admin). Reacting to the completed run gives
+# the same "CI passed" guarantee with no repository-wide policy change.
+#
+# `workflow_run` grants a write token, so this job never checks out or
+# executes pull request code — it only calls the API. Untrusted values
+# reach the shell as quoted variables rather than `${{ }}` expansions,
+# and the versions it compares are matched out of the PR text by a
+# digits-and-dots pattern.
+on:
+  workflow_run:
+    workflows: ["Test"]
+    types: [completed]
+
+# Enough to merge the PR and delete its branch, nothing more.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    # A green test run for some pull request. Whether it is actually
+    # Dependabot's is confirmed against the PR author below, which is
+    # more reliable than the run's reported actor.
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Merge the update unless it is a major bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+
+          pr=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
+                 --jq '[.[] | select(.state == "open")] | .[0].number // empty')
+          if [ -z "$pr" ]; then
+            echo "No open PR for $HEAD_SHA — nothing to merge."
+            exit 0
+          fi
+
+          author=$(gh pr view "$pr" --repo "$REPO" --json author --jq '.author.login')
+          if [ "$author" != "app/dependabot" ] && [ "$author" != "dependabot[bot]" ]; then
+            echo "PR #$pr is authored by $author, not Dependabot — leaving it alone."
+            exit 0
+          fi
+
+          # Major bumps keep a human in the loop. A pull request only runs
+          # the test workflow, so an update that also touches the deploy or
+          # release path is not fully exercised by the green check that got
+          # us here — actions/setup-node v6 -> v7 was exactly that shape.
+          # Dependabot states every version change as "from X to Y" in the
+          # title and body, including inside grouped updates.
+          changes=$(gh pr view "$pr" --repo "$REPO" --json title,body \
+                      --jq '.title + "\n" + .body' \
+                    | grep -oE 'from [0-9]+(\.[0-9]+)* to [0-9]+(\.[0-9]+)*' || true)
+
+          while read -r _ from _ to; do
+            from=${from:-}
+            to=${to:-}
+            [ -n "$from" ] && [ -n "$to" ] || continue
+            if [ "${from%%.*}" != "${to%%.*}" ]; then
+              echo "PR #$pr carries a major bump ($from -> $to) — leaving it for review."
+              exit 0
+            fi
+          done <<< "$changes"
+
+          echo "Merging PR #$pr ($author)"
+          gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
