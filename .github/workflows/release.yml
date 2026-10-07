@@ -56,6 +56,29 @@ jobs:
           fi
           echo "Tag and version agree on $pkg"
 
+      - name: Verify the changelog has an entry for a code release
+        # Data-only rebakes skip the changelog by policy (refresh.yml
+        # tags a `refresh: vX.Y.Z` commit). A code release is a
+        # `release:` commit — normally made by scripts/release.mjs — and
+        # must carry a `## [X.Y.Z]` section, so a hand-cut release that
+        # forgot the retitle stops here instead of publishing against a
+        # stale changelog.
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          subject=$(git log -1 --format=%s)
+          case "$subject" in
+            release:*)
+              if ! grep -qE "^## \[${version//./\\.}\]" CHANGELOG.md; then
+                echo "CHANGELOG.md has no \"## [$version]\" section for release commit: $subject"
+                exit 1
+              fi
+              echo "CHANGELOG.md has an entry for $version";;
+            *)
+              echo "Not a code release ($subject); changelog check skipped";;
+          esac
+
       # Shared install + fetch + parse prefix. If test.yml ran
       # earlier on the same main push that refresh.yml created, the
       # vendor/ + build/ caches are already warm and we skip the

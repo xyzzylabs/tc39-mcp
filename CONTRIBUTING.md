@@ -96,39 +96,55 @@ end.
 ## Releasing
 
 The release pipeline is `.github/workflows/release.yml`, triggered by
-pushing a `v*` tag. To cut a release:
+pushing a `v*` tag. Code releases are cut with one command:
 
-1. **Update `CHANGELOG.md`** with the new version + dated entry. Use
-   the existing `[0.1.0] — YYYY-MM-DD` shape; describe added /
-   changed / removed / fixed under their own sub-headings if there's
-   more than a single bullet per category.
+```sh
+npm run release -- patch             # or minor, major, or an exact X.Y.Z
+npm run release -- patch --dry-run   # print the plan, change nothing
+```
 
-2. **Bump `package.json` version**. Follow SemVer:
-   - **MAJOR**: tool-schema change, removed tool, or removed field.
-   - **MINOR**: new tool, new optional schema field, new edition,
-     new spec covered.
-   - **PATCH**: bug fix, doc improvement, internal refactor.
+Pick the bump by SemVer:
 
-3. **Commit** with message `release: vX.Y.Z` and tag `git tag vX.Y.Z`.
+- **MAJOR**: tool-schema change, removed tool, or removed field.
+- **MINOR**: new tool, new optional schema field, new edition,
+  new spec covered.
+- **PATCH**: bug fix, doc improvement, internal refactor.
 
-4. **Push** the commit + tag. CI runs `release.yml`:
-   - `npm ci`
-   - `npm run fetch-spec && npm run fetch-test262 && npm run fetch-proposals`
-   - `npm run parse && npm run build-test262-index && npm run build-proposals-index`
-   - `npm test && npm run typecheck && npm run build`
-   - `npm publish --provenance` (authenticated via Trusted Publishing
-     OIDC — no long-lived NPM_TOKEN secret. The package's npm-side
-     trusted-publisher config points at this workflow file).
-   - Post-publish smoke: install from registry, run MCP roundtrip
-     (`scripts/smoke-stdio.mjs`).
-   - `gh release create vX.Y.Z` with notes extracted from CHANGELOG.
+Before running it, write the entry under `## [Unreleased]` in
+`CHANGELOG.md` — added / changed / removed / fixed under their own
+sub-headings if there's more than a single bullet per category.
+`scripts/release.mjs` refuses to run unless you're on a clean `main` in
+sync with `origin/main` and that section is non-empty. It then:
 
-5. The Worker deploy is triggered by the same tag (`deploy-worker.yml`).
-   It rebuilds the docs site, stages assets, uploads R2, deploys, then
-   smokes `/health` + `tools/call spec.about` + the docs landing page
-   and `/snapshots`.
+1. Retitles `[Unreleased]` to `[X.Y.Z] — YYYY-MM-DD` and leaves a fresh
+   empty `[Unreleased]` above it for the next change.
+2. Bumps the version in `package.json`, `package-lock.json` and
+   `server.json`.
+3. Commits `release: vX.Y.Z`, creates a lightweight tag and pushes the
+   commit, then the tag.
 
-6. **Verify** `npm view tc39-mcp version` returns the new version.
+The tag push runs `release.yml`:
+
+- `npm ci`
+- `npm run fetch-spec && npm run fetch-test262 && npm run fetch-proposals`
+- `npm run parse && npm run build-test262-index && npm run build-proposals-index`
+- `npm test && npm run typecheck && npm run build`
+- `npm publish --provenance` (authenticated via Trusted Publishing
+  OIDC — no long-lived NPM_TOKEN secret. The package's npm-side
+  trusted-publisher config points at this workflow file).
+- Post-publish smoke: install from registry, run MCP roundtrip
+  (`scripts/smoke-stdio.mjs`).
+- `gh release create vX.Y.Z` with notes extracted from CHANGELOG.
+
+The same tag triggers the Worker deploy (`deploy-worker.yml`). It
+rebuilds the docs site, stages assets, uploads R2, deploys, then smokes
+`/health` + `tools/call spec.about` + the docs landing page and
+`/snapshots`. Afterwards, `npm view tc39-mcp version` should return the
+new version.
+
+Data-only PATCH rebakes are cut by `refresh.yml` on its monthly cadence
+and deliberately skip the changelog (see the note at the top of
+`CHANGELOG.md`); don't use the script for those.
 
 ### Safety nets if smoke fails after publish
 
