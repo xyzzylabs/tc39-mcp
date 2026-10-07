@@ -54,14 +54,17 @@ code deploys behind a Cloudflare Worker (see
 the parsed JSON is served from R2 directly.
 
 The 262 parse runs **two passes**: biblio-driven first
-(`@tc39/ecma262-biblio` supplies authoritative aoid + section
+(`@tc39/ecma262-biblio` supplies authoritative aoid, title and kind
 metadata), then an **HTML-discovery fallback** that captures any
 `<emu-clause>` / `<emu-annex>` the pinned biblio didn't list,
 synthesizing metadata from the element. Because the biblio is pinned
 to one `main` snapshot it can lag the HTML being parsed (a newer
 `main`, or an older edition carrying since-removed clauses); the
 fallback guarantees a stale or mismatched biblio can never silently
-drop a clause. ECMA-402 has no biblio dependency at all — it
+drop a clause. Section numbers come from neither: both passes number
+a clause by its position in the HTML being parsed, the way ecmarkup
+does, because the biblio's numbers only hold for its own `main`
+snapshot. ECMA-402 has no biblio dependency at all — it
 synthesizes the same metadata directly from its multi-file
 `<emu-import>` walk (`src/parser/synthesize.ts` is shared by both
 paths).

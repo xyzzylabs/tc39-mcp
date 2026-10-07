@@ -37,7 +37,9 @@ export interface ClauseMeta {
   aoid: string | null;
   /** `<h1>` text. Includes the signature line for abstract ops. */
   title: string;
-  /** Section number, e.g. `7.1.4` or `B.3.1` (Annex B). */
+  /** Section number in this snapshot, e.g. `7.1.4` or `B.3.1` (Annex B).
+   *  Computed from the clause's position in the snapshot's own HTML, the
+   *  way ecmarkup numbers it, so it matches that edition's rendered spec. */
   number: string;
   /** How the clause behaves: `op`, `sdo`, `built-in function`,
    *  `concrete method`, `internal method`, `term`, `clause` (generic),

@@ -27,6 +27,22 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
+## [Unreleased]
+
+### Fixed
+
+- **ECMA-262 section numbers match each snapshot.** The 262 parser took
+  every clause's `number` from `@tc39/ecma262-biblio`, which describes one
+  pinned `main` commit. Released editions therefore reported `main`'s
+  numbers (es2020 `Math.round` came back as 21.3.2.29 instead of
+  20.3.2.28), and `main` itself lagged whenever a clause had since been
+  inserted ahead (`Iterator.prototype.map` stayed 27.1.3.3.8 after
+  `Iterator.prototype.join` took that slot). Numbers now come from each
+  clause's position in the snapshot's own `spec.html`, the way ecmarkup
+  numbers them; the biblio still supplies aoid, title and kind. Affects
+  every tool that returns a clause `number` (`clause.get`, `clause.list`,
+  `clause.outline`, `spec.search`, …).
+
 ## [0.6.0] — 2026-06-29
 
 Surfaces a clause's citations to external specs (Unicode, IETF, WHATWG)
