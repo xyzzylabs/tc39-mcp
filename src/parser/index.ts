@@ -4,14 +4,21 @@
  *
  * Two passes:
  *   1. Biblio-driven — iterate the biblio's clause list (authoritative
- *      metadata: aoid, title, number, kind) and pull each one's body out
- *      of the HTML.
+ *      metadata: aoid, title, kind) and pull each one's body out of the
+ *      HTML.
  *   2. HTML-discovery fallback — the biblio is a pinned snapshot of `main`
  *      that can lag the HTML being parsed (a newer `main`, or an older
  *      edition carrying clauses since dropped from `main`). Walk every
  *      `<emu-clause>` / `<emu-annex>` and capture any id the biblio didn't
  *      supply, synthesizing its metadata from the HTML. So a stale or
  *      mismatched biblio can never silently drop a clause.
+ *
+ * Section numbers never come from the biblio. ecmarkup numbers a clause
+ * by its position in the document, so the biblio's numbers describe only
+ * its own `main` snapshot: they are wrong for every released edition, and
+ * for any `main` that has since inserted a clause ahead of this one. Both
+ * passes take the number from the clause's position in the HTML being
+ * parsed instead.
  */
 
 import { readFileSync } from "node:fs";
@@ -29,17 +36,17 @@ export function parseSpec(specHtmlPath: string, pin: SpecPin): ParsedSpec {
   const biblioMetas = loadBiblioClauses();
 
   const clauses: Record<string, Clause> = {};
+  const numbers = computeSectionNumbers($);
 
-  // Pass 1: biblio-driven (authoritative metadata).
+  // Pass 1: biblio-driven metadata, numbered by position in this HTML.
   for (const meta of biblioMetas.values()) {
-    const clause = extractClause($, meta);
+    const clause = extractClause($, { ...meta, number: numbers.get(meta.id) ?? meta.number });
     if (clause) clauses[meta.id] = clause;
   }
 
   // Pass 2: HTML-discovery fallback for anything the biblio missed.
   // Biblio-captured clauses are left untouched (keyed by id); only gaps
   // are filled, with metadata synthesized from the element itself.
-  const numbers = computeSectionNumbers($);
   $("emu-clause, emu-annex").each((_, el) => {
     const id = $(el).attr("id");
     if (!id || clauses[id]) return;
