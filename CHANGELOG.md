@@ -27,7 +27,7 @@ To see which SHA a given published version is pinned to:
   address a specific upstream commit; the npm tarball pins to whatever
   was current at publish time.
 
-## [Unreleased]
+## [0.6.4] — 2026-10-07
 
 ### Fixed
 
