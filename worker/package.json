@@ -11,11 +11,11 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261016.1",
+    "@cloudflare/workers-types": "^5.20261023.1",
     "@types/node": "^26.6.5",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5",
-    "wrangler": "^4.151.0"
+    "wrangler": "^4.152.0"
   }
 }
